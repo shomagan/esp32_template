@@ -1,0 +1,3 @@
+*.mdj
+html-docs/
+!makefsdata.exe

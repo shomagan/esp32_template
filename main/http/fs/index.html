@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>ISIMFW400</title>
+		<meta charset="utf-8">
+		<script>
+            let by_id = function( id ) { return document.getElementById( id ); };
+            let create = function( id ) { return document.createElement( id ); };
+			let addr = "";
+			let max_regs_num;
+			function bit(position){
+	    		return 1 << position;
+			}
+			function print(message){
+				console.log(message);
+			}
+			function get_all_regs(){
+				max_regs_num = get_regs_num();
+				print("will be request "+max_regs_num+" registers");
+				let i = 0;
+                let pack = {
+					"request":"regs",
+					"reg_num":"1",
+					"get_type":"full",
+					"index":String(i),
+				}
+                let response;
+				print("pack preview:");
+				print(pack);
+				for (i = 0; i < max_regs_num; i++){
+					pack.index = String(i);
+					response = send_json(pack);
+					if(response.name === "pass_key"){
+						device_pass_key = response.value&0xFFFFFFFF;
+						device_pass_key_ind = response.index;
+						print("device_pass: " + device_pass_key);
+					}
+					add_data_to_table(response);
+				}
+			}
+			function add_data_to_table(data){
+				if(by_id("index_"+data.index) == null){
+					let tbody = by_id("table").getElementsByTagName('TBODY')[0];
+					let line = create("TR");
+					line.id = "line_"+data.index;
+    				line.style = "background-color: GhostWhite";
+					line.style.visibility = "visible";
+					if (data.name!=null){
+						if (data.name === "board_ver"){
+  							show_change_buttons(data.index);
+						}
+						if (data.name === "permission"){
+							if (data.value & bit(1)){
+								by_id("credential").style.display = "inline";
+							}
+						}
+					}
+					tbody.appendChild(line);
+					const center = "text-align: center; padding: 5px";
+					const left = "text-align: left; padding: 5px";
+					let td_index = create("TD");
+					td_index.id = "index_"+data.index;
+					td_index.style = center;
+                    let td_name = create("TD");
+					td_name.id = "name_"+data.index;
+					td_name.style = left;
+                    let td_type = create("TD");
+					td_type.id = "type_"+data.index;
+					td_type.style = center;
+                    let td_byte_addr = create("TD");
+					td_byte_addr.id = "byte_addr_"+data.index;
+					td_byte_addr.style = center;
+                    let td_mdb_addr = create("TD");
+					td_mdb_addr.id = "mdb_addr_"+data.index;
+					td_mdb_addr.style = center;
+                    let td_flags = create("TD");
+					td_flags.id = "flags_"+data.index;
+					td_flags.style = left;
+                    let td_descr = create("TD");
+					td_descr.id = "descr_"+data.index;
+					td_descr.style = left;
+                    let td_value = create("TD");
+					td_value.id = "value_"+data.index;
+					td_value.style = "text-align: left; padding: 5px; word-wrap: break-word";
+					td_value.class = "value_col";
+                    let td_raw_value = create("TD");
+					td_raw_value.id = "raw_value_"+data.index;
+					td_raw_value.style = "display: none";
+                    let td_buttons = create("TD");
+					td_buttons.id = "buttons_"+data.index;
+					td_buttons.style = left;
+                    let td_change = create("BUTTON");
+					td_change.id = "button_"+data.index;
+					td_change.setAttribute("type", "button");
+					td_change.onclick = function() {change_reg(td_index.id, td_raw_value.id)};
+					td_change.appendChild(document.createTextNode("Change value"));
+					line.appendChild(td_index);
+					line.appendChild(td_name);
+					line.appendChild(td_type);
+					line.appendChild(td_byte_addr);
+					line.appendChild(td_mdb_addr);
+					line.appendChild(td_flags);
+					line.appendChild(td_descr);
+					line.appendChild(td_value);
+					line.appendChild(td_raw_value);
+					line.appendChild(td_buttons);
+					if(~get_flags_text(data.flags).indexOf("read_only")){
+					}else{
+						td_buttons.appendChild(td_change);
+					}
+				}
+				if(data.index != null){
+                    by_id("index_"+data.index).innerHTML = data.index;
+				}
+				if(data.name != null){
+                    by_id("name_"+data.index).innerHTML = data.name;
+				}
+				if(data.type != null){
+                    by_id("type_"+data.index).innerHTML = get_type_text(data.type);
+				}
+				if(data.byte_address != null){
+                    by_id("byte_addr_"+data.index).innerHTML = data.byte_address;
+					by_id("mdb_addr_"+data.index).innerHTML = String(Math.floor((data.byte_address&0xfffff)/2));
+				}
+				if(data.flags != null){
+                    by_id("flags_"+data.index).innerHTML = get_flags_text(data.flags);
+				}
+				if(data.description != null){
+                    by_id("descr_"+data.index).innerHTML = data.description;
+				}
+				if(data.value != null){
+                    by_id("value_"+data.index).innerHTML = get_value_parse(data.index, data.value);
+                    by_id("raw_value_"+data.index).innerHTML = data.value;
+				}
+			}
+			function get_value_parse(i, data){
+				let name = by_id("name_"+i).innerHTML;
+				if(data === "nan"){
+					return "NAN";
+				}else{
+					return data;
+				}
+			}
+			function get_regs_num(){
+				let pack = {
+					"request":"regs_num",
+				}
+				print("regs_num request");
+                let json_response = send_json(pack);
+				if(json_response !== "Request_error"){
+					return json_response.regs_num;
+				}else{
+					print("Server is not responding");
+					alert("Server is not responding");
+					return 0;
+				}
+			}
+			function get_type_text(type){
+                let type_text;
+				switch(type){
+				case 1:
+					type_text = "U8";
+					break;
+				case 2:
+					type_text = "U16";
+					break;
+				case 4:
+					type_text = "U32";
+					break;
+				case 8:
+					type_text = "U64";
+					break;
+				case 16:
+					type_text = "I8";
+					break;
+				case 32:
+					type_text = "S16";
+					break;
+				case 64:
+					type_text = "S32";
+					break;
+				case 128:
+					type_text = "S64";
+					break;
+				case 256:
+					type_text = "FLOAT";
+					break;
+				case 512:
+					type_text = "DOUBLE";
+					break;
+				case 1024:
+					type_text = "INT";
+					break;
+				case 2048:
+					type_text = "TIME";
+					break;
+				default:
+					type_text = "ERROR"
+					break;
+				}
+				return type_text;
+			}
+			function get_flags_text(flags){
+                let flags_text = "";
+				if(flags & bit(2)){
+					flags_text += "saved "
+				}
+				if(flags & bit(1)){
+					flags_text += "read_only ";
+				}
+
+				return flags_text;
+			}
+			function change_reg(index, value){
+				print("index: "+by_id(index).innerHTML);
+				print("value: "+by_id(value).innerHTML);
+                let reg_name = by_id("name_"+by_id(index).innerHTML).innerHTML;
+				print("reg name: "+reg_name);
+                by_id("reg_set_index").value = by_id(index).innerHTML;
+				add_value_lines(by_id(index).innerHTML);
+                by_id("send_form").style = "display: inline";
+                by_id("reg_name").innerHTML = reg_name;
+                by_id("fade").style = "display: inline";
+			}
+			function add_value_lines(index){
+                let pack = {
+					"request":"regs",
+					"reg_num":1,
+					"get_type":"only_value",
+					"index":index,
+				}
+                let data = send_json(pack);
+                let lines = 1;
+				if(data.value.length){
+					lines = data.value.length;
+				}
+				print("array size: "+lines);
+                let tbody = by_id("reg_set_table").getElementsByTagName("TBODY")[0];
+				//remove last value inputs
+				while(tbody.childElementCount){
+					tbody.removeChild(tbody.childNodes[0]);
+				}
+				//add value inputs
+                let i;
+				for (i = 0; i < lines; i++){
+                    let line = create("TR");
+					line.id = "line_"+i;
+					tbody.appendChild(line);
+                    let td_text = create("TD");
+					td_text.id = "text_"+i;
+					td_text.style = "text-align: right; width: 80px";
+					td_text.appendChild(document.createTextNode("val_"+i+": "));
+					line.appendChild(td_text);
+                    let td_input = create("TD");
+					td_input.id = "td_inp_"+i;
+					line.appendChild(td_input);
+                    let input = create("INPUT");
+					input.type = "number";
+					input.style = "width: 150px"
+					input.name = "val_"+i;
+					input.id = "input_"+i;
+					if(data.value.length){
+						input.value = data.value[i];
+					}else{
+						input.value = data.value;
+					}
+					td_input.appendChild(input);
+					print(input.name+": "+input.value);
+				}
+			}
+			function json_reg_set(form){
+                let tbody = by_id("reg_set_table").getElementsByTagName("TBODY")[0];
+                let pack = {
+					"request":form.request.value,
+					"index":form.index.value,
+					"value":[],
+				}
+				for(let i = 0; i < tbody.childElementCount; i++){
+					pack.value.push(by_id("input_"+i).value);
+				}
+				send_json(pack);
+				hidden_reg_set_form();
+			}
+			function hidden_reg_set_form(){
+                by_id("send_form").style = "display: none";
+                by_id("fade").style = "display: none";
+			}
+
+			function show_change_buttons(value){
+				if (value === 0){
+					value = max_regs_num;
+				}
+				for(let i = 0; i < value; i++){
+					if(by_id("button_"+i)){
+                        by_id("button_"+i).style = "display: inline";
+					}
+				}
+			}
+			function send_json(pack){
+                let json_response;
+				print("pack preview:");
+				print(pack);
+                let json_pack = JSON.stringify(pack);
+				print("json_pack: "+json_pack);
+                let request = new XMLHttpRequest();
+				request.open('GET', addr+'/get_json.cgi', false);
+				request.setRequestHeader('Json',json_pack);
+				request.setRequestHeader('Accept','text/html');
+				request.send();
+				if (request.readyState === 4 && request.status === 200){
+					print("server response: "+request.responseText);
+					json_response = JSON.parse(request.responseText);
+					print("server response:");
+					print(json_response);
+				}else{
+					print("Request error");
+					json_response = "Request_error"
+				}
+				return json_response;
+			}
+		</script>
+		<style type="text/css">
+			.form-popup{
+				display: none;
+				position: fixed;
+				top: 50px;
+				left: 500px;
+				padding: 20px;
+				border-style: solid;
+				border-width: thin;
+				background-color: white;
+				z-index: 2;
+			}
+			.black-overlay{
+				display: none;
+				position: fixed;
+				top: 0%;
+				left: 0%;
+				width: 100%;
+				height: 100%;
+				background-color: black;
+				z-index: 1;
+				-moz-opacity: 0.7;
+				opacity:.70;
+				filter: alpha(opacity=70);
+			}
+			.buttons-popup{
+				top: 5px;
+				left: 5px;
+				padding: 5px;
+				background-color: white;
+			}
+		</style>
+	</head>
+	<body onload="get_all_regs()">
+		<h1>ISIMFW400</h1>
+		<div id="buttons" class="buttons-popup">
+			<input style="display: inline" 	id="download_os"	type="button" value="Firmware update" onclick="location.href='/download_os.html'">
+			<input style="display: inline" 	id="os_control"		type="button" value="OS control" onclick="location.href='/os_control.html'">
+			<input style="display: none" 	id="credential"		type="button" value="credential" onclick="location.href='/credential.html'">
+		</div>
+		<br>
+		<table id="table" style="width: 100%">
+			<thead>
+				<tr style="background-color: GhostWhite">
+					<th style="width: 50px">Index</th>
+					<th style="width: 150px">Name</th>
+					<th style="width: 70px">Type</th>
+					<th style="width: 70px">Guid</th>
+					<th style="width: 70px">ModBus address</th>
+					<th style="width: 150px">Flags</th>
+					<th style="width: 400px; min-width: 200px">Description</th>
+					<th style="width: 700px; min-width: 200px">Value</th>
+					<th style="display: none">raw_value</th>
+					<th style="min-width: 180px"></th>
+				</tr>
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
+		<div class="form-popup" id="send_form">
+			<h1 id="reg_name" style="text-align: center;"></h1>
+			<form id="reg_set_form" name="reg_set_form" ><!--  style="width: 250px" -->
+				<input type="text" name="request" value="regs_set" hidden>
+				<table id="reg_set_table">
+					<thead>
+						<tr>
+							<td><input id="reg_set_index" type="number" name="index" style="width: 150px; display: none"></td>
+						</tr>
+					</thead>
+					<tbody>
+					</tbody>
+				</table>
+				<input type="button" value="Cancel" style="width: 82px" onclick="hidden_reg_set_form()">
+				<input type="button"  style="width: 150px" value="Set new reg value" onclick="json_reg_set(document.getElementById('reg_set_form'))"></td>
+			</form>
+		</div>
+		<div id="fade" class="black-overlay"></div>
+	</body>
+</html>

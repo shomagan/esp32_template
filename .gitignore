@@ -1,0 +1,16 @@
+build/
+generator/.idea/
+CMakeLists.txt.user
+*.bin
+*.o
+*.elf
+*.hex
+*.lst
+*.map
+*.orig
+*.exe
+*.autosave
+*.csv
+*.*-pre1
+regs_sha256.txt
+version_from_git.txt
