@@ -1,7 +1,7 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>ISIMFW400</title>
+		<title>sofi_table</title>
 		<meta charset="utf-8">
 		<script>
             let by_id = function( id ) { return document.getElementById( id ); };
@@ -45,16 +45,6 @@
 					line.id = "line_"+data.index;
     				line.style = "background-color: GhostWhite";
 					line.style.visibility = "visible";
-					if (data.name!=null){
-						if (data.name === "board_ver"){
-  							show_change_buttons(data.index);
-						}
-						if (data.name === "permission"){
-							if (data.value & bit(1)){
-								by_id("credential").style.display = "inline";
-							}
-						}
-					}
 					tbody.appendChild(line);
 					const center = "text-align: center; padding: 5px";
 					const left = "text-align: left; padding: 5px";
@@ -67,11 +57,11 @@
                     let td_type = create("TD");
 					td_type.id = "type_"+data.index;
 					td_type.style = center;
-                    let td_byte_addr = create("TD");
-					td_byte_addr.id = "byte_addr_"+data.index;
-					td_byte_addr.style = center;
+                    let td_modbus_function = create("TD");
+					td_modbus_function.id = "modbus_function_"+data.index;
+					td_modbus_function.style = center;
                     let td_mdb_addr = create("TD");
-					td_mdb_addr.id = "mdb_addr_"+data.index;
+					td_mdb_addr.id = "modbus_address_"+data.index;
 					td_mdb_addr.style = center;
                     let td_flags = create("TD");
 					td_flags.id = "flags_"+data.index;
@@ -97,7 +87,7 @@
 					line.appendChild(td_index);
 					line.appendChild(td_name);
 					line.appendChild(td_type);
-					line.appendChild(td_byte_addr);
+					line.appendChild(td_modbus_function);
 					line.appendChild(td_mdb_addr);
 					line.appendChild(td_flags);
 					line.appendChild(td_descr);
@@ -118,9 +108,28 @@
 				if(data.type != null){
                     by_id("type_"+data.index).innerHTML = get_type_text(data.type);
 				}
-				if(data.byte_address != null){
-                    by_id("byte_addr_"+data.index).innerHTML = data.byte_address;
-					by_id("mdb_addr_"+data.index).innerHTML = String(Math.floor((data.byte_address&0xfffff)/2));
+				if(data.modbus_function != null){
+					let function_mdb = "holding_register"
+					switch (data.modbus_function) {
+						case(1):
+							function_mdb = "coil_register"
+							break
+						case(2):
+							function_mdb = "discrete_register"
+							break
+						case(3):
+							function_mdb = "holding_register"
+							break
+						case(4):
+							function_mdb = "input_register"
+							break
+						default:
+							function_mdb = "holding_register"
+					}
+                    by_id("modbus_function_"+data.index).innerHTML = function_mdb;
+				}
+				if(data.modbus_address != null){
+					by_id("modbus_address_"+data.index).innerHTML = data.modbus_address;
 				}
 				if(data.flags != null){
                     by_id("flags_"+data.index).innerHTML = get_flags_text(data.flags);
@@ -202,13 +211,9 @@
 			}
 			function get_flags_text(flags){
                 let flags_text = "";
-				if(flags & bit(2)){
-					flags_text += "saved "
-				}
-				if(flags & bit(1)){
-					flags_text += "read_only ";
-				}
-
+				if(flags & bit(1)){flags_text += "read_only ";}
+				if(flags & bit(2)){flags_text += "saved "}
+				if(flags & bit(5)){flags_text += "critical "}
 				return flags_text;
 			}
 			function change_reg(index, value){
@@ -236,11 +241,9 @@
 				}
 				print("array size: "+lines);
                 let tbody = by_id("reg_set_table").getElementsByTagName("TBODY")[0];
-				//remove last value inputs
 				while(tbody.childElementCount){
 					tbody.removeChild(tbody.childNodes[0]);
 				}
-				//add value inputs
                 let i;
 				for (i = 0; i < lines; i++){
                     let line = create("TR");
@@ -286,22 +289,9 @@
                 by_id("fade").style = "display: none";
 			}
 
-			function show_change_buttons(value){
-				if (value === 0){
-					value = max_regs_num;
-				}
-				for(let i = 0; i < value; i++){
-					if(by_id("button_"+i)){
-                        by_id("button_"+i).style = "display: inline";
-					}
-				}
-			}
 			function send_json(pack){
                 let json_response;
-				print("pack preview:");
-				print(pack);
                 let json_pack = JSON.stringify(pack);
-				print("json_pack: "+json_pack);
                 let request = new XMLHttpRequest();
 				request.open('GET', addr+'/get_json.cgi', false);
 				request.setRequestHeader('Json',json_pack);
@@ -353,11 +343,9 @@
 		</style>
 	</head>
 	<body onload="get_all_regs()">
-		<h1>ISIMFW400</h1>
+		<h1>wifi to slip bridge</h1>
 		<div id="buttons" class="buttons-popup">
-			<input style="display: inline" 	id="download_os"	type="button" value="Firmware update" onclick="location.href='/download_os.html'">
-			<input style="display: inline" 	id="os_control"		type="button" value="OS control" onclick="location.href='/os_control.html'">
-			<input style="display: none" 	id="credential"		type="button" value="credential" onclick="location.href='/credential.html'">
+			<input style="display: inline" 	id="wifi_settings" type="button" value="wifi_settings" onclick="location.href='/wifi_settings.html'">
 		</div>
 		<br>
 		<table id="table" style="width: 100%">
@@ -366,8 +354,8 @@
 					<th style="width: 50px">Index</th>
 					<th style="width: 150px">Name</th>
 					<th style="width: 70px">Type</th>
-					<th style="width: 70px">Guid</th>
-					<th style="width: 70px">ModBus address</th>
+					<th style="width: 70px">Modbus function</th>
+					<th style="width: 70px">Modbus address</th>
 					<th style="width: 150px">Flags</th>
 					<th style="width: 400px; min-width: 200px">Description</th>
 					<th style="width: 700px; min-width: 200px">Value</th>

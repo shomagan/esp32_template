@@ -11,8 +11,6 @@
  
 /*add includes below */
 #include "type_def.h"
-#include "main_debug.h"
-#include "main_config.h"
 #include "lwip/apps/fs.h"
 
 #include <string.h>
@@ -104,7 +102,7 @@ typedef enum{
    REGS_SET_REQUEST,
    ARC_GET_REQUEST,
    LOG_GET_REQUEST,
-   SET_DEVICE_NAME
+   SET_STRING
 }request_t;
 
 /**
@@ -140,7 +138,7 @@ extern char dynamical_file_databuf[];
 extern json_out_t dynamic_json_file;
 extern const char json_cgi_request[];
 
-
+void json_init_base(void);
 const char* get_json_handle(char *json_pack);
 char * extract_json_pack(char * headers);
 

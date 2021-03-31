@@ -9,11 +9,12 @@
 #define REGS_H 1
 #include "type_def.h"
 #include "lwipopts.h"
+#include "os_type.h"
 #ifdef __cplusplus
    extern "C" {
 #endif
-extern osMutexId regs_access_mutex;
-extern osMessageQId regs_event_queue;
+extern semaphore_handle_t regs_access_mutex;
+extern queue_handle_t regs_event_queue;
 #ifndef BIT
 #define BIT(x)  (1 << x)
 #endif
@@ -22,8 +23,6 @@ extern osMessageQId regs_event_queue;
   * @{
   */
 #define GLOBAL_UNION_SIZE 256
-#define REGS_GLOBAL_ADDRESS(byte_number) (&regs_global.bytes[(u16)byte_number])
-#define REGS_NUMBER(reg_global_address) ((u16)((u32)reg_global_address - (u32)regs_global.bytes))
 /**
   * @}
   */
@@ -106,14 +105,7 @@ enum{
     REGS_SET_FLAG=0,
     REGS_GET_FLAG
 };
-enum{
-    REGS_ETH_DUPLEX_AUTO=0,
-    REGS_ETH_DUPLEX_HALF=1,
-    REGS_ETH_DUPLEX_FULL=2,
-    REGS_ETH_SPEED_AUTO=0,
-    REGS_ETH_SPEED_10=10,
-    REGS_ETH_SPEED_100=100,
-};
+
 
 /**
   * @brief global register types
@@ -165,9 +157,9 @@ typedef struct {
   * @todo determine which group to include
   * @{
   */
-#define OS_VERSION_SIZE 4
-#define OS_VERSION {0,6,0,0}
-#define OS_HASH 0x00000000
+#define FW_VERSION_SIZE 4
+#define FW_VERSION {0,0,0,1}
+#define FW_HASH 0x00000000
 #define REGS_MAX_NAME_SIZE 32
 #define DEVICE_NAME_SIZE 32
 #define BKRAM_BYTES_NUM 66
@@ -175,6 +167,10 @@ typedef struct {
 #define WRITE_REG_CH_MASK 0xFFFF0000
 #define WIFI_NAME_LEN 12
 #define WIFI_PASSWORD_LEN 8
+#define WIFI_ROUTER_NAME_LEN 32
+#define WIFI_ROUTER_PASSWORD_LEN 32
+
+#define BOARD_VERSION 0
 
 /**
   * @}
@@ -187,21 +183,28 @@ typedef struct {
  *                  &ro  - read only, \n
  *                  &def -> have const varibale with struct like def_name, \n
  *                  &save- will have saved in bkram, \n
+ *                  &crtcl- restart after change value, \n
+ *
  * @ingroup regs
  */
-
+/* #generator_use_descritption { "address_space" :0, "modbus_type" :"holding_registers", "modbus_address" :0}*/
 typedef union{
     struct MCU_PACK{
-        //writable start
-        u8 ip[4];                       //!<"device ip address, warning!!! changes can lead to lost connection" &save &def
-        u8 netmask[4];                  //!<"netmask address, warning!!! changes can lead to lost connection" &save &def
-        u8 gateaway[4];                 //!<"gateaway address, warning!!! changes can lead to lost connection " &save &def
-        u8 slip_ip[4];                       //!<"ip address for local net",&save , &def
-        u8 slip_netmask[4];                  //!<"netmask address for local net", &save , &def
-        u8 slip_gateaway[4];                 //!<"gateaway address for local net", &save, &def
-        u8 wifi_name[WIFI_NAME_LEN];               //!<"must be strong full filled", &save &def
-        u8 wifi_password[WIFI_PASSWORD_LEN];            //!<"must be strong 8 byte", &save &def
-        u16 wifi_setting;               //!<"type of wifi and settings" &save &def
+        // start regs struct
+        u16 mdb_addr;                   //!<"modbus address" &save &def
+        u8 ip[4];                       //!<"device ip address, warning!!! changes can lead to lost connection" &save &def &crtcl
+        u8 netmask[4];                  //!<"netmask address for main wifi net", &save , &def , &crtcl
+        u8 gate[4];                 //!<"gateaway address, warning!!! changes can lead to lost connection " &save &def &crtcl
+        u8 slip_ip[4];                       //!<"ip address for local net",&save , &def &crtcl
+        u8 slip_netmask[4];                  //!<"netmask address for local net", &save , &def , &crtcl
+        u8 slip_gate[4];                 //!<"gateaway address for local net", &save, &def &crtcl
+        u8 wifi_name[WIFI_NAME_LEN];               //!<"must be strong full filled", &save &def &crtcl
+        u8 wifi_password[WIFI_PASSWORD_LEN];            //!<"must be strong 8 byte", &save &def &crtcl
+        u8 wifi_router_name[WIFI_ROUTER_NAME_LEN];               //!<"must be ended by zero", &save &def &crtcl
+        u8 wifi_router_password[WIFI_ROUTER_PASSWORD_LEN];            //!<"must be more or equal 8 byte", &save &def &crtcl
+
+        u16 wifi_setting;               //!<"type of wifi and settings" &save &def &crtcl
+        u32 reset_num;                  //!<"number of reset" &save
         u16 wifi_state;                 //!<"wifi state" &ro
         u16 command;                    //!<"command register"
         u16 uart_debug_sets;            //!<"settings debug uart speed,parity and stop bits, default 115200 ,parity - none, 1 stop bit" &save &def
@@ -215,17 +218,43 @@ typedef union{
         u8 debug_info[8];       //!<"reserved use for debug"&ro
         u16 num_of_vars;        //!<"number of vars self + config(user)&ro &def
         float temperature_mcu;  //!<"temperature mcu Celsius" &ro
-        u8 version[OS_VERSION_SIZE];      //!<"version like 0.1.1.0",&ro,&def
+        u8 fw_version[FW_VERSION_SIZE];      //!<"version like 0.1.1.0",&ro,&def
         u16 board_ver;              //!< "board version", &ro, &def
         u32 firmware_hash;                //!< "hash os" &ro
         u32 system_error;           //!< "system global error" &ro
         u16 permission;                 //!<"flags with permissions" &ro &def
+        u32 async_flags;            //!< "async flags" &ro
+
+        u64 slip_packet_counter;    //!< "count all slip packet"
+        u16 ap_connections_number; //!< "number of connections" &ro
+        u16 sta_connect; //!< "sta connect state" &ro
+        u32 table_version;     //!< "change value in def_table_version for drop all regs to default value" &ro &def &save
+
     }vars;
     u8 bytes[GLOBAL_UNION_SIZE]; //for full bksram copy
-}main_vars_t;
-
+}main_vars_t;// #generator_use_descritption {"message":"end_struct"}
+/**
+ * @brief main struct
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *                  &crtcl- restart after change value, \n
+ *
+ * @ingroup regs
+ */
+/* #generator_use_descritption { "address_space" :1, "modbus_type" :"holding_registers", "modbus_address" :1000}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        float test_pwm_value;                   //!<"test pwm value [0;100]" &def &save
+    }vars;
+    u8 bytes[32]; //for full bksram copy
+}main_vars_part_1_t;// #generator_use_descritption {"message":"end_struct"}
 extern main_vars_t regs_global;
-
+extern main_vars_part_1_t regs_global_part1;
 /**
   * @brief registers for regs_event_handler
   * @ingroup regs
@@ -316,6 +345,16 @@ typedef enum {
     BOOT_KEY_REMOTE_UPDATE_ENABLE = (1 << 14),
 }rst_reason_t;
 
+typedef enum {
+    WIFI_ACCESS_POINT = (1<<0),
+    WIFI_CLIENT       = (1<<1),
+    WIFI_AP_STA       = (1<<2),
+}wifi_setting_t;/*todo!!!rename to meso setting */
+
+typedef enum {
+    WIFI_SLIP_CONNECTED = (1<<0),
+}wifi_state_t;/*todo!!!rename to meso setting */
+
 /**
   * @addtogroup
   * @{
@@ -339,22 +378,28 @@ typedef struct {
     u8 command;   /*!< special modbus command or use 0xff for all commands*/
 }dinamic_address_space_t;
 //functions
-void regs_event_handler (const void *pvParameters);
+/**
+ * @brief regs_init
+ * @return
+ */
+int regs_init(void );
+
+void regs_event_handler (const void *pvParameters)FNCT_NO_RETURN;
 int write_reg_to_mirror(void *main_reg);
 int read_reg_from_bkram(void *main_reg);
-int write_reg_element_to_mirror(void *main_reg, u8 num);
 u8 write_comm_to_bkp (main_command_t command);
+
 /**
  * @brief regs_of_bkram_and_have_def_value
  * @param reg_address
  * @return  1 if vars in saved space and have def value in description
  */
-int regs_saved_and_have_def_value(u32 reg_address);
-int regs_set(u32 reg_address,regs_access_t reg) MCU_ROOT_CODE;
-int regs_set_buffer(u32 reg_address,u8* buffer_from,u16 byte_numm) MCU_ROOT_CODE;
-int regs_get(u32 reg_address,regs_access_t* reg) MCU_ROOT_CODE;
-int regs_get_buffer(u32 reg_address,u8* buffer_to,u16 byte_numm) MCU_ROOT_CODE;
-u8 regs_size_in_byte(regs_flag_t type);
+int regs_saved_and_have_def_value(const void * reg_address);
+int regs_set(void * reg_address,regs_access_t reg);
+int regs_set_buffer(void * reg_address,u8* buffer_from,u16 byte_numm);
+int regs_get(void * reg_address,regs_access_t* reg);
+int regs_get_buffer(void * reg_address,u8* buffer_to,u16 byte_numm);
+u8  regs_size_in_byte(regs_flag_t type);
 
 
 #ifdef __cplusplus

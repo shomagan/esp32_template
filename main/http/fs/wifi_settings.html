@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<title>ISIMFW400</title>
+	<title>sofi web</title>
 	<meta charset="utf-8">
 	<script>
 		let by_id = function( id ) { return document.getElementById( id ); };
@@ -14,16 +14,16 @@
 			console.log(message);
 		}
 		function get_all_regs(){
-			let response = get_device_name();
+			let response = get_wifi_name();
 			add_data_to_table(response);
 			show_change_button(response.index);
-			response = get_model_number();
+			response = get_wifi_password();
 			add_data_to_table(response);
 			show_change_button(response.index);
-			response = get_serial_number();
+			response = get_wifi_router_name();
 			add_data_to_table(response);
 			show_change_button(response.index);
-			response = get_gid();
+			response = get_wifi_router_password();
 			add_data_to_table(response);
 			show_change_button(response.index);
 		}
@@ -79,27 +79,16 @@
 				by_id("descr_"+data.index).innerHTML = data.description;
 			}
 			if(data.value != null){
-				if(data.name === "device_name"){
-					by_id("value_"+data.index).innerHTML = utf8_encode(data.value);
-				}else{
-					by_id("value_"+data.index).innerHTML = get_value_parse(data.index, data.value);
-				}
+    			by_id("value_"+data.index).innerHTML = utf8_encode(data.value);
 				by_id("raw_value_"+data.index).innerHTML = data.value;
 			}
 		}
-		function get_value_parse(i, data){
-			if(data === "nan"){
-				return "NAN";
-			}else{
-				return data;
-			}
-		}
-		function get_device_name(){
+		function get_wifi_name(){
 			let pack = {
 				"request":"regs",
 				"reg_num":"1",
 				"get_type":"full",
-				"name":"device_name",
+				"name":"wifi_name",
 			}
 			let json_response = send_json(pack);
 			if(json_response !== "Request_error"){
@@ -109,12 +98,12 @@
 				return 0;
 			}
 		}
-		function get_model_number(){
+		function get_wifi_password(){
 			let pack = {
 				"request":"regs",
 				"reg_num":"1",
 				"get_type":"full",
-				"name":"model_number",
+				"name":"wifi_password",
 			}
 			let json_response = send_json(pack);
 			if(json_response !== "Request_error"){
@@ -124,12 +113,12 @@
 				return 0;
 			}
 		}
-		function get_serial_number(){
+		function get_wifi_router_name(){
 			let pack = {
 				"request":"regs",
 				"reg_num":"1",
 				"get_type":"full",
-				"name":"serial_number",
+				"name":"wifi_router_name",
 			}
 			let json_response = send_json(pack);
 			if(json_response !== "Request_error"){
@@ -139,12 +128,12 @@
 				return 0;
 			}
 		}
-		function get_gid(){
+		function get_wifi_router_password(){
 			let pack = {
 				"request":"regs",
 				"reg_num":"1",
 				"get_type":"full",
-				"name":"gid",
+				"name":"wifi_router_password",
 			}
 			let json_response = send_json(pack);
 			if(json_response !== "Request_error"){
@@ -154,115 +143,55 @@
 				return 0;
 			}
 		}
+
 		function change_reg(index, value){
 			let reg_name = by_id("name_"+by_id(index).innerHTML).innerHTML;
 			by_id("reg_set_index").value = by_id(index).innerHTML;
-			if (reg_name === "device_name"){
-				let tbody = by_id("reg_set_table").getElementsByTagName("TBODY")[0];
-				//remove last value inputs
-				while(tbody.childElementCount){
-					tbody.removeChild(tbody.childNodes[0]);
-				}
-				let line = create("TR");
-				line.id = "line_"+0;
-				tbody.appendChild(line);
-				let td_text = create("TD");
-				td_text.id = "text_"+0;
-				td_text.style = "text-align: right; width: 80px";
-				td_text.appendChild(document.createTextNode("device name"));
-				line.appendChild(td_text);
-				let td_input = create("TD");
-				td_input.id = "td_inp_"+0;
-				line.appendChild(td_input);
-				let input = create("INPUT");
-				input.type = "string";
-				input.style = "width: 150px"
-				input.name = "value";
-				input.id = "input_"+0;
-				input.value = by_id("value_"+by_id(index).innerHTML).innerHTML;
-				td_input.appendChild(input);
-				print(input.name+": "+input.value);
-
-			}else{
-				add_value_lines(by_id(index).innerHTML);
-			}
+   			let tbody = by_id("reg_set_table").getElementsByTagName("TBODY")[0];
+   			//remove last value inputs
+   			while(tbody.childElementCount){
+   				tbody.removeChild(tbody.childNodes[0]);
+   			}
+   			let line = create("TR");
+   			line.id = "line_"+0;
+   			tbody.appendChild(line);
+   			let td_text = create("TD");
+   			td_text.id = "text_"+0;
+   			td_text.style = "text-align: right; width: 80px";
+   			td_text.appendChild(document.createTextNode("device name"));
+   			line.appendChild(td_text);
+   			let td_input = create("TD");
+   			td_input.id = "td_inp_"+0;
+   			line.appendChild(td_input);
+   			let input = create("INPUT");
+   			input.type = "string";
+   			input.style = "width: 150px"
+   			input.name = "value";
+   			input.id = "input_"+0;
+   			input.value = by_id("value_"+by_id(index).innerHTML).innerHTML;
+   			td_input.appendChild(input);
+   			print(input.name+": "+input.value);
 			by_id("send_form").style = "display: inline";
 			by_id("reg_name").innerHTML = reg_name;
 			by_id("fade").style = "display: inline";
 		}
-		function add_value_lines(index){
-			let pack = {
-				"request":"regs",
-				"reg_num":1,
-				"get_type":"only_value",
-				"index":index,
-			}
-			let data = send_json(pack);
-			let lines = 1;
-			if(data.value.length){
-				lines = data.value.length;
-			}
-			let tbody = by_id("reg_set_table").getElementsByTagName("TBODY")[0];
-			//remove last value inputs
-			while(tbody.childElementCount){
-				tbody.removeChild(tbody.childNodes[0]);
-			}
-			//add value inputs
-			let i;
-			for (i = 0; i < lines; i++){
-				let line = create("TR");
-				line.id = "line_"+i;
-				tbody.appendChild(line);
-				let td_text = create("TD");
-				td_text.id = "text_"+i;
-				td_text.style = "text-align: right; width: 80px";
-				td_text.appendChild(document.createTextNode("val_"+i+": "));
-				line.appendChild(td_text);
-				let td_input = create("TD");
-				td_input.id = "td_inp_"+i;
-				line.appendChild(td_input);
-				let input = create("INPUT");
-				input.type = "number";
-				input.style = "width: 150px"
-				input.name = "val_"+i;
-				input.id = "input_"+i;
-				if(data.value.length){
-					input.value = data.value[i];
-				}else{
-					input.value = data.value;
-				}
-				td_input.appendChild(input);
-				print(input.name+": "+input.value);
-			}
-		}
 		function json_reg_set(form){
 			let pack;
 			let reg_name = by_id("name_"+form.index.value).innerHTML;
-			if (reg_name === "device_name"){
-				pack = {
-					"request":"set_device_name",
-					"value":by_id("input_"+0).value
-				}
-			}else{
-				let tbody = by_id("reg_set_table").getElementsByTagName("TBODY")[0];
-				pack = {
-					"request":form.request.value,
-					"index":form.index.value,
-					"value":[],
-				}
-				for(let i = 0; i < tbody.childElementCount; i++){
-					pack.value.push(by_id("input_"+i).value);
-				}
-			}
+   			pack = {
+   				"request":"set_string",
+   				"index":form.index.value,
+   				"value":by_id("input_"+0).value
+   			}
 			send_json(pack);
 			hidden_reg_set_form();
 		}
-		function save_credential_info(){
+		function reset_device(){
 			let pack;
 			pack = {
 				"request":"regs_set",
 				"name":"command",
-				"value":20991
+				"value":21760
 			}
 			send_json(pack);
 		}
@@ -352,9 +281,9 @@
 	</style>
 </head>
 <body onload="get_all_regs()">
-<h1>ISIMFW400</h1>
+<h1>sofi web wifi settings</h1>
 <div id="buttons" class="buttons-popup">
-	<input style="display: inline" 	id="save_credential_info"	type="button" value="save credential info" onclick="save_credential_info()">
+	<input style="display: inline" 	id="reset_device"	type="button" value="reset device" onclick="reset_device()">
 </div>
 <br>
 <table id="table" style="width: 100%">

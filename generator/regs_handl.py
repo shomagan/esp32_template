@@ -1,5 +1,7 @@
 import re
 import base_object
+import json
+
 REGS_SIZE = {
     "U8_REGS_FLAG": 1,
     "U16_REGS_FLAG": 2,
@@ -44,7 +46,12 @@ REGS_SHORT_NAME = {
     "INT_REGS_FLAG": "INT",
     "STRUCT_REGS_FLAG": "STRUCT",
 }
-
+MODBUS_FUNCTIONS = {
+    "coils" : 1,
+    "input_discretes":2,
+    "holding_registers" : 3,
+    "input_registers" : 4,
+}
 
 def short_name(name):
     return REGS_SHORT_NAME[name]
@@ -56,6 +63,9 @@ class RegsHand(base_object.Base):
     SAVE_TYPE = 0x04
     USER_VARS = 0x08
     CREDENTIAL_FLAG = 0x10
+    CRITICAL_FLAG = 0x20
+
+    GENERATOR_MARKER = "#generator_use_descritption"
 
     def __init__(self):
         self.p_default = "NULL"
@@ -63,24 +73,87 @@ class RegsHand(base_object.Base):
         self.internal_name = "noname"
         self.additional_name = "noname"
         self.type = "Kod"
+        self.user_describe_rst = ""
         self.ind = 0
         self.guid = 0
+        self.byte_number = 0
         self.saved_address = 16
         self.size_array = 0
         self.size_value = 0
-        self.is_struct = 0
+        self.reg_opt_is_struct = 0
         self.flag = 0x00
         self.temp_description = "//"
         self.regs_num = 0
         self.is_reduced = 0
         self.dict = []
+        self.structure_number = 0
+        self.modbus_structures_description = []
 
-    def check(self, line, type_module):
+    def regs_file_handling(self, path_to_file, regs_description):
+        regs_file = open(path_to_file, 'r', errors='ignore')
+        struct_started = 0
+        line_number = 0
+        for line_full in regs_file:
+            line_number += 1
+            json_str = self.check_generator_descriptions(line_full)
+            if len(json_str):
+                json_description = json.loads(json_str)
+                if self.check_is_modbus_regs_description_structure(json_description):
+                    struct_type = self.find_struct_type(path_to_file, line_number)
+                    regs_global_name = find_global_register(path_to_file, struct_type)
+                    if len(struct_type) and len(regs_global_name):
+                        json_description["struct_type"] = struct_type
+                        json_description["regs_global_name"] = regs_global_name
+                        self.modbus_structures_description.append(json_description)
+                        self.structure_number += 1
+                        struct_started = 1
+                        self.byte_number = 0
+                        print("find global struct")
+                        continue
+                    else:
+                        self.print_error("error struct type {} or reg_global_name {}"
+                                         "".format(struct_type, regs_global_name))
+            if '//' in line_full:
+                start = line_full.find('//')
+                line = line_full[:start]
+            else:
+                line = line_full
+            if struct_started and '}' in line:
+                struct_started = 0
+            if struct_started:
+                self.check(line_full)
+                if type(self.size_array) == str:
+                    regs_file_temp = open(path_to_file, 'r', errors='ignore')
+                    self.size_array = self.find_define(self.size_array, regs_file_temp)
+                    regs_file_temp.close()
+                if self.size_array:
+                    if self.reg_opt_is_struct:
+                        struct_num = self.size_array
+                        print('struct_num', struct_num)
+                        description = self.description
+                        for i in range(struct_num):
+                            self.description = description + str(i)
+                            self.additional_name = self.internal_name + str(i)
+                            self.size_array = self.size_value
+                            self.user_describe_rst += self.add_variable_desc_rst()
+                            self.add_variable_to_regs_description(regs_description, i)
+                            self.guid += self.size_value * REGS_SIZE[self.type]
+                            self.byte_number += self.size_value * REGS_SIZE[self.type]
+                            if self.flag & self.SAVE_TYPE:
+                                self.saved_address += self.size_value * REGS_SIZE[self.type]
+                    else:
+                        self.user_describe_rst += self.add_variable_desc_rst()
+                        self.add_variable_to_regs_description(regs_description, 0)
+                        self.guid += self.size_array * REGS_SIZE[self.type]
+                        self.byte_number += self.size_array * REGS_SIZE[self.type]
+                        if self.flag & self.SAVE_TYPE:
+                            self.saved_address += self.size_array * REGS_SIZE[self.type]
+
+    def check(self, line):
         self.size_array = 1
-        self.is_struct = 0
+        self.reg_opt_is_struct = 0
         self.flag = self.SELF_TYPE
         self.is_reduced = 0
-
         w = re.compile(
             '^\s*(?P<type>[\w\d]+)\s+(?P<name>[\w\d]+)\s*(\[(?P<size>[\d\w]+)\])?\s*;\s*(?P<descript>\/\/[\w\W]*$)*',
             re.ASCII)
@@ -104,6 +177,9 @@ class RegsHand(base_object.Base):
                     self.flag |= self.CREDENTIAL_FLAG & 0xff
                 if "&save" in self.temp_description:
                     self.flag |= self.SAVE_TYPE & 0xff
+                if "&crtcl" in self.temp_description:
+                    self.flag |= self.CRITICAL_FLAG & 0xff
+
             else:
                 self.temp_description = '\n'
 
@@ -152,7 +228,7 @@ class RegsHand(base_object.Base):
                 elif re.search("task_info_t", l.group('type')):
                     self.type = "U8_REGS_FLAG"
                     self.size_value = 28
-                    self.is_struct = 1
+                    self.reg_opt_is_struct = 1
                 else:
                     print("invalidate type for variable" + self.internal_name + "description "
                           + self.temp_description)
@@ -167,7 +243,8 @@ class RegsHand(base_object.Base):
         else:
             self.size_array = 0
 
-    def add_variable(self, type_module):
+    def add_variable_desc(self):
+        mdb_base = self.modbus_structures_description[self.structure_number - 1]["modbus_address"]
         flag_str = ""
         if self.flag & self.RO_TYPE:
             flag_str += "READ_ONLY"
@@ -175,30 +252,8 @@ class RegsHand(base_object.Base):
             flag_str += ",SAVED"
         if self.flag & self.CREDENTIAL_FLAG:
             flag_str += ",CREDENTIAL"
-
-        description = self.temp_description.replace("//", " ")
-        description = description.replace("\n", " ")
-        description = description.replace("!<", " ")
-        description = description.replace("&save,", "")
-        description = description.replace("&ro,", "")
-        description = description.replace("&def,", "")
-        description = description.replace("&save", "")
-        description = description.replace("&ro", "")
-        description = description.replace("&def", "")
-        description = description.replace("&credential", "")
-        template = '<!--#' + self.internal_name + '-->'
-        modbus_address = self.guid//2
-        return "|{}|{}|{}|{}|{}|{}|{}|{}|\n".format(str(self.ind), self.internal_name, short_name(self.type),
-                                                    str(self.guid), str(modbus_address), flag_str, description, template)
-
-    def add_variable_desc(self, type_module):
-        flag_str = ""
-        if self.flag & self.RO_TYPE:
-            flag_str += "READ_ONLY"
-        if self.flag & self.SAVE_TYPE:
-            flag_str += ",SAVED"
-        if self.flag & self.CREDENTIAL_FLAG:
-            flag_str += ",CREDENTIAL"
+        if self.flag & self.CRITICAL_FLAG:
+            flag_str += ",CRITICAL"
 
         description = self.temp_description.replace("//", " ")
         description = description.replace("\n", " ")
@@ -209,25 +264,29 @@ class RegsHand(base_object.Base):
         description = description.replace("&save", "")
         description = description.replace("&def", "")
         description = description.replace("&credential", "")
-
-        modbus_address = self.guid//2
+        description = description.replace("&crtcl", "")
+        modbus_function = MODBUS_FUNCTIONS[self.modbus_structures_description[self.structure_number - 1]["modbus_type"]]
+        modbus_address = (mdb_base + self.byte_number // 2) + (modbus_function << 16)
         return "|{}|{}|{}|{}|{}|{}|{}|{}|\n".format(str(self.ind), self.internal_name, short_name(self.type),
-                                                    str(self.size_array), str(self.guid), str(modbus_address), flag_str,
+                                                    str(self.size_array), str(self.guid), str(hex(modbus_address)), flag_str,
                                                     description)
 
-    def add_variable_desc_rst(self, type_module):
+    def add_variable_desc_rst(self):
         flag_str = ""
-        mdb_dscrptn = ""
-        modbus_address = self.guid//2
+        mdb_base = self.modbus_structures_description[self.structure_number - 1]["modbus_address"]
+        modbus_address = mdb_base + self.byte_number // 2
+        mdb_type = self.modbus_structures_description[self.structure_number - 1]["modbus_type"]
         if self.flag & self.RO_TYPE:
             flag_str += "READ_ONLY"
-            mdb_dscrptn = "input_register_{} function-4".format(modbus_address)
+            mdb_description = "{}_{} function-4".format(mdb_type, modbus_address)
         else:
-            mdb_dscrptn = "holding_register_{} function-3,4,6,16".format(modbus_address)
+            mdb_description = "{}_{} function-3,4,6,16".format(mdb_type, modbus_address)
         if self.flag & self.SAVE_TYPE:
             flag_str += " SAVED"
         if self.flag & self.CREDENTIAL_FLAG:
             flag_str += ",CREDENTIAL"
+        if self.flag & self.CRITICAL_FLAG:
+            flag_str += ",CRITICAL"
 
         description = self.temp_description.replace("//", "")
         description = description.replace("\"", "")
@@ -239,49 +298,127 @@ class RegsHand(base_object.Base):
         description = description.replace("&save", "")
         description = description.replace("&def", "")
         description = description.replace("&credential", "")
+        description = description.replace("&crtcl", "")
+        return '    {},\"{}\",\"{}\",{},{},\"{}\",\"{}\",\"{}\"\n'.format(str(self.ind), self.internal_name,
+                                                                          short_name(self.type),
+                                                                          str(self.size_array), str(self.guid),
+                                                                          mdb_description, flag_str,
+                                                                          description)
 
-        return '    {},\"{}\",\"{}\",{},{},\"{}\",\"{}\",\"{}\"\n'.format(str(self.ind), self.internal_name, short_name(self.type),
-                                                    str(self.size_array), str(self.guid), mdb_dscrptn, flag_str,
-                                                    description)
+    def add_variable_to_regs_description(self, regs_description_write_file, number):
+        mdb_regs_global_name = self.modbus_structures_description[self.structure_number - 1]["regs_global_name"]
+        mdb_base = self.modbus_structures_description[self.structure_number - 1]["modbus_address"]
+        modbus_function = MODBUS_FUNCTIONS[self.modbus_structures_description[self.structure_number - 1]["modbus_type"]]
+        modbus_address = (mdb_base + self.byte_number // 2) + (modbus_function << 16)
 
-    def add_variable_to_regs_description(self, regs_description_write_file, number, type_module):
         if self.flag & self.SAVE_TYPE:
             saved_address = self.saved_address
         else:
             saved_address = 0
-        if self.is_struct:
+        if self.reg_opt_is_struct:
             name = self.additional_name
         else:
             name = self.internal_name
-
         if self.size_array > 1 and self.is_reduced == 0:
-            p_value = "(u8*)&regs_global.vars." + self.internal_name + "[" + str(number) + "]"
+            p_value = "(u8*)&{}.vars.{}[{}]".format(mdb_regs_global_name, self.internal_name, number)
         else:
-            p_value = "(u8*)&regs_global.vars." + self.internal_name
-
-        regs_description_write_file.writelines('{' + self.p_default + ',' + p_value + ','+str(saved_address) + ',' +
+            p_value = "(u8*)&{}.vars.{}".format(mdb_regs_global_name, self.internal_name)
+        regs_description_write_file.writelines('{' + self.p_default + ',' + p_value + ',' + str(saved_address) + ',' +
                                                '\"' + self.description + '\"' + ',' + '\"' + name + '\"' + ',' +
                                                self.type + ',' + str(self.ind) + ',' + str(int(self.guid)) + ',' +
+                                               str(hex(modbus_address)) + ',' +
                                                str(self.size_array) + ',' + str(self.flag) + '}' + ','
                                                + self.temp_description)
-        temp_description = {"regs_num": self.regs_num}
-        temp_description["p_default"] = self.p_default
-        temp_description["p_value"] = p_value
-        temp_description["description"] = self.description
-        temp_description["internal_name"] = self.internal_name
-        temp_description["additional_name"] = self.additional_name
-        temp_description["type"] = self.type
-        temp_description["ind"] = self.ind
-        temp_description["guid"] = self.guid
-        temp_description["saved_address"] = self.saved_address
-        temp_description["size_array"] = self.size_array
-        temp_description["size_value"] = self.size_value
-        temp_description["is_struct"] = self.is_struct
-        temp_description["flag"] = self.flag
-        temp_description["regs_num"] = self.regs_num
+        temp_description = {"regs_num": self.regs_num, "p_default": self.p_default, "p_value": p_value,
+                            "description": self.description, "internal_name": self.internal_name,
+                            "additional_name": self.additional_name, "type": self.type, "ind": self.ind,
+                            "guid": self.guid, "saved_address": self.saved_address, "size_array": self.size_array,
+                            "size_value": self.size_value, "is_struct": self.reg_opt_is_struct, "flag": self.flag,
+                            "modbus_address": modbus_address}
         self.dict.append(temp_description)
         self.regs_num += 1
         self.ind += 1
 
     def __del__(self):
         print("dlt regs hand")
+
+    @staticmethod
+    def find_define(name, file):
+        for line in file:
+            define_temp = re.compile('^\s*\#define\s+' + name + '\s+(?P<value>[\d]+).*', re.ASCII)
+            match = define_temp.match(line)
+            if match:
+                search = define_temp.search(line)
+                if search.group('value'):
+                    if search.group('value').isdecimal():
+                        print('find define ', name)
+                        return int(search.group('value'))
+                    else:
+                        print("warning find not decimal define")
+        print("did't find  define", name)
+        return 0
+
+    def check_generator_descriptions(self, line):
+        if self.GENERATOR_MARKER in line and "{" in line and "}" in line:
+            last_str = [pos for pos, char in enumerate(line) if char == "}"]
+            json_part = line[line.index("{"):last_str[-1]+1]
+            return json_part
+        return ""
+
+    def check_is_modbus_regs_description_structure(self, json_structure):
+        res = 0
+        if "address_space" in json_structure:
+            if 100 > json_structure["address_space"] >= 0:
+                if "modbus_type" in json_structure:
+                    if json_structure["modbus_type"] == "holding_registers" or \
+                            json_structure["modbus_type"] == "input_registers" or \
+                            json_structure["modbus_type"] == "coil_registers" or \
+                            json_structure["modbus_type"] == "discrete_registers":
+                        if "modbus_address" in json_structure:
+                            if 65535 > json_structure["modbus_address"] >= 0:
+                                res = 1
+                            else:
+                                self.print_error("incorrect address space for structure {}".format(json_structure))
+                    else:
+                        self.print_error("modbus_type not correct in struct {}".format(json_structure))
+            else:
+                self.print_error("incorrect address space for structure {}".format(json_structure))
+        return res
+
+    def find_struct_type(self, path_to_file, from_line):
+        struct_type = ""
+        regs_file_temp = open(path_to_file, 'r', errors='ignore')
+        lines = regs_file_temp.readlines()
+        regs_file_temp.close()
+        for line_number in range(from_line, len(lines)):
+            json_str = self.check_generator_descriptions(lines[line_number])
+            if len(json_str):
+                print("find start of struct {} {}".format(json_str, line_number))
+                json_description = json.loads(json_str)
+                if "message" in json_description:
+                    if json_description["message"] == "end_struct":
+                        define_temp = re.compile("^\s*}\s*(?P<STRUCT_TYPE>[\w\d]+)\s*;")
+                        match = define_temp.match(lines[line_number])
+                        if match:
+                            search = define_temp.search(lines[line_number])
+                            if search.group('STRUCT_TYPE'):
+                                struct_type = search.group('STRUCT_TYPE')
+                                break
+        return struct_type
+
+
+def find_global_register(path_to_file, struct_type):
+    global_register = ""
+    regs_file_temp = open(path_to_file, 'r', errors='ignore')
+    lines = regs_file_temp.readlines()
+    for line_number in range(len(lines)):
+        define_temp = re.compile("^\s*extern\s+"+ struct_type + "\s+(?P<GLOBAL_REG>[\w\d]+)\s*;\s*", re.UNICODE)
+        match = define_temp.match(lines[line_number])
+        if match:
+            search = define_temp.search(lines[line_number])
+            if search.group('GLOBAL_REG'):
+                global_register = search.group('GLOBAL_REG')
+                break
+    return global_register
+
+

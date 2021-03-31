@@ -1,5 +1,6 @@
 build/
 generator/.idea/
+generator/__pycache__/
 CMakeLists.txt.user
 *.bin
 *.o

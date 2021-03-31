@@ -13,8 +13,6 @@
  
 /*add includes below */
 #include "type_def.h"
-#include "main_debug.h"
-#include "main_config.h"
 #include "regs_description.h"
 
 /*add includes before */

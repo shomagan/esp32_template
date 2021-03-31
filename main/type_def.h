@@ -20,6 +20,7 @@ typedef volatile signed char vi8;
 
 typedef uint64_t u64;
 typedef unsigned long int u32;
+typedef unsigned int ui32;//for get rid of warning messege
 typedef unsigned short u16;
 typedef unsigned char u8;
 

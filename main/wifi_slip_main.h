@@ -2,7 +2,7 @@
 #define WIFI_SLIP_MAIN_H
 #include <stdbool.h>
 #include <stdint.h>
-
+#include "os_type.h"
 #define WIFI_SLIP_MAX_IP_PACKET (536+128)
 #define SLIP_MAX_RAW_PACKET WIFI_SLIP_MAX_IP_PACKET*2
 
@@ -28,8 +28,5 @@ typedef struct {
 #define SLIP_FLOW_CONTROL_QUEUE_TIMEOUT_MS (100)
 #define SLIP_FLOW_CONTROL_QUEUE_LENGTH (20)
 #define SLIP_FLOW_CONTROL_WIFI_SEND_TIMEOUT_MS (100)
-extern xQueueHandle wifi_flow_control_queue;
-
-flow_control_memory_t * wifi_get_buffer();
-int wifi_fill_buffer(flow_control_memory_t * flow_control_memory,uint8_t * buffer,uint16_t len);
+extern u8 sta_connected;
 #endif //WIFI_SLIP_MAIN_H

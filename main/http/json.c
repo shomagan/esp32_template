@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file    json.c
  * @brief   This file implements functions for work with json packs
  * @author  Shoma Gane <shomagan@gmail.com>
@@ -23,8 +23,9 @@
 #include "regs.h"
 #include "httpd_structs.h"
 #include "httpd_ssi_cgi.h"
-#include "kernel_starter.h"
-#include "main.h"
+#include "os_type.h"
+#include <math.h>
+static const char *TAG = "json";
 /**
  * @}
  */
@@ -34,7 +35,7 @@
  * header for method GET
  * @ingroup Json
  */
-const char json_header[] = "HTTP/1.0 200 OK\r\nServer: lwIP/2.0.3d (http://savannah.nongnu.org/projects/lwip)\r\nAccess-Control-Allow-Origin: *\r\n\r\n";
+const char json_header[] = "HTTP/1.0 200 OK\r\nServer:sofi_1.0.0\r\nAccess-Control-Allow-Origin: *\r\n\r\n";
 
 /**
  * @brief method_list
@@ -68,6 +69,11 @@ static json_msg_t json_get_msg_type(char * data);
 static int json_get_array_elem_nmb(char * array);
 static int json_get_array_elements(char* json_array, u64 * buff, int num);
 static operand_t json_get_elements(char* str_value, regs_template_t * reg_template);
+void json_init_base(void){
+    dynamic_json_file.file.data = dynamical_file_databuf;
+    dynamic_json_file.file.flags |= FS_FILE_FLAGS_HEADER_INCLUDED;
+    dynamic_json_file.busy = JSON_OUT_FREE;
+}
 
 /**
  * @brief extract_json_pack
@@ -158,7 +164,7 @@ static int json_parse(json_pairs_t *json, char *json_pack){
 
             json->value[json->pairs_number] = position;
         } else {
-            main_error_message("Failed %s:%d\n",__FILE__,__LINE__);
+            main_error_message(TAG, "Failed %d\n",__LINE__);
             break;
         }
         json->pairs_number++;
@@ -216,8 +222,8 @@ const char* get_json_handle(char *json_pack){
                         request = REGS_SET_REQUEST;
                     }else if(strcmp(json_pairs.value[i], "regs") == 0){
                         request = REGS_REQUEST;
-                    }else if(strcmp(json_pairs.value[i], "set_device_name") == 0){
-                        request = SET_DEVICE_NAME;
+                    }else if(strcmp(json_pairs.value[i], "set_string") == 0){
+                        request = SET_STRING;
                     }
                 }else if(strcmp(json_pairs.param[i], "reg_num") == 0){
                     reg_num = (u8)atoi(json_pairs.value[i]);
@@ -227,7 +233,7 @@ const char* get_json_handle(char *json_pack){
                     }else if(strcmp(json_pairs.value[i], "only_value") == 0){
                         get_type = GET_VALUE;
                     }
-                }else if((strcmp(json_pairs.param[i], "index") == 0) && (request == REGS_REQUEST || request == REGS_SET_REQUEST)){
+                }else if((strcmp(json_pairs.param[i], "index") == 0) && (request == REGS_REQUEST || request == REGS_SET_REQUEST || request == SET_STRING)){
                     json_msg_t json_msg = json_get_msg_type(json_pairs.value[i]);
                     if(json_msg == NUMBER_JSON){
                         reg_index[0] = (u16)atoi(json_pairs.value[i]);
@@ -237,7 +243,7 @@ const char* get_json_handle(char *json_pack){
                                 json_get_array_elements(json_pairs.value[i],reg_index,reg_num);
                             }
                         }else{
-                            main_error_message("Failed %s:%d\n",__FILE__,__LINE__);
+                            main_error_message(TAG, "Failed %s:%d\n",__FILE__,__LINE__);
                             break;
                         }
                     }
@@ -249,29 +255,31 @@ const char* get_json_handle(char *json_pack){
                         reg_index[0] = 0;
                     }
                 }else if((strcmp(json_pairs.param[i], "value") == 0) && (request == REGS_REQUEST || request == REGS_SET_REQUEST ||
-                                                                         request == SET_DEVICE_NAME)){
-                    if (request == SET_DEVICE_NAME){
-                        char * element_start;
-                        char * element_end;
-                        u8 temp_buff[DEVICE_NAME_SIZE] = {0};
-                        u8 size = 0;
-                        element_start = json_pairs.value[i];
-                        while((*element_start) == '"'){
-                            element_start++;
-                        }
-                        element_end = element_start;
-                        while((*element_end) != '"' && (*element_end) != 0){
-                            element_end++;
-                            size++;
-                            if (size>DEVICE_NAME_SIZE-1){
-                                break;
+                                                                         request == SET_STRING)){
+                    reg_template.ind = (u16)reg_index[0];
+                    main_printf(TAG,"write reg %u",reg_template.ind);
+                    if(regs_description_get_by_ind (&reg_template)==0){
+                        if (request == SET_STRING){
+                            char * element_start;
+                            char * element_end;
+                            u8 temp_buff[64] = {0};
+                            u8 size = 0;
+                            element_start = json_pairs.value[i];
+                            while((*element_start) == '"'){
+                                element_start++;
                             }
-                        }
-                        memcpy(temp_buff, element_start, size);
-                        regs_set_buffer(REGS_NUMBER(&regs_global.vars.device_name), temp_buff, DEVICE_NAME_SIZE);
-                    }else{
-                        reg_template.ind = (u16)reg_index[0];
-                        if(regs_description_get_by_ind (&reg_template)==0){
+                            element_end = element_start;
+                            while((*element_end) != '"' && (*element_end) != 0){
+                                element_end++;
+                                size++;
+                                if (size>=64){
+                                    break;
+                                }
+                            }
+                            memcpy(temp_buff, element_start, size);
+                            main_printf(TAG,"write reg %u",reg_template.ind);
+                            regs_set_buffer(reg_template.p_value, temp_buff, reg_template.size_in_bytes);
+                        }else {
                             char * element;
                             element = json_pairs.value[i];
                             while((*element == '"')||(*element == '[')){
@@ -283,7 +291,7 @@ const char* get_json_handle(char *json_pack){
                                 regs_access_t reg;
                                 reg.flag = reg_template.type;
                                 memcpy(&reg.value,&value,8);
-                                regs_set(reg_template.guid+regs_size_in_byte(reg_template.type)*j, reg);
+                                regs_set((void*)((u32)reg_template.p_value+regs_size_in_byte(reg_template.type)*j), reg);
                                 element = strchr(element, ';');
                                 if(element){
                                     element += 2;
@@ -299,14 +307,13 @@ const char* get_json_handle(char *json_pack){
             }
         }
         // check json_file busy flag
-        u32 time = osKernelSysTick();
+        u32 time = task_get_tick_count();
         while((dynamic_json_file.busy != JSON_OUT_FREE)&&
-            (osKernelSysTick() < (time + JSON_RESPONSE_TIMEOUT))){
-            osDelay(1);
+            (task_get_tick_count() < (time + JSON_RESPONSE_TIMEOUT))){
+            task_delay_ms(1);
         }
         if(dynamic_json_file.busy != JSON_OUT_FREE){ //check timeout
-            main_printf("json_file busy timeout");
-            led_os_error_on(JSON_FILE_BUSY_TIMEOUT);
+            main_printf(TAG, "json_file busy timeout");
         }else{  //response building
             dynamic_json_file.busy = JSON_OUT_BUILD;
 
@@ -319,13 +326,13 @@ const char* get_json_handle(char *json_pack){
 
             case OS_PARAM_REQUEST:
                 dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"current\":");
-                itoa((int)regs_global.vars.current_os, temp,10);
+                itoa((int)0, temp,10);
                 strcpy(p_databuf + dynamic_json_file.file.len, temp);
                 dynamic_json_file.file.len += strlen(temp);
                 *(p_databuf + dynamic_json_file.file.len) = ',';
                 dynamic_json_file.file.len++;
                 dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"main\":");
-                itoa((int)(get_main_os()), temp,10);
+                itoa((int)0, temp,10);
                 strcpy(p_databuf + dynamic_json_file.file.len, temp);
                 dynamic_json_file.file.len += strlen(temp);
                 *(p_databuf + dynamic_json_file.file.len) = ',';
@@ -333,8 +340,8 @@ const char* get_json_handle(char *json_pack){
                 dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"os_ver\":");
                 *(p_databuf + dynamic_json_file.file.len) = '[';
                 dynamic_json_file.file.len++;
-                for(u8 i = 0; i < OS_VERSION_SIZE; i++){
-                    itoa(regs_global.vars.os_version[i], temp, 10);
+                for(u8 i = 0; i < FW_VERSION_SIZE; i++){
+                    itoa(regs_global.vars.fw_version[i], temp, 10);
                     strcpy(p_databuf + dynamic_json_file.file.len, temp);
                     dynamic_json_file.file.len += strlen(temp);
                     *(p_databuf + dynamic_json_file.file.len) = ',';
@@ -350,83 +357,56 @@ const char* get_json_handle(char *json_pack){
             case REGS_REQUEST:
                 //index
                 for (u8 i = 0; i < reg_num; i++) {
-                    int get_res = 0;
-                    if(i==0){
-                        dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"index\":");
-                    }else{
-                        dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"index%u\":",i);
-                    }
+                    int res = 0;
+                    dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, " \"index\" :");
                     reg_template.ind = (u16)reg_index[i];
-                    get_res = regs_description_get_by_ind(&reg_template);
+                    res = regs_description_get_by_ind(&reg_template);
                     itoa((int)reg_index[i], temp, 10);
                     strcpy(p_databuf + dynamic_json_file.file.len, temp);
                     dynamic_json_file.file.len += strlen(temp);
                     *(p_databuf + dynamic_json_file.file.len) = ',';
                     dynamic_json_file.file.len++;
                     if(get_type == GET_FULL){
-                        if(get_res==0){
+                        if(res==0){
                             //name
-                            if(i==0){
-                                dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"name\":");
-                            }else{
-                                dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"name%u\":",i);
-                            }
-                            dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"");
+                            dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, " \"name\" :\"");
                             strcpy(p_databuf + dynamic_json_file.file.len, reg_template.name);
                             dynamic_json_file.file.len += strlen(reg_template.name);
-                            dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\",");
-                            if(i==0){
-                                dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"type\":");
-                            }else{
-                                dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"type%u\":",i);
-                            }
                             //type
+                            dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\", \"type\" :");
                             itoa((int)reg_template.type, temp,10);
                             strcpy(p_databuf + dynamic_json_file.file.len, temp);
                             dynamic_json_file.file.len += strlen(temp);
                             *(p_databuf + dynamic_json_file.file.len) = ',';
                             dynamic_json_file.file.len++;
                             //byte_address
-                            if(i==0){
-                                dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"byte_address\":");
-                            }else{
-                                dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"byte_address%u\":",i);
-                            }
+                            dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, " \"byte_address\" :");
                             itoa((int)reg_template.guid, temp,10);
                             strcpy(p_databuf + dynamic_json_file.file.len, temp);
                             dynamic_json_file.file.len += strlen(temp);
                             *(p_databuf + dynamic_json_file.file.len) = ',';
                             dynamic_json_file.file.len++;
                             //flags
-                            if(i==0){
-                                dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"flags\":");
-                            }else{
-                                dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"flags%u\":",i);
-                            }
+                            dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, " \"flags\" :");
                             itoa((int)reg_template.property, temp,10);
                             strcpy(p_databuf + dynamic_json_file.file.len, temp);
                             dynamic_json_file.file.len += strlen(temp);
                             *(p_databuf + dynamic_json_file.file.len) = ',';
                             dynamic_json_file.file.len++;
                             //description
-                            if(i==0){
-                                dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"description\":");
-                            }else{
-                                dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"description%u\":",i);
-                            }
-                            dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"");
+                            dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, " \"description\" :\"");
                             strcpy(p_databuf + dynamic_json_file.file.len, reg_template.description);
                             dynamic_json_file.file.len += strlen(reg_template.description);
                             dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\",");
+                            //modbus_function
+                            dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, " \"modbus_function\" :%u,",(u8)RD_MDB_FUNCTION(reg_template.modbus_description));
+                            //modbus_function
+                            dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, " \"modbus_address\" :%u,",(u16)RD_MDB_ADDRESS(reg_template.modbus_description));
                         }
                     }
                     //value
-                    if(i==0){
-                        dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"value\":");
-                    }else{
-                        dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"value%u\":",i);
-                    }
-                    if(get_res==0){
+                    dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, " \"value\" :");
+                    if(res==0){
                         u16 temp_len = 0;
                         if(add_lwip_stats(&reg_template,p_databuf + dynamic_json_file.file.len,&temp_len)>0){
                             char *p = p_databuf + dynamic_json_file.file.len;
@@ -446,7 +426,7 @@ const char* get_json_handle(char *json_pack){
                                 *(p_databuf + dynamic_json_file.file.len) = '[';
                                 dynamic_json_file.file.len++;
                             }
-                            osMutexWait(regs_access_mutex, portMAX_DELAY);{
+                            semaphore_take(regs_access_mutex, portMAX_DELAY);{
                                 for (u16 i = 0; i < reg_template.size; i++) {
                                     switch (reg_template.type){
                                     case U8_REGS_FLAG:
@@ -483,27 +463,23 @@ const char* get_json_handle(char *json_pack){
                                         val_float = 0.0f;
                                         memcpy(&val_float,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
                                         if(isnanf(val_float) || isinff(val_float)){
-                                            dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len,"\"%f\",",val_float);
+                                            dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len,"\"%f\",",(double)val_float);
                                         }else{
-                                            dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len,"%f,",val_float);
+                                            dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len,"%f,",(double)val_float);
                                         }
                                         break;
                                     case DOUBLE_REGS_FLAG:
                                         val_double = 0.0;
                                         memcpy(&val_double,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
-                                        if(isnanf(val_double) || isinff(val_double)){
+                                        if(isnanf((float)val_double) || isinff((float)val_double)){
                                             dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len,"\"%f\",",val_double);
                                         }else{
                                             dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len,"%f,",val_double);
                                         }
                                         break;
-                                    default:
-                                        dynamic_json_file.file.len+=sprintf((p_databuf + dynamic_json_file.file.len),"\"ERROR\",");
-                                        main_error_message("Failed %s:%d\n",__FILE__,__LINE__);
-                                        break;
                                     }
                                 }
-                            }osMutexRelease(regs_access_mutex);
+                            }semaphore_release(regs_access_mutex);
                             if(reg_template.size > 1){
                                 *(p_databuf + dynamic_json_file.file.len - 1) = ']';  //replace last "," symbol to "]"
                                 *(p_databuf + dynamic_json_file.file.len) = ',';
@@ -522,7 +498,7 @@ const char* get_json_handle(char *json_pack){
                 dynamic_json_file.file.len++;
                 break;
             case REGS_SET_REQUEST:
-            case SET_DEVICE_NAME:
+            case SET_STRING:
                 dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"status\":\"ok\",");
                 break;
             default:
@@ -558,7 +534,6 @@ const char* get_json_handle(char *json_pack){
 static json_msg_t json_get_msg_type(char * data){
     json_msg_t result = ERROR_JSON;
     /* clear message from " symbols */
-    MAIN_DEBUG_ASSERT("json buff error", (data!=NULL));
     char * p = data + strlen(data) - 1;
     if((*data == '\"') && (*p == '\"')){   //if first and last symbols is "
         p = data;

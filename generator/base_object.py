@@ -29,7 +29,6 @@ class Base(object):
         # now used for plc_main.c plc_main.h main.cpp kernel.c
         self.os_type = os_type
 
-
     def print_error(self, info):
         self.error()
         msg = '\# error {} : {}\n'.format(self.error_num, info)
@@ -131,8 +130,10 @@ class Base(object):
             self.print_error('don\'t find ' + file_name + '\n')
             return 0
         return 0
+
     def iec_type_size(self,iec_type):
         return self.iec_type[iec_type]
+
     def get_description_type(self,iec_type):
         return self.iec_type_to_description[iec_type]
 

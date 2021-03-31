@@ -1,6 +1,22 @@
 idf_component_register(
     SRCS "wifi_slip_main.c"
     SRCS "slip_handle.c"
+    SRCS "modbus.c"
+    SRCS "regs.c"
+    SRCS "regs_description.c"
+    SRCS "http/fs.c"
+    SRCS "http/fsdata.c"
+    SRCS "http/http_client.c"
+    SRCS "http/httpd.c"
+    SRCS "http/httpd_ssi_cgi.c"
+    SRCS "http/json.c"
+    SRCS "common.c"
+    SRCS "mirror_storage.c"
+    SRCS "crc.c"
+    SRCS "memory_handle.c"
+    SRCS "pwm_test.c"
+    SRCS "modbus_tcp/modbus_tcp.c"
     INCLUDE_DIRS "."
+    INCLUDE_DIRS "http/."
     REQUIRES esp_netif nvs_flash
 )
