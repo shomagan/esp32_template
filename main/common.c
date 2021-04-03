@@ -164,17 +164,18 @@ static void common_duty_task(void *pvParameters ){
             if(((task_tick)%(5000/DUTY_TASK_PERIOD_MS))==0u){    // every 5 sec
                 main_printf(TAG,"tick %u",task_tick);
             }
-            if(((task_tick)%(30000/DUTY_TASK_PERIOD_MS))==0u){    // every 30 sec
+            if(((task_tick)%(60000/DUTY_TASK_PERIOD_MS))==0u){    // every 60 sec
                 if(regs_global.vars.sta_connect==0){
+                    main_printf(TAG, "try connect to sta");
                     esp_wifi_connect();
                 }
             }
             if (regs_global.vars.async_flags & ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH){
                 regs_global.vars.async_flags &= (u32)~ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
                 if (internal_flash_save_mirror_to_flash()!=0){
-                    ESP_LOGE(TAG, "Failed %d\n",__LINE__);
+                    main_printf(TAG, "Failed %d\n",__LINE__);
                 }else{
-                    ESP_LOGI(TAG, "bkram file saved to flash succes");
+                    main_printf(TAG, "bkram file saved to flash succes");
                 }
             }
             if (prepare_time){
@@ -218,5 +219,24 @@ int is_ascii_symbol_or_digital(u8 * buff, u32 len){
         res = -1;
     }
     return res;
+}
+/**
+ * @brief memcmp_self
+ * @param buff_0
+ * @param buff_1
+ * @param len
+ * @return 1 -if not equal, 0 - if equal
+ */
+int memcmp_not_equal(const u8 * buff_0,const u8 * buff_1,u32 len){
+    if (buff_0!=NULL && buff_1!=NULL){
+        for (u32 i=0;i<len;i++){
+            if (buff_0[i]!=buff_1[i]){
+                return 1;
+            }
+        }
+        return 0;
+    }else{
+        return -1;
+    }
 }
 #endif //COMMON_C

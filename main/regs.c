@@ -72,7 +72,8 @@ int regs_init(){
  * @brief write new value in register
  * @param reg_address - in byte addressing
  * @param reg - struct for register access
- * @return  0 - OK, \n
+ * @return   1 - if value changed
+ *           0 - OK, \n
  *          -1 - reg.flag error
  * @ingroup regs
  *
@@ -88,6 +89,7 @@ int regs_set(void * reg_address,regs_access_t reg){
     if (regs_write_access(reg_address)==1){
         if (regs_write_value_check(reg_address,reg)){
             semaphore_take(regs_access_mutex, portMAX_DELAY );{
+                result = memcmp_not_equal(reg_address, (u8*)&reg.value.op_u64, regs_size_in_byte(reg.flag));
                 memcpy(reg_address, &reg.value.op_u64, regs_size_in_byte(reg.flag));
             }
             semaphore_release(regs_access_mutex);
@@ -121,8 +123,8 @@ static int regs_write_access(void * reg_address){
 static int regs_write_value_check(void * reg_address,regs_access_t reg){
     int result = 0;
     int index = regs_description_get_index_by_address(reg_address);
-    regs_template_t reg_template;
     if (index>=0){
+        regs_template_t reg_template;
         reg_template.ind = (u16)index;
         if(regs_description_get_by_ind(&reg_template)==0){
             if (reg_template.p_value == regs_global.vars.wifi_name ||
@@ -249,7 +251,7 @@ u8 regs_size_in_byte(regs_flag_t type){
  * @param reg_address - first register address in byte addressing
  * @param buffer_from - pointer to reading buffer
  * @param byte_numm - number of bytes for writing
- * @return 0
+ * @return 0 - not changed, 1 - if value changed, less then zero if error
  * @ingroup regs
  * @todo add asserts for byte_numm,buffer_to
  */
@@ -260,9 +262,12 @@ int regs_set_buffer(void * reg_address,u8* buffer_from,u16 byte_numm){
     result =0;
     for(u16 i=0; i<byte_numm; i++){
         reg.value.op_u8 = *(u8*)(buffer_from+i);
-        result = regs_set((void*)((u32)reg_address+i),reg);
-        if(result!=0){
+        int set_result =  regs_set((void*)((u32)reg_address+i),reg);
+        if(set_result < 0){
+            result = set_result;
             break;
+        }else if (set_result){
+            result = set_result;
         }
     }
     return result;

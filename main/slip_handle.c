@@ -31,6 +31,7 @@
 #include "regs.h"
 #include "regs_description.h"
 #include "crc.h"
+#include "common.h"
 struct netif slipif;
 
 static const char *TAG = "slip_handle";
@@ -86,6 +87,8 @@ esp_err_t esp_slip_init(slip_handle_config_t *slip_modem){
     ESP_ERROR_CHECK(uart_set_pin(slip_modem->uart_dev, slip_modem->uart_tx_pin, slip_modem->uart_rx_pin, 0, 0));
     // Install UART driver
     ESP_ERROR_CHECK(uart_driver_install(slip_modem->uart_dev, SLIP_HANDLE_RX_BUFFER_LEN, SLIP_HANDLE_RX_BUFFER_LEN, 10, &slip_modem->uart_queue, 0));
+    main_printf(TAG,"inited uart with parameters: port - %d,rate - %d,pin_tx - %d, pin_rx - %d"
+                ,slip_modem->uart_dev,slip_modem->uart_baud,slip_modem->uart_tx_pin,slip_modem->uart_rx_pin);
     // Start slip RX task
     slip_modem->running = true;
     semaphore_create_binary(flow_control_slip_mutex)
@@ -112,7 +115,6 @@ esp_err_t slip_modem_deinit(slip_handle_config_t *slip_handle){
 }
 
 esp_err_t slip_modem_transmit_raw(void *buffer, size_t len){
-    ESP_LOGD(TAG, "%s", __func__);
     ESP_LOG_BUFFER_HEXDUMP(TAG, buffer, (uint16_t)len, ESP_LOG_DEBUG);
     int32_t res = slip_add_to_send_queue((u8 *)buffer, (u16)len);
     if (res < 0) {
@@ -127,8 +129,6 @@ esp_err_t slip_modem_transmit_raw(void *buffer, size_t len){
 err_t slip_modem_transmit(struct netif *netif,struct pbuf *p,const ip4_addr_t *ipaddr){
     int res;
     struct pbuf *q;
-    ESP_LOGD(TAG, "%s", __func__);
-    ESP_LOGI(TAG, "slip transmit packet len - %u",p->len);
     static u8 transmit_temp_buff[SLIP_MAX_RAW_PACKET];
     uint32_t out_len = 0;
     /* Send pbuf out on the serial I/O device. */
@@ -158,7 +158,6 @@ err_t slip_modem_transmit(struct netif *netif,struct pbuf *p,const ip4_addr_t *i
     /* End with packet delimiter. */
     transmit_temp_buff[out_len++] = SLIP_END;
     res = slip_add_to_send_queue((u8 *)transmit_temp_buff, (u16)out_len);
-    res = uart_write_bytes(wifi_slip_config.uart_dev, (char *)&c, 1);
     if (res < 0) {
         // Handle errors
         ESP_LOGE(TAG, "%s: uart_write_bytes error %i", __func__, res);
@@ -176,9 +175,15 @@ err_t slip_modem_transmit(struct netif *netif,struct pbuf *p,const ip4_addr_t *i
 static bool rx_filter(uint8_t *data, uint32_t len){
     (void)(len);
     bool res = 0;
-    if ((strncmp("?I", (char*)data,2)==0)&&(len==2)){
-
-
+    u8 buf_temp[30];
+    if ((strncmp("!S", (char*)data,2)==0)&&(len==2)){
+        main_printf(TAG,"slip got request to connect");
+        buf_temp[0] = SLIP_END;
+        buf_temp[1] = '?';
+        buf_temp[2] = 'I';
+        buf_temp[3] = SLIP_END;
+        slip_modem_transmit_raw(buf_temp, 4);
+        res = 1;
     }else if((strncmp("!I", (char*)data,2)==0)){
         u8 handle_len = 2;
         u8 ip_local[4];
@@ -186,7 +191,9 @@ static bool rx_filter(uint8_t *data, uint32_t len){
         u8 ip_local_gate[4];
         u8 wifi_name[WIFI_NAME_LEN];
         u8 wifi_pass[WIFI_PASSWORD_LEN];
-        u16 wifi_setings=0;
+        u8 wifi_router_name[WIFI_ROUTER_NAME_LEN];
+        u8 wifi_router_pass[WIFI_ROUTER_PASSWORD_LEN];
+        u16 wifi_setting=0;
         u16 crc_sended=0;
         ip_local[0] = data[handle_len++];
         ip_local[1] = data[handle_len++];
@@ -200,24 +207,70 @@ static bool rx_filter(uint8_t *data, uint32_t len){
         ip_local_gate[1] = data[handle_len++];
         ip_local_gate[2] = data[handle_len++];
         ip_local_gate[3] = data[handle_len++];
+
         for (u8 i=0;i<WIFI_NAME_LEN;i++){
             wifi_name[i] = data[handle_len++];
         }
         for (u8 i=0;i<WIFI_PASSWORD_LEN;i++){
             wifi_pass[i] = data[handle_len++];
         }
-        wifi_setings = data[handle_len++];
-        wifi_setings |= (u16)data[handle_len++]<<8;
-        if(check_crc16(data,handle_len+2)){
-            regs_set_buffer(regs_global.vars.slip_ip,ip_local,4);
-            regs_set_buffer(regs_global.vars.slip_netmask,ip_local_mask,4);
-            regs_set_buffer(regs_global.vars.slip_gate,ip_local_gate,4);
-            regs_set_buffer(regs_global.vars.wifi_name,wifi_name,WIFI_NAME_LEN);
-            regs_set_buffer(regs_global.vars.wifi_password,wifi_pass,WIFI_PASSWORD_LEN);
+        for (u8 i=0;i<WIFI_ROUTER_NAME_LEN;i++){
+            wifi_router_name[i] = data[handle_len++];
         }
+        for (u8 i=0;i<WIFI_ROUTER_PASSWORD_LEN;i++){
+            wifi_router_pass[i] = data[handle_len++];
+        }
+        wifi_setting = data[handle_len++];
+        wifi_setting |= (u16)data[handle_len++]<<8;
         crc_sended = data[handle_len++];
         crc_sended |= (u16)data[handle_len++]<<8;
-
+        if(check_crc16(data,handle_len)){
+            int writed=0;
+            writed = regs_set_buffer(&regs_global.vars.wifi_setting,(u8*)&wifi_setting,sizeof(wifi_setting))==1?1:writed ;
+            if (wifi_setting==WIFI_ACCESS_POINT || wifi_setting==WIFI_AP_STA){
+                writed = regs_set_buffer(regs_global.vars.wifi_name,wifi_name,WIFI_NAME_LEN)==1?1:writed ;
+                writed = regs_set_buffer(regs_global.vars.wifi_password,wifi_pass,WIFI_PASSWORD_LEN)==1?1:writed ;
+            }
+            writed = regs_set_buffer(regs_global.vars.slip_ip,ip_local_gate,4)==1?1:writed ;
+            writed = regs_set_buffer(regs_global.vars.slip_netmask,ip_local_mask,4)==1?1:writed;
+            writed = regs_set_buffer(regs_global.vars.slip_gate,ip_local,4)==1?1:writed ;
+            if (wifi_setting==WIFI_CLIENT || wifi_setting==WIFI_AP_STA){
+                writed = regs_set_buffer(regs_global.vars.wifi_router_name,wifi_router_name,WIFI_ROUTER_NAME_LEN)==1?1:writed ;
+                writed = regs_set_buffer(regs_global.vars.wifi_router_password,wifi_router_pass,WIFI_ROUTER_PASSWORD_LEN)==1?1:writed ;
+            }
+            if (writed){
+                ui32 prev_value = 0;
+                main_printf(TAG,"wifi settings was changed prepare to reset");
+                task_notify_send(common_duty_task_handle,PREPARE_TO_RESET,&prev_value);
+            }
+            {
+                u8 len_temp = 0;
+                buf_temp[len_temp++] = SLIP_END;
+                buf_temp[len_temp++] = '!';
+                buf_temp[len_temp++] = 'C';
+                if ((crc_sended&0xff)==SLIP_END) {
+                    buf_temp[len_temp++] = SLIP_ESC;
+                    buf_temp[len_temp++] = SLIP_ESC_END;
+                }else if ((crc_sended&0xff)==SLIP_ESC){
+                    buf_temp[len_temp++] = SLIP_ESC;
+                    buf_temp[len_temp++] = SLIP_ESC_ESC;
+                }else{
+                    buf_temp[len_temp++] = (crc_sended&0xff);
+                }
+                if (((crc_sended>>8)&0xff)==SLIP_END) {
+                    buf_temp[len_temp++] = SLIP_ESC;
+                    buf_temp[len_temp++] = SLIP_ESC_END;
+                }else if (((crc_sended>>8)&0xff)==SLIP_ESC){
+                    buf_temp[len_temp++] = SLIP_ESC;
+                    buf_temp[len_temp++] = SLIP_ESC_ESC;
+                }else{
+                    buf_temp[len_temp++] = ((crc_sended>>8)&0xff);
+                }
+                buf_temp[len_temp++] = SLIP_END;
+                slip_modem_transmit_raw(buf_temp, len_temp);
+            }
+            res = 1;
+        }
     }
     return res;
 }
@@ -238,9 +291,11 @@ void slip_flow_control_task(void *args){
                     vTaskDelay(pdMS_TO_TICKS(timeout));
                     timeout += 2;
                     res = uart_write_bytes(wifi_slip_config.uart_dev, msg.packet, *msg.length);
-                } while (res && timeout < WIFI_FLOW_CONTROL_WIFI_SEND_TIMEOUT_MS);
-                if (res != ESP_OK) {
-                    ESP_LOGE(TAG, "WiFi send packet failed: %d", res);
+                } while (res<0 && timeout < SLIP_FLOW_CONTROL_WIFI_SEND_TIMEOUT_MS);
+                if (timeout > SLIP_FLOW_CONTROL_WIFI_SEND_TIMEOUT_MS) {
+                    ESP_LOGE(TAG, "slip send packet failed: %d %d", res,*msg.length);
+                }else{
+                    ESP_LOGI(TAG, "slip sent %d %d", res,*msg.length);
                 }
             }
             *msg.length = 0;
@@ -254,6 +309,7 @@ void slip_handle_uart_rx_task(void *arg){
     ESP_LOGD(TAG, "Start SLIP modem RX task (slip_modem %p)", (void*)slip_handle);
     ESP_LOGD(TAG, "Uart: %d, buffer: %p (%d bytes)", slip_handle->uart_dev, (void*)slip_handle->rx_buffer, SLIP_HANDLE_RX_BUFFER_LEN);
     slipif_recv_state_t recv_state = SLIP_RECV_NORMAL;
+    main_printf(TAG,"slip ip %d %d %d %d", regs_global.vars.slip_ip[0], regs_global.vars.slip_ip[1], regs_global.vars.slip_ip[2], regs_global.vars.slip_ip[3]);
     IP4_ADDR(&local_ipaddr, regs_global.vars.slip_ip[0], regs_global.vars.slip_ip[1], regs_global.vars.slip_ip[2], regs_global.vars.slip_ip[3]);
     IP4_ADDR(&local_netmask, regs_global.vars.slip_netmask[0], regs_global.vars.slip_netmask[1], regs_global.vars.slip_netmask[2], regs_global.vars.slip_netmask[3]);
     IP4_ADDR(&local_gw, regs_global.vars.slip_gate[0], regs_global.vars.slip_gate[1], regs_global.vars.slip_gate[2], regs_global.vars.slip_gate[3]);
@@ -261,75 +317,73 @@ void slip_handle_uart_rx_task(void *arg){
 
     slip_handle->recv_buffer_len = 0;
     uint8_t temp_buff[SLIP_HANDLE_RX_BUFFER_LEN];
-    ESP_LOGI(TAG, "slip_handle_uart_rx_task start");
+    main_printf(TAG, "slip_handle_uart_rx_task start");
     uint32_t tick=0;
     while (slip_handle->running == true){
         // Read data from the UART
-        int len = uart_read_bytes(slip_handle->uart_dev, temp_buff,SLIP_HANDLE_RX_BUFFER_LEN, pdMS_TO_TICKS((10)));
-
+        int len = uart_read_bytes(slip_handle->uart_dev, temp_buff,SLIP_HANDLE_RX_BUFFER_LEN, pdMS_TO_TICKS((20)));
         if (len > 0) {
-            // Log slip RX data
-            ESP_LOGD(TAG, "rx %d bytes", len);
             // Ensure null termination
             temp_buff[len] = '\0';
             // Filter if provided
-            if (slip_handle->recv_buffer_len == 0){
-                if (rx_filter(temp_buff, (uint32_t)len)) {
-                    continue;
-                }
-            }
-            if ((slip_handle->recv_buffer_len + (uint32_t)len) < SLIP_HANDLE_RX_BUFFER_LEN){
-                for (uint32_t i =0 ; i < (uint32_t)len; i++){
-                    switch (recv_state) {
-                      case SLIP_RECV_NORMAL:
-                        switch (temp_buff[i]){
-                          case SLIP_END:
-                            if (slip_handle->recv_buffer_len > 0){
-                                struct pbuf *p;
-                                ESP_LOGI(TAG, "slip recv packet len %u",slip_handle->recv_buffer_len);
-                                p = slip_handle_if_input(slip_handle->rx_buffer,(uint16_t)slip_handle->recv_buffer_len);
-                                if(p != NULL){
-                                    if (slipif.input(p, &slipif) != ERR_OK ){
-                                        pbuf_free(p);
-                                        ESP_LOGE(TAG, "slipif.input failed");
-                                    }
-                                }else{
-                                    ESP_LOGE(TAG, "slip_handle_if_input failed");
-                                }
-                            }
-                            slip_handle->recv_buffer_len = 0;
-                            break;
-                          case SLIP_ESC:
-                            recv_state = SLIP_RECV_ESCAPE;
-                            break;
-                          default:
-                            slip_handle->rx_buffer[slip_handle->recv_buffer_len] = temp_buff[i];
-                            slip_handle->recv_buffer_len++;
-                            break;
-                        } /* end switch (c) */
-                        break;
-                      case SLIP_RECV_ESCAPE:
-                        /* un-escape END or ESC bytes, leave other bytes
-                           (although that would be a protocol error) */
-                        switch (temp_buff[i]) {
-                          case SLIP_ESC_END:
-                            slip_handle->rx_buffer[slip_handle->recv_buffer_len] = SLIP_END;
-                            slip_handle->recv_buffer_len++;
-                            break;
-                          case SLIP_ESC_ESC:
-                            slip_handle->rx_buffer[slip_handle->recv_buffer_len] = SLIP_ESC;
-                            slip_handle->recv_buffer_len++;
-                            break;
-                          default:
-                            slip_handle->recv_buffer_len = 0;
-                            break;
-                        }
-                        recv_state = SLIP_RECV_NORMAL;
-                        break;
-                    } /* end switch (priv->state) */
-                }
-            }else{
+
+            if (rx_filter(temp_buff, (uint32_t)len)){
                 slip_handle->recv_buffer_len = 0;
+                continue;
+            }else{
+                if ((slip_handle->recv_buffer_len + (uint32_t)len) < SLIP_HANDLE_RX_BUFFER_LEN){
+                    for (uint32_t i =0 ; i < (uint32_t)len; i++){
+                        switch (recv_state) {
+                          case SLIP_RECV_NORMAL:
+                            switch (temp_buff[i]){
+                              case SLIP_END:
+                                if (slip_handle->recv_buffer_len > 0){
+                                    struct pbuf *p;
+                                    p = slip_handle_if_input(slip_handle->rx_buffer,(uint16_t)slip_handle->recv_buffer_len);
+                                    if(p != NULL){
+                                        if (slipif.input(p, &slipif) != ERR_OK ){
+                                            pbuf_free(p);
+                                            ESP_LOGE(TAG, "slipif.input failed");
+                                        }
+                                    }else{
+                                        ESP_LOGE(TAG, "slip_handle_if_input failed");
+                                    }
+                                }
+                                slip_handle->recv_buffer_len = 0;
+                                break;
+                              case SLIP_ESC:
+                                recv_state = SLIP_RECV_ESCAPE;
+                                break;
+                              default:
+                                slip_handle->rx_buffer[slip_handle->recv_buffer_len] = temp_buff[i];
+                                slip_handle->recv_buffer_len++;
+                                break;
+                            } /* end switch (c) */
+                            break;
+                          case SLIP_RECV_ESCAPE:
+                            /* un-escape END or ESC bytes, leave other bytes
+                               (although that would be a protocol error) */
+                            switch (temp_buff[i]) {
+                              case SLIP_ESC_END:
+                                slip_handle->rx_buffer[slip_handle->recv_buffer_len] = SLIP_END;
+                                slip_handle->recv_buffer_len++;
+                                break;
+                              case SLIP_ESC_ESC:
+                                slip_handle->rx_buffer[slip_handle->recv_buffer_len] = SLIP_ESC;
+                                slip_handle->recv_buffer_len++;
+                                break;
+                              default:
+                                slip_handle->recv_buffer_len = 0;
+                                break;
+                            }
+                            recv_state = SLIP_RECV_NORMAL;
+                            break;
+                        } /* end switch (priv->state) */
+                    }
+                }else{
+                    slip_handle->recv_buffer_len = 0;
+                }
+
             }
             // Pass received bytes in to slip interface
         }

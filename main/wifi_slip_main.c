@@ -83,7 +83,6 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         case WIFI_EVENT_STA_DISCONNECTED:
             ESP_LOGI(TAG, "Wi-Fi sta got a station disconnected");
             regs_global.vars.sta_connect=0;
-            esp_wifi_connect();
             break;
         default:
             break;
@@ -134,8 +133,6 @@ static void wifi_init_soft_ap_sta(void){
     ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_AP, &ap_config) );
     ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &sta_config) );
     ESP_ERROR_CHECK( esp_wifi_start() );
-    ESP_LOGI(TAG, "WIFI_MODE_AP started. SSID:%s password:%s channel:%d",
-             ap_config.ap.ssid, ap_config.ap.password, ESP_WIFI_CHANNEL);
     ESP_ERROR_CHECK( esp_wifi_connect() );
     return;
 }
@@ -196,26 +193,33 @@ void app_main(void){
     wifi_slip_config.uart_rx_pin = 16;
     wifi_slip_config.uart_baud = 115200;
     wifi_slip_config.recv_buffer_len = 0;
-    ESP_ERROR_CHECK(esp_slip_init(&wifi_slip_config));
     regs_init();
     mirror_storage_init();
     dinamic_address = os_pool_create(&pool_dinamic_addr_def);
+    preinit_global_vars();
+    ESP_ERROR_CHECK(esp_slip_init(&wifi_slip_config));
     common_init();/*init common things*/
     common_init_tasks();/*init all necessary tasks */
-    preinit_global_vars();
     pwm_test_init();
     wifi_common_init();
-    if (regs_global.vars.wifi_setting == WIFI_ACCESS_POINT){
-        ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
+    main_printf(TAG, "wifi setting %d",regs_global.vars.wifi_setting);
+    main_printf(TAG, "ap_name:%s ap_password:%s sta_name:%s sta_password:%s channel:%d",
+             regs_global.vars.wifi_name, regs_global.vars.wifi_password,
+             regs_global.vars.wifi_router_name, regs_global.vars.wifi_router_password,ESP_WIFI_CHANNEL);
+
+    if (regs_global.vars.wifi_setting == WIFI_ACCESS_POINT ||
+        regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_ACCESS_POINT){
+        main_printf(TAG, "ESP_WIFI_MODE_AP");
         wifi_init_softap();
-    }else if(regs_global.vars.wifi_setting == WIFI_CLIENT){
-        ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
+    }else if(regs_global.vars.wifi_setting == WIFI_CLIENT ||
+             regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_CLIENT){
+        main_printf(TAG, "ESP_WIFI_MODE_STA");
         wifi_init_sta();
-    }else if(regs_global.vars.wifi_setting == WIFI_AP_STA){
-        ESP_LOGI(TAG, "ESP_WIFI_MODE_AP_STA");
+    }else if(regs_global.vars.wifi_setting == WIFI_AP_STA||
+             regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_AP_STA){
+        main_printf(TAG, "ESP_WIFI_MODE_AP_STA");
         wifi_init_soft_ap_sta();
     }
-
     httpd_init_sofi();
     modbus_tcp_init();
 }

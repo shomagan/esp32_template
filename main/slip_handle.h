@@ -27,7 +27,7 @@
 #define SLIP_ESC_END 0xDC /* 0334: following escape: original byte is 0xC0 (END) */
 #define SLIP_ESC_ESC 0xDD /* 0335: following escape: original byte is 0xDB (ESC) */
 #define SLIP_RX_TASK_PRIORITY   10
-#define SLIP_RX_TASK_STACK_SIZE (4 * 1024)
+#define SLIP_RX_TASK_STACK_SIZE (5 * 1024)
 
 
 #define SLIP_HANDLE_RX_BUFFER_LEN SLIP_MAX_RAW_PACKET

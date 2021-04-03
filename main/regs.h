@@ -346,9 +346,12 @@ typedef enum {
 }rst_reason_t;
 
 typedef enum {
-    WIFI_ACCESS_POINT = (1<<0),
-    WIFI_CLIENT       = (1<<1),
-    WIFI_AP_STA       = (1<<2),
+    WIFI_ACCESS_POINT = 1,
+    WIFI_CLIENT       = 2,
+    WIFI_AP_STA       = 3,
+    WIFI_ESP32_CHANGED_ONLY_ACCESS_POINT = 4,
+    WIFI_ESP32_CHANGED_ONLY_CLIENT       = 5,
+    WIFI_ESP32_CHANGED_ONLY_AP_STA       = 6,
 }wifi_setting_t;/*todo!!!rename to meso setting */
 
 typedef enum {

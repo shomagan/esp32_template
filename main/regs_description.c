@@ -37,7 +37,7 @@ static const u8 def_wifi_router_name[WIFI_ROUTER_NAME_LEN] = "MikroTik-Jul";
 static const u8 def_wifi_router_password[WIFI_ROUTER_PASSWORD_LEN] = "zyxel-206-rpu";
 static const u16 def_wifi_setting = WIFI_AP_STA;               //!<"type of wifi and settings" &save &def
 static const float def_test_pwm_value = 50.0;
-const u32 def_table_version = 3;
+const u32 def_table_version = 4;
 regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 {&def_mdb_addr,(u8*)&regs_global.vars.mdb_addr,16,"modbus address","mdb_addr",U16_REGS_FLAG,0,0,0x30000,1,5},//!<"modbus address" &save &def
 {&def_ip,(u8*)&regs_global.vars.ip[0],18,"device ip address, warning!!! changes can lead to lost connection","ip",U8_REGS_FLAG,1,2,0x30001,4,37},//!<"device ip address, warning!!! changes can lead to lost connection" &save &def &crtcl

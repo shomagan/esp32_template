@@ -290,7 +290,7 @@ u16 modbus_rtu_packet (u8* pckt,u16 len_in){
                 /*write self regs*/
                 int res_temp;
                 res_temp = regs_set(p_value,reg);
-                if (res_temp != 0) {
+                if (res_temp < 0) {
                     if(res_temp == -ILLEGAL_DATA_ADDRESS){
                         error = ILLEGAL_DATA_ADDRESS;
                     }else if(res_temp == -ILLEGAL_DATA_VALUE){

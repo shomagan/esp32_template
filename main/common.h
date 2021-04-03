@@ -111,6 +111,14 @@ int common_init_tasks(void);
  * @return 1 if consist if symbol or digital
  */
 int is_ascii_symbol_or_digital(u8 * buff, u32 len);
+/**
+ * @brief memcmp_self
+ * @param buff_0
+ * @param buff_1
+ * @param len
+ * @return 0 -if not equal, 1 - if equal
+ */
+int memcmp_not_equal(const u8 * buff_0,const u8 * buff_1,u32 len);
 
 /*add functions and variable declarations before */
 #ifdef __cplusplus
