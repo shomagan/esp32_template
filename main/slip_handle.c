@@ -42,7 +42,7 @@ static struct pbuf* slip_handle_if_input(uint8_t* buff,uint16_t length);
 static err_t slip_modem_transmit(struct netif *netif,struct pbuf *p,const ip4_addr_t *ipaddr);
 queue_handle_t slip_flow_control_queue = NULL;
 static esp_err_t slip_add_to_send_queue(uint8_t *buffer, uint16_t len);
-
+static int slip_handle_request_parameters(void);
 
 //static esp_err_t pkt_slip2wifi(uint8_t *buffer, uint16_t len);
 static bool rx_filter(uint8_t *data, uint32_t len);
@@ -164,6 +164,16 @@ err_t slip_modem_transmit(struct netif *netif,struct pbuf *p,const ip4_addr_t *i
     }
     return (err_t)res;
 }
+static int slip_handle_request_parameters(void){
+    u8 buf_temp[30];
+    main_printf(TAG,"slip got request to connect");
+    buf_temp[0] = SLIP_END;
+    buf_temp[1] = '?';
+    buf_temp[2] = 'I';
+    buf_temp[3] = SLIP_END;
+    slip_modem_transmit_raw(buf_temp, 4);
+    return 0;
+}
 /**
  * @brief slip_rx_filter filters incoming commands from the slip interface
  * this implementation is designed for use with contiki slip devices
@@ -177,12 +187,7 @@ static bool rx_filter(uint8_t *data, uint32_t len){
     bool res = 0;
     u8 buf_temp[30];
     if ((strncmp("!S", (char*)data,2)==0)&&(len==2)){
-        main_printf(TAG,"slip got request to connect");
-        buf_temp[0] = SLIP_END;
-        buf_temp[1] = '?';
-        buf_temp[2] = 'I';
-        buf_temp[3] = SLIP_END;
-        slip_modem_transmit_raw(buf_temp, 4);
+        slip_handle_request_parameters();
         res = 1;
     }else if((strncmp("!I", (char*)data,2)==0)){
         u8 handle_len = 2;
@@ -297,7 +302,7 @@ void slip_flow_control_task(void *args){
     }
     vTaskDelete(NULL);
 }
-
+#define TIME_BETWEEN_CHECK_PARAMETERS_MS 15000
 void slip_handle_uart_rx_task(void *arg){
     slip_handle_config_t *slip_handle = (slip_handle_config_t *) arg;
     ESP_LOGD(TAG, "Start SLIP modem RX task (slip_modem %p)", (void*)slip_handle);
@@ -313,6 +318,8 @@ void slip_handle_uart_rx_task(void *arg){
     uint8_t temp_buff[SLIP_HANDLE_RX_BUFFER_LEN];
     main_printf(TAG, "slip_handle_uart_rx_task start");
     uint32_t tick=0;
+    u32 tick_count_ms = pdTICKS_TO_MS(task_get_tick_count());
+    slip_handle_request_parameters();
     while (slip_handle->running == true){
         // Read data from the UART
         int len = uart_read_bytes(slip_handle->uart_dev, temp_buff,SLIP_HANDLE_RX_BUFFER_LEN, pdMS_TO_TICKS((5)));
@@ -380,6 +387,10 @@ void slip_handle_uart_rx_task(void *arg){
 
             }
             // Pass received bytes in to slip interface
+        }
+        if (pdTICKS_TO_MS(task_get_tick_count())>(tick_count_ms+TIME_BETWEEN_CHECK_PARAMETERS_MS)){
+            tick_count_ms = pdTICKS_TO_MS(task_get_tick_count());
+            slip_handle_request_parameters();
         }
         tick++;
     }
