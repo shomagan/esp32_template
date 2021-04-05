@@ -287,15 +287,9 @@ void slip_flow_control_task(void *args){
         if (queue_receive(slip_flow_control_queue, &msg, SLIP_FLOW_CONTROL_QUEUE_TIMEOUT_MS) == pdTRUE) {
             timeout = 0;
             if (*msg.length) {
-                do {
-                    vTaskDelay(pdMS_TO_TICKS(timeout));
-                    timeout += 2;
-                    res = uart_write_bytes(wifi_slip_config.uart_dev, msg.packet, *msg.length);
-                } while (res<0 && timeout < SLIP_FLOW_CONTROL_WIFI_SEND_TIMEOUT_MS);
-                if (timeout > SLIP_FLOW_CONTROL_WIFI_SEND_TIMEOUT_MS) {
+                res = uart_write_bytes(wifi_slip_config.uart_dev, msg.packet, *msg.length);
+                if (res != *msg.length) {
                     ESP_LOGE(TAG, "slip send packet failed: %d %d", res,*msg.length);
-                }else{
-                    ESP_LOGI(TAG, "slip sent %d %d", res,*msg.length);
                 }
             }
             *msg.length = 0;
@@ -321,7 +315,7 @@ void slip_handle_uart_rx_task(void *arg){
     uint32_t tick=0;
     while (slip_handle->running == true){
         // Read data from the UART
-        int len = uart_read_bytes(slip_handle->uart_dev, temp_buff,SLIP_HANDLE_RX_BUFFER_LEN, pdMS_TO_TICKS((20)));
+        int len = uart_read_bytes(slip_handle->uart_dev, temp_buff,SLIP_HANDLE_RX_BUFFER_LEN, pdMS_TO_TICKS((5)));
         if (len > 0) {
             // Ensure null termination
             temp_buff[len] = '\0';
@@ -387,9 +381,7 @@ void slip_handle_uart_rx_task(void *arg){
             }
             // Pass received bytes in to slip interface
         }
-        // Yeild to allow other tasks to progress
         tick++;
-        vTaskDelay( pdMS_TO_TICKS(10));
     }
 }
 flow_control_memory_t * slip_get_buffer(){
