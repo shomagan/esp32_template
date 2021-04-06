@@ -166,7 +166,7 @@ err_t slip_modem_transmit(struct netif *netif,struct pbuf *p,const ip4_addr_t *i
 }
 static int slip_handle_request_parameters(void){
     u8 buf_temp[30];
-    main_printf(TAG,"slip got request to connect");
+    main_printf(TAG,"slip send request to connect");
     buf_temp[0] = SLIP_END;
     buf_temp[1] = '?';
     buf_temp[2] = 'I';
@@ -384,12 +384,12 @@ void slip_handle_uart_rx_task(void *arg){
                 }else{
                     slip_handle->recv_buffer_len = 0;
                 }
-
             }
             // Pass received bytes in to slip interface
         }
-        if (pdTICKS_TO_MS(task_get_tick_count())>(tick_count_ms+TIME_BETWEEN_CHECK_PARAMETERS_MS)){
+        if ((pdTICKS_TO_MS(task_get_tick_count()) - tick_count_ms) >TIME_BETWEEN_CHECK_PARAMETERS_MS){
             tick_count_ms = pdTICKS_TO_MS(task_get_tick_count());
+            main_printf(TAG,"slip send request to connect %u",(uint32_t)tick_count_ms);
             slip_handle_request_parameters();
         }
         tick++;

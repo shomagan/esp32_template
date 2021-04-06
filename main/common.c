@@ -179,7 +179,7 @@ static void common_duty_task(void *pvParameters ){
                 }
             }
             if (prepare_time){
-                if (task_get_tick_count() > (prepare_time + TIME_FOR_PREPARE_RESET_MS)){
+                if ((pdTICKS_TO_MS(task_get_tick_count()) - prepare_time ) > TIME_FOR_PREPARE_RESET_MS){
                     esp_restart();
                 }
             }
@@ -188,7 +188,7 @@ static void common_duty_task(void *pvParameters ){
             if (signal_value & STOP_CHILD_PROCCES){
 
             }else if(signal_value & PREPARE_TO_RESET){
-                prepare_time = task_get_tick_count();
+                prepare_time = pdTICKS_TO_MS(task_get_tick_count());
             }
         }
 
