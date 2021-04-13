@@ -191,7 +191,7 @@ void app_main(void){
     wifi_slip_config.uart_dev = 2;
     wifi_slip_config.uart_tx_pin = 17;
     wifi_slip_config.uart_rx_pin = 16;
-    wifi_slip_config.uart_baud = 115200;
+    wifi_slip_config.uart_baud = 400000;
     wifi_slip_config.recv_buffer_len = 0;
     regs_init();
     mirror_storage_init();

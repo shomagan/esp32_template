@@ -23,13 +23,13 @@
  * To compress the files, "miniz.c" must be downloaded seperately.
  */
 #ifndef MAKEFS_SUPPORT_DEFLATE
-#define MAKEFS_SUPPORT_DEFLATE 0
+#define MAKEFS_SUPPORT_DEFLATE 1
 #endif
 
 #define COPY_BUFSIZE (1024*1024) /* 1 MByte */
 
 #if MAKEFS_SUPPORT_DEFLATE
-#include "../miniz.c"
+#include "miniz.c"
 
 typedef unsigned char uint8;
 typedef unsigned short uint16;
@@ -82,13 +82,18 @@ int deflate_level = 10; /* default compression level, can be changed via command
 
 /* define this to get the header variables we use to build HTTP headers */
 #define LWIP_HTTPD_DYNAMIC_HEADERS 1
-#define LWIP_HTTPD_SSI             1
+#define LWIP_HTTPD_SSI             0
 #include "lwip/init.h"
 #include "../httpd_structs.h"
 #include "lwip/apps/fs.h"
 
 #include "../core/inet_chksum.c"
 #include "../core/def.c"
+#define LWIP_HTTPD_SSI_EXTENSIONS ".shtml", ".shtm", ".ssi", ".xml", ".json"
+static const char *const g_pcSSIExtensions[] = {
+    LWIP_HTTPD_SSI_EXTENSIONS
+};
+#define NUM_SHTML_EXTENSIONS LWIP_ARRAYSIZE(g_pcSSIExtensions)
 
 /** (Your server name here) */
 const char *serverID = "Server: "HTTPD_SERVER_AGENT"\r\n";

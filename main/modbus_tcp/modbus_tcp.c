@@ -434,6 +434,7 @@ static err_t modbus_tcp_accept(void *arg, struct altcp_pcb *pcb, err_t err){
     struct modbus_tcp_state * connection;
     LWIP_DEBUGF(MODBUS_TCP_DEBUG, ("modbus_tcp_accept%p / %p\n", (void *)pcb, arg));
     if ((err != ERR_OK) || (pcb == NULL)){
+        altcp_close(pcb);
         return ERR_VAL;
     }
     /* Set priority */
@@ -441,6 +442,7 @@ static err_t modbus_tcp_accept(void *arg, struct altcp_pcb *pcb, err_t err){
     connection = modbus_tcp_state_alloc();
     if (connection == NULL) {
       LWIP_DEBUGF(MODBUS_TCP_DEBUG, ("MODBUS_TCP_DEBUG: Out of memory, RST\n"));
+      altcp_close(pcb);
       return ERR_MEM;
     }
     connection->pcb = pcb;
