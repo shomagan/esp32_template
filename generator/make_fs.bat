@@ -1,2 +1,2 @@
 cd ../main/http
-makefsdata.exe
+makefsdata.exe -defl
