@@ -51,8 +51,10 @@
    extern "C" {
 #endif
 /*add functions and variable declarations below */
+extern task_handle_t pwm_task_handle;
 void pwm_test_set(float duty_cycle);
 int pwm_test_init(void);
+void pwm_control_task(void *arg);
 /*add functions and variable declarations before */
 #ifdef __cplusplus
 }

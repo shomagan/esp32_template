@@ -49,6 +49,9 @@
    extern "C" {
 #endif
 #define TIME_FOR_PREPARE_RESET_MS 2000
+#define PWM_STEP_CONTROL_ENABLE 1
+#define PWM_AIR_ENABLE 0
+
 /*add functions and variable declarations below */
 
    enum dinamic_task_event{

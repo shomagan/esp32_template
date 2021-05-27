@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file regs_description.c
  * @author Shoma Gane <shomagan@gmail.com>
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
@@ -31,51 +31,68 @@ static const u8 def_fw_version[FW_VERSION_SIZE] = FW_VERSION;
 static const u16 def_num_of_vars = NUM_OF_SELF_VARS;
 static const u8 def_board_ver = (u8)BOARD_VERSION;
 static const u16 def_permission = ENABLE_HTTP_FLAG;
-static const u8 def_wifi_name[WIFI_NAME_LEN] = "bric_plc_net";               //!<"must be strong full filled", &save &def
+static const u8 def_wifi_name[WIFI_NAME_LEN] = "sofi_plc_net";               //!<"must be strong full filled", &save &def
 static const u8 def_wifi_password[WIFI_PASSWORD_LEN] = "bricsofi";            //!<"must be strong more then 8 byte", &save &def
-static const u8 def_wifi_router_name[WIFI_ROUTER_NAME_LEN] = "MikroTik-Jul";
-static const u8 def_wifi_router_password[WIFI_ROUTER_PASSWORD_LEN] = "zyxel-206-rpu";
+static const u8 def_wifi_router_name[WIFI_ROUTER_NAME_LEN] = "mikrotik_sofi";
+static const u8 def_wifi_router_password[WIFI_ROUTER_PASSWORD_LEN] = "sofi_1_142";
 static const u16 def_wifi_setting = WIFI_AP_STA;               //!<"type of wifi and settings" &save &def
-static const float def_test_pwm_value = 50.0;
-const u32 def_table_version = 4;
+static const float def_test_pwm_value = 50.0f;
+const u32 def_table_version = 0x54;
+static const float def_servo_0 = 10.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
+static const float def_min_servo_0 = 0.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
+static const float def_max_servo_0 = 100.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
+static const float def_servo_1 = 10.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
+static const float def_min_servo_1 = 0.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
+static const float def_max_servo_1 = 100.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
+static const float def_servo_2 = 10.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
+static const float def_min_servo_2 = 0.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
+static const float def_max_servo_2 = 100.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
+static const float def_servo_3 = 10.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
+static const float def_min_servo_3 = 0.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
+static const float def_max_servo_3 = 100.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
+
 regs_description_t const regs_description[NUM_OF_SELF_VARS]={
-{&def_mdb_addr,(u8*)&regs_global.vars.mdb_addr,16,"modbus address","mdb_addr",U16_REGS_FLAG,0,0,0x30000,1,5},//!<"modbus address" &save &def
-{&def_ip,(u8*)&regs_global.vars.ip[0],18,"device ip address, warning!!! changes can lead to lost connection","ip",U8_REGS_FLAG,1,2,0x30001,4,37},//!<"device ip address, warning!!! changes can lead to lost connection" &save &def &crtcl
-{&def_netmask,(u8*)&regs_global.vars.netmask[0],22,"netmask address for main wifi net","netmask",U8_REGS_FLAG,2,6,0x30003,4,37},//!<"netmask address for main wifi net", &save , &def , &crtcl
-{&def_gate,(u8*)&regs_global.vars.gate[0],26,"gateaway address, warning!!! changes can lead to lost connection ","gate",U8_REGS_FLAG,3,10,0x30005,4,37},//!<"gateaway address, warning!!! changes can lead to lost connection " &save &def &crtcl
-{&def_slip_ip,(u8*)&regs_global.vars.slip_ip[0],30,"ip address for local net","slip_ip",U8_REGS_FLAG,4,14,0x30007,4,37},//!<"ip address for local net",&save , &def &crtcl
-{&def_slip_netmask,(u8*)&regs_global.vars.slip_netmask[0],34,"netmask address for local net","slip_netmask",U8_REGS_FLAG,5,18,0x30009,4,37},//!<"netmask address for local net", &save , &def , &crtcl
-{&def_slip_gate,(u8*)&regs_global.vars.slip_gate[0],38,"gateaway address for local net","slip_gate",U8_REGS_FLAG,6,22,0x3000b,4,37},//!<"gateaway address for local net", &save, &def &crtcl
-{&def_wifi_name,(u8*)&regs_global.vars.wifi_name[0],42,"must be strong full filled","wifi_name",U8_REGS_FLAG,7,26,0x3000d,12,37},//!<"must be strong full filled", &save &def &crtcl
-{&def_wifi_password,(u8*)&regs_global.vars.wifi_password[0],54,"must be strong 8 byte","wifi_password",U8_REGS_FLAG,8,38,0x30013,8,37},//!<"must be strong 8 byte", &save &def &crtcl
-{&def_wifi_router_name,(u8*)&regs_global.vars.wifi_router_name[0],62,"must be ended by zero","wifi_router_name",U8_REGS_FLAG,9,46,0x30017,32,37},//!<"must be ended by zero", &save &def &crtcl
-{&def_wifi_router_password,(u8*)&regs_global.vars.wifi_router_password[0],94,"must be more or equal 8 byte","wifi_router_password",U8_REGS_FLAG,10,78,0x30027,32,37},//!<"must be more or equal 8 byte", &save &def &crtcl
-{&def_wifi_setting,(u8*)&regs_global.vars.wifi_setting,126,"type of wifi and settings","wifi_setting",U16_REGS_FLAG,11,110,0x30037,1,37},//!<"type of wifi and settings" &save &def &crtcl
-{NULL,(u8*)&regs_global.vars.reset_num,128,"number of reset","reset_num",U32_REGS_FLAG,12,112,0x30038,1,5},//!<"number of reset" &save
-{NULL,(u8*)&regs_global.vars.wifi_state,0,"wifi state","wifi_state",U16_REGS_FLAG,13,116,0x3003a,1,3},//!<"wifi state" &ro
-{NULL,(u8*)&regs_global.vars.command,0,"command register","command",U16_REGS_FLAG,14,118,0x3003b,1,1},//!<"command register"
-{&def_uart_debug_sets,(u8*)&regs_global.vars.uart_debug_sets,132,"settings debug uart speed,parity and stop bits, default 115200 ,parity - none, 1 stop bit","uart_debug_sets",U16_REGS_FLAG,15,120,0x3003c,1,5},//!<"settings debug uart speed,parity and stop bits, default 115200 ,parity - none, 1 stop bit" &save &def
-{NULL,(u8*)&regs_global.vars.device_state,0,"BIT(0) - interlock","device_state",U16_REGS_FLAG,16,122,0x3003d,1,3},//!< "BIT(0) - interlock" &ro
-{NULL,(u8*)&regs_global.vars.unused_3,0,"unused_3","unused_3",U16_REGS_FLAG,17,124,0x3003e,1,3},//!<"" &ro
-{NULL,(u8*)&regs_global.vars.sys_tick_counter,0,"tick in ms","sys_tick_counter",U64_REGS_FLAG,18,126,0x3003f,1,3},//!<"tick in ms",&ro
-{NULL,(u8*)&regs_global.vars.mac_addr[0],0,"ethernet mac address","mac_addr",U8_REGS_FLAG,19,134,0x30043,6,3},//!<"ethernet mac address",&ro
-{NULL,(u8*)&regs_global.vars.flags_succ_init,0,"success inited modules","flags_succ_init",U32_REGS_FLAG,20,140,0x30046,1,3},//!<"success inited modules" &ro for init in task
-{NULL,(u8*)&regs_global.vars.cur_free_heap,0,"in bytes","cur_free_heap",U32_REGS_FLAG,21,144,0x30048,1,3},//!<"in bytes",&ro
-{NULL,(u8*)&regs_global.vars.min_free_heap,0,"in bytes","min_free_heap",U32_REGS_FLAG,22,148,0x3004a,1,3},//!<"in bytes",&ro
-{NULL,(u8*)&regs_global.vars.debug_info[0],0,"reserved use for debug","debug_info",U8_REGS_FLAG,23,152,0x3004c,8,3},//!<"reserved use for debug"&ro
-{&def_num_of_vars,(u8*)&regs_global.vars.num_of_vars,0,"num_of_vars","num_of_vars",U16_REGS_FLAG,24,160,0x30050,1,3},//!<"number of vars self + config(user)&ro &def
-{NULL,(u8*)&regs_global.vars.temperature_mcu,0,"temperature mcu Celsius","temperature_mcu",FLOAT_REGS_FLAG,25,162,0x30051,1,3},//!<"temperature mcu Celsius" &ro
-{&def_fw_version,(u8*)&regs_global.vars.fw_version[0],0,"version like 0.1.1.0","fw_version",U8_REGS_FLAG,26,166,0x30053,4,3},//!<"version like 0.1.1.0",&ro,&def
-{&def_board_ver,(u8*)&regs_global.vars.board_ver,0,"board version","board_ver",U16_REGS_FLAG,27,170,0x30055,1,3},//!< "board version", &ro, &def
-{NULL,(u8*)&regs_global.vars.firmware_hash,0,"hash os","firmware_hash",U32_REGS_FLAG,28,172,0x30056,1,3},//!< "hash os" &ro
-{NULL,(u8*)&regs_global.vars.system_error,0,"system global error","system_error",U32_REGS_FLAG,29,176,0x30058,1,3},//!< "system global error" &ro
-{&def_permission,(u8*)&regs_global.vars.permission,0,"flags with permissions","permission",U16_REGS_FLAG,30,180,0x3005a,1,3},//!<"flags with permissions" &ro &def
-{NULL,(u8*)&regs_global.vars.async_flags,0,"async flags","async_flags",U32_REGS_FLAG,31,182,0x3005b,1,3},//!< "async flags" &ro
-{NULL,(u8*)&regs_global.vars.slip_packet_counter,0,"count all slip packet","slip_packet_counter",U64_REGS_FLAG,32,186,0x3005d,1,1},//!< "count all slip packet"
-{NULL,(u8*)&regs_global.vars.ap_connections_number,0,"number of connections","ap_connections_number",U16_REGS_FLAG,33,194,0x30061,1,3},//!< "number of connections" &ro
-{NULL,(u8*)&regs_global.vars.sta_connect,0,"sta connect state","sta_connect",U16_REGS_FLAG,34,196,0x30062,1,3},//!< "sta connect state" &ro
-{&def_table_version,(u8*)&regs_global.vars.table_version,134,"change value in def_table_version for drop all regs to default value","table_version",U32_REGS_FLAG,35,198,0x30063,1,7},//!< "change value in def_table_version for drop all regs to default value" &ro &def &save
-{&def_test_pwm_value,(u8*)&regs_global_part1.vars.test_pwm_value,138,"test pwm value [0;100]","test_pwm_value",FLOAT_REGS_FLAG,36,202,0x303e8,1,5},//!<"test pwm value [0;100]" &def &save
+{ &def_mdb_addr, NULL, NULL, (u8*)&regs_global.vars.mdb_addr, 16,"modbus address","mdb_addr", U16_REGS_FLAG, 0, 0, 0x30000, 1, 5, 0 },//!<"modbus address" &save &def
+{ &def_ip, NULL, NULL, (u8*)&regs_global.vars.ip[0], 18,"device ip address, warning!!! changes can lead to lost connection","ip", U8_REGS_FLAG, 1, 2, 0x30001, 4, 5, 0 },//!<"device ip address, warning!!! changes can lead to lost connection" &save &def &crtcl
+{ &def_netmask, NULL, NULL, (u8*)&regs_global.vars.netmask[0], 22,"netmask address for main wifi net","netmask", U8_REGS_FLAG, 2, 6, 0x30003, 4, 5, 0 },//!<"netmask address for main wifi net", &save , &def , &crtcl
+{ &def_gate, NULL, NULL, (u8*)&regs_global.vars.gate[0], 26,"gateaway address, warning!!! changes can lead to lost connection ","gate", U8_REGS_FLAG, 3, 10, 0x30005, 4, 5, 0 },//!<"gateaway address, warning!!! changes can lead to lost connection " &save &def &crtcl
+{ &def_slip_ip, NULL, NULL, (u8*)&regs_global.vars.slip_ip[0], 30,"ip address for local net","slip_ip", U8_REGS_FLAG, 4, 14, 0x30007, 4, 5, 0 },//!<"ip address for local net",&save , &def &crtcl
+{ &def_slip_netmask, NULL, NULL, (u8*)&regs_global.vars.slip_netmask[0], 34,"netmask address for local net","slip_netmask", U8_REGS_FLAG, 5, 18, 0x30009, 4, 5, 0 },//!<"netmask address for local net", &save , &def , &crtcl
+{ &def_slip_gate, NULL, NULL, (u8*)&regs_global.vars.slip_gate[0], 38,"gateaway address for local net","slip_gate", U8_REGS_FLAG, 6, 22, 0x3000b, 4, 5, 0 },//!<"gateaway address for local net", &save, &def &crtcl
+{ &def_wifi_name, NULL, NULL, (u8*)&regs_global.vars.wifi_name[0], 42,"must be strong full filled","wifi_name", U8_REGS_FLAG, 7, 26, 0x3000d, 12, 5, 0 },//!<"must be strong full filled", &save &def &crtcl
+{ &def_wifi_password, NULL, NULL, (u8*)&regs_global.vars.wifi_password[0], 54,"must be strong 8 byte","wifi_password", U8_REGS_FLAG, 8, 38, 0x30013, 8, 5, 0 },//!<"must be strong 8 byte", &save &def &crtcl
+{ &def_wifi_router_name, NULL, NULL, (u8*)&regs_global.vars.wifi_router_name[0], 62,"must be ended by zero","wifi_router_name", U8_REGS_FLAG, 9, 46, 0x30017, 32, 5, 0 },//!<"must be ended by zero", &save &def &crtcl
+{ &def_wifi_router_password, NULL, NULL, (u8*)&regs_global.vars.wifi_router_password[0], 94,"must be more or equal 8 byte","wifi_router_password", U8_REGS_FLAG, 10, 78, 0x30027, 32, 5, 0 },//!<"must be more or equal 8 byte", &save &def &crtcl
+{ &def_wifi_setting, NULL, NULL, (u8*)&regs_global.vars.wifi_setting, 126,"type of wifi and settings","wifi_setting", U16_REGS_FLAG, 11, 110, 0x30037, 1, 5, 0 },//!<"type of wifi and settings" &save &def &crtcl
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.reset_num, 128,"number of reset","reset_num", U32_REGS_FLAG, 12, 112, 0x30038, 1, 5, 0 },//!<"number of reset" &save
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.wifi_state, 0,"wifi state","wifi_state", U16_REGS_FLAG, 13, 116, 0x3003a, 1, 3, 0 },//!<"wifi state" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.command, 0,"command register","command", U16_REGS_FLAG, 14, 118, 0x3003b, 1, 1, 0 },//!<"command register"
+{ &def_uart_debug_sets, NULL, NULL, (u8*)&regs_global.vars.uart_debug_sets, 132,"settings debug uart speed,parity and stop bits, default 115200 ,parity - none, 1 stop bit","uart_debug_sets", U16_REGS_FLAG, 15, 120, 0x3003c, 1, 5, 0 },//!<"settings debug uart speed,parity and stop bits, default 115200 ,parity - none, 1 stop bit" &save &def
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.device_state, 0,"BIT(0) - interlock","device_state", U16_REGS_FLAG, 16, 122, 0x3003d, 1, 3, 0 },//!< "BIT(0) - interlock" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.unused_3, 0,"unused_3","unused_3", U16_REGS_FLAG, 17, 124, 0x3003e, 1, 3, 0 },//!<"" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.sys_tick_counter, 0,"tick in ms","sys_tick_counter", U64_REGS_FLAG, 18, 126, 0x3003f, 1, 3, 0 },//!<"tick in ms",&ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.mac_addr[0], 0,"ethernet mac address","mac_addr", U8_REGS_FLAG, 19, 134, 0x30043, 6, 3, 0 },//!<"ethernet mac address",&ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.flags_succ_init, 0,"success inited modules","flags_succ_init", U32_REGS_FLAG, 20, 140, 0x30046, 1, 3, 0 },//!<"success inited modules" &ro for init in task
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.cur_free_heap, 0,"in bytes","cur_free_heap", U32_REGS_FLAG, 21, 144, 0x30048, 1, 3, 0 },//!<"in bytes",&ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.min_free_heap, 0,"in bytes","min_free_heap", U32_REGS_FLAG, 22, 148, 0x3004a, 1, 3, 0 },//!<"in bytes",&ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.debug_info[0], 0,"reserved use for debug","debug_info", U8_REGS_FLAG, 23, 152, 0x3004c, 8, 3, 0 },//!<"reserved use for debug"&ro
+{ &def_num_of_vars, NULL, NULL, (u8*)&regs_global.vars.num_of_vars, 0,"num_of_vars","num_of_vars", U16_REGS_FLAG, 24, 160, 0x30050, 1, 3, 0 },//!<"number of vars self + config(user)&ro &def
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.temperature_mcu, 0,"temperature mcu Celsius","temperature_mcu", FLOAT_REGS_FLAG, 25, 162, 0x30051, 1, 3, 0 },//!<"temperature mcu Celsius" &ro
+{ &def_fw_version, NULL, NULL, (u8*)&regs_global.vars.fw_version[0], 0,"version like 0.1.1.0","fw_version", U8_REGS_FLAG, 26, 166, 0x30053, 4, 3, 0 },//!<"version like 0.1.1.0",&ro,&def
+{ &def_board_ver, NULL, NULL, (u8*)&regs_global.vars.board_ver, 0,"board version","board_ver", U16_REGS_FLAG, 27, 170, 0x30055, 1, 3, 0 },//!< "board version", &ro, &def
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.firmware_hash, 0,"hash os","firmware_hash", U32_REGS_FLAG, 28, 172, 0x30056, 1, 3, 0 },//!< "hash os" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.system_error, 0,"system global error","system_error", U32_REGS_FLAG, 29, 176, 0x30058, 1, 3, 0 },//!< "system global error" &ro
+{ &def_permission, NULL, NULL, (u8*)&regs_global.vars.permission, 0,"flags with permissions","permission", U16_REGS_FLAG, 30, 180, 0x3005a, 1, 3, 0 },//!<"flags with permissions" &ro &def
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.async_flags, 0,"async flags","async_flags", U32_REGS_FLAG, 31, 182, 0x3005b, 1, 3, 0 },//!< "async flags" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.slip_packet_counter, 0,"count all slip packet","slip_packet_counter", U64_REGS_FLAG, 32, 186, 0x3005d, 1, 1, 0 },//!< "count all slip packet"
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.ap_connections_number, 0,"number of connections","ap_connections_number", U16_REGS_FLAG, 33, 194, 0x30061, 1, 3, 0 },//!< "number of connections" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.sta_connect, 0,"sta connect state","sta_connect", U16_REGS_FLAG, 34, 196, 0x30062, 1, 3, 0 },//!< "sta connect state" &ro
+{ &def_table_version, NULL, NULL, (u8*)&regs_global.vars.table_version, 134,"change value in def_table_version for drop all regs to default value","table_version", U32_REGS_FLAG, 35, 198, 0x30063, 1, 7, 0 },//!< "change value in def_table_version for drop all regs to default value" &ro &def &save
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.test_pwm_value, 138,"test pwm value [0;100]","test_pwm_value", FLOAT_REGS_FLAG, 36, 202, 0x303e8, 1, 5, 1 },//!<"test pwm value [0;100]" &def &save
+{ &def_servo_0, &def_min_servo_0, &def_max_servo_0, (u8*)&servo_control_part.vars.servo_0, 142,"servo pwm value [0;100]","servo_0", FLOAT_REGS_FLAG, 37, 206, 0x307d0, 1, 197, 2 },//!<"servo pwm value [0;100]" &def &save &min &max
+{ &def_servo_1, &def_min_servo_1, &def_max_servo_1, (u8*)&servo_control_part.vars.servo_1, 146,"servo pwm value [0;100]","servo_1", FLOAT_REGS_FLAG, 38, 210, 0x307d2, 1, 197, 2 },//!<"servo pwm value [0;100]" &def &save &min &max
+{ &def_servo_2, &def_min_servo_2, &def_max_servo_2, (u8*)&servo_control_part.vars.servo_2, 150,"servo pwm value [0;100]","servo_2", FLOAT_REGS_FLAG, 39, 214, 0x307d4, 1, 197, 2 },//!<"servo pwm value [0;100]" &def &save &min &max
+{ &def_servo_3, &def_min_servo_3, &def_max_servo_3, (u8*)&servo_control_part.vars.servo_3, 154,"servo pwm value [0;100]","servo_3", FLOAT_REGS_FLAG, 40, 218, 0x307d6, 1, 197, 2 },//!<"servo pwm value [0;100]" &def &save &min &max
 };
 
 static const regs_description_t * regs_description_user =NULL;
@@ -90,44 +107,21 @@ int regs_description_get_by_name(regs_template_t * regs_template){
     int result;
     u32 name_size;
     u16 i;
-    result = 1;
+    result = -1;
     name_size = strlen(regs_template->name);
     if(name_size > REGS_MAX_NAME_SIZE){
        name_size = REGS_MAX_NAME_SIZE;
     }
-    regs_global.vars.num_of_vars = (regs_global.vars.num_of_vars<NUM_OF_SELF_VARS)?NUM_OF_SELF_VARS:regs_global.vars.num_of_vars;
     const regs_description_t * description_temp =NULL;
     for (i=0 ; i<regs_global.vars.num_of_vars; i++){
-        if(i<NUM_OF_SELF_VARS){
-            if (memcmp(regs_template->name, regs_description[i].name, name_size) == 0){
-                description_temp = &regs_description[i];
-                regs_template->ind = regs_description[i].ind;
-                regs_template->p_value = description_temp->p_value;
-                result = 0;
-                break;
-            }
-        }else if(regs_description_user!=NULL){
-            if (memcmp(regs_template->name, regs_description_user[i-NUM_OF_SELF_VARS].name, name_size) == 0){
-                description_temp = &regs_description_user[i-NUM_OF_SELF_VARS];
-                regs_template->ind = regs_description_user[i-NUM_OF_SELF_VARS].ind+NUM_OF_SELF_VARS;
-                regs_template->p_value = description_temp->p_value;
-                result = 0;
-                break;
-            }
-        }else{
-            result =-2;
+        if (memcmp(regs_template->name, regs_description[i].name, name_size) == 0){
+            description_temp = &regs_description[i];
+            result = 0;
             break;
         }
     }
     if((description_temp != NULL) && (result==0)){
-        regs_template->description = description_temp->description;
-        regs_template->guid = description_temp->guid;
-        regs_template->p_default = description_temp->p_default;
-        regs_template->saved_address = description_temp->saved_address;
-        regs_template->property = description_temp->property;
-        regs_template->size = description_temp->size;
-        regs_template->modbus_description = description_temp->modbus_description;
-        regs_template->type = description_temp->type;
+        memcpy(regs_template,description_temp,sizeof(regs_description_t));
         regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
     }
 
@@ -141,28 +135,11 @@ int regs_description_get_by_name(regs_template_t * regs_template){
 int regs_description_get_by_ind(regs_template_t * regs_template){
     int result = 0;
     regs_global.vars.num_of_vars = (regs_global.vars.num_of_vars<NUM_OF_SELF_VARS)?NUM_OF_SELF_VARS:regs_global.vars.num_of_vars;
-
     if(regs_template->ind < regs_global.vars.num_of_vars){
         const regs_description_t * description_temp =NULL;
-        if(regs_template->ind<NUM_OF_SELF_VARS){
-            description_temp = &regs_description[regs_template->ind];
-            regs_template->p_value = description_temp->p_value;
-        }else if(regs_description_user!=NULL){
-            description_temp = &regs_description_user[regs_template->ind-NUM_OF_SELF_VARS];
-            regs_template->p_value = description_temp->p_value;
-        }else{
-            result = -2;
-        }
-        if((description_temp != NULL) && (result==0)){
-            regs_template->description = description_temp->description;
-            regs_template->guid = description_temp->guid;
-            regs_template->name = description_temp->name;
-            regs_template->p_default = description_temp->p_default;
-            regs_template->saved_address = description_temp->saved_address;
-            regs_template->property = description_temp->property;
-            regs_template->size = description_temp->size;
-            regs_template->modbus_description = description_temp->modbus_description;
-            regs_template->type = description_temp->type;
+        description_temp = &regs_description[regs_template->ind];
+        if(description_temp != NULL){
+            memcpy(regs_template,description_temp,sizeof(regs_description_t));
             regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
         }
     }else{
@@ -176,41 +153,19 @@ int regs_description_get_by_ind(regs_template_t * regs_template){
  * @return zero value if have found description
  */
 int regs_description_get_by_guid(regs_template_t * regs_template){
-    int result = 1;
+    int result = -1;
     u16 i;
     const regs_description_t * description_temp =NULL;
     regs_global.vars.num_of_vars = (regs_global.vars.num_of_vars<NUM_OF_SELF_VARS)?NUM_OF_SELF_VARS:regs_global.vars.num_of_vars;
     for (i=0 ; i<regs_global.vars.num_of_vars ; i++){
-        if(i<NUM_OF_SELF_VARS){
-            if (regs_template->guid == regs_description[i].guid){
-                description_temp = &regs_description[i];
-                regs_template->ind = regs_description[i].ind;
-                regs_template->p_value = description_temp->p_value;
-                result = 0;
-                break;
-            }
-        }else if(regs_description_user!=NULL){
-            if (regs_template->guid == regs_description_user[i-NUM_OF_SELF_VARS].guid){
-                description_temp = &regs_description_user[i-NUM_OF_SELF_VARS];
-                regs_template->ind = regs_description_user[i-NUM_OF_SELF_VARS].ind + NUM_OF_SELF_VARS;
-                regs_template->p_value = description_temp->p_value;
-                result = 0;
-                break;
-            }
-        }else{
-            result = -2;
+        if (regs_template->guid == regs_description[i].guid){
+            description_temp = &regs_description[i];
+            result = 0;
             break;
         }
     }
     if((description_temp != NULL) && (result==0)){
-        regs_template->description = description_temp->description;
-        regs_template->name = description_temp->name;
-        regs_template->p_default = description_temp->p_default;
-        regs_template->saved_address = description_temp->saved_address;
-        regs_template->property = description_temp->property;
-        regs_template->size = description_temp->size;
-        regs_template->modbus_description = description_temp->modbus_description;
-        regs_template->type = description_temp->type;
+        memcpy(regs_template,description_temp,sizeof(regs_description_t));
         regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
     }
     return result;
@@ -265,13 +220,31 @@ int regs_description_add_user_vars(const regs_description_t * user_description, 
  * @ingroup regs
   * @todo check neccessary of this function
  */
-u8 regs_description_is_writeable (u16 index){
+u8 regs_description_is_writable (u16 reg_index){
     u8 result = 0;
-    if (index < NUM_OF_SELF_VARS){
-        if(regs_description[index].property & READ_ONLY){
+    if (reg_index < NUM_OF_SELF_VARS){
+        if(regs_description[reg_index].property & READ_ONLY){
             result = 0;
         }else{
             result = 1;
+        }
+    }
+    return result;
+}
+/**
+ * @brief regs_description_is_credential
+ * @param reg_index
+ * @return 1 if credential
+ * @ingroup regs
+  * @todo check neccessary of this function
+ */
+u8 regs_description_is_credential(u16 reg_index){
+    u8 result = 0;
+    if (reg_index < NUM_OF_SELF_VARS){
+        if(regs_description[reg_index].property & CREDENTIAL_FLAG){
+            result = 1;
+        }else{
+            result = 0;
         }
     }
     return result;
@@ -312,26 +285,17 @@ u8 regs_description_flag_check (u16 index, u8 flag){
     return result;
 
 }
-/**
- * @brief regs_description_is_credential
- * @param reg_index
- * @return 1 if credential
- * @ingroup regs
-  * @todo check neccessary of this function
- */
-u8 regs_description_is_credential(u16 index){
-    return regs_description_flag_check(index, CREDENTIAL_FLAG);
-}
+
 /**
  * @brief regs_get_index_by_byte_address return index of regs by byte address
  * @param byte_address - byte number
  * @return
  */
-int regs_description_get_index_by_guid(u32 guid){
+int regs_description_get_index_by_guid(u32 byte_address){
     int result = -1;
     for (int i = 0;i<NUM_OF_SELF_VARS;i++){
-        if ((guid>= regs_description[i].guid) &&
-            (guid < (regs_description[i].guid+regs_size_in_byte(regs_description[i].type)*regs_description[i].size))){
+        if ((byte_address>= regs_description[i].guid) &&
+            (byte_address < (regs_description[i].guid+regs_size_in_byte(regs_description[i].type)*regs_description[i].size))){
             result = i;
             break;
         }
@@ -370,9 +334,11 @@ void * regs_description_get_pointer_by_modbus(u16 modbus_address, u8 modbus_func
         if (modbus_function == reg_mdb_function){
             if (modbus_address == reg_mdb_address){
                 p_value = regs_description[i].p_value;
+                break;
             }else if((modbus_address > reg_mdb_address) &&
                      (modbus_address < (reg_mdb_address + reg_size_in_word))){
                 p_value = regs_description[i].p_value + (modbus_address - reg_mdb_address) * 2;
+                break;
             }
         }
     }
@@ -394,6 +360,104 @@ int set_regs_def_values (void){
                 memcpy(reg_template.p_value,reg_template.p_default,reg_template.size_in_bytes);
             }
         }
+    }
+    return res;
+}
+/**
+ * @brief return ind of savig address of register in bkram
+ * @param reg_end_address - pointer to register
+ * @return  ind of savig bkram address, \n
+ *          -1 - reg description not find
+ * @ingroup regs
+ */
+int end_of_saved_reg_addr(void * reg_end_address){
+    u16 i;
+    int result = -1;
+    regs_template_t regs_template;
+    for (i=0 ; i<regs_global.vars.num_of_vars; i++){
+        regs_template.ind = i;
+        regs_description_get_by_ind(&regs_template);
+        if ((regs_template.property & SAVING) &&
+            (reg_end_address == (regs_template.p_value + regs_template.size_in_bytes))){
+            result = i;
+            break;
+        }
+    }
+    return result;
+}
+/**
+ * @brief regs_fill_temp_buffer - fillng temp buff
+ * @param reg_address   - pointer to data where will write
+ * @param reg   - write struct
+ * @param temp_data_buffering - global temp buffer for writing data
+ * @param index - index of register
+ * @return
+ */
+int regs_fill_temp_buffer(void * reg_address,regs_access_t reg,temp_data_buffering_t * temp_data_buffering, int index){
+    int res = 0;
+    regs_template_t reg_template = {0};
+    reg_template.ind = (u16)index;
+    if (regs_description_get_by_ind(&reg_template)>=0){
+        u8 reg_write_size = regs_size_in_byte(reg.flag);
+        u32 shift = (u32)reg_address - (u32)reg_template.p_value;
+        u8 regs_item_size = regs_size_in_byte(reg_template.type);
+        u8 start_byte = shift % regs_item_size;/*0-7*/
+        if ((u32)temp_data_buffering->reg_address != ((u32)reg_address - start_byte)){
+            temp_data_buffering->reg_address = (void*)((u32)reg_address - start_byte);
+            temp_data_buffering->byte_writed_flags = 0;
+            temp_data_buffering->type = reg_template.type;
+            temp_data_buffering->index = (u16)index;
+            memset(temp_data_buffering->data.bytes,0,8);
+        }
+        reg_write_size = reg_write_size>(regs_item_size-start_byte)?(regs_item_size-start_byte):reg_write_size;
+        memcpy(&temp_data_buffering->data.bytes[start_byte],&reg.value,reg_write_size);
+        for(u32 i=start_byte;i<(reg_write_size + start_byte);i++){
+            temp_data_buffering->byte_writed_flags |= BIT(i);
+        }
+        res = reg_write_size;
+    }else{
+        res =-1;
+    }
+    return res;
+}
+/**
+ * @brief regs_check_temp_buffer
+ * @param temp_data_buffering
+ * @param index
+ * @return positive value if register is full filling
+ */
+int regs_check_temp_buffer(temp_data_buffering_t * temp_data_buffering, int index){
+    int res = 0;
+    regs_template_t reg_template = {0};
+    reg_template.ind = (u16)index;
+    if (regs_description_get_by_ind(&reg_template)>=0){
+        u8 regs_item_size = regs_size_in_byte(reg_template.type);
+        res = 1;
+        for(u32 i=0;i<regs_item_size;i++){
+            if ((temp_data_buffering->byte_writed_flags & BIT(i)) == 0){
+                res = 0;
+                break;
+            }
+        }
+    }else{
+        res =-1;
+    }
+    return res;
+}
+/**
+ * @brief regs_clear_temp_buffer clining
+ * @param temp_data_buffering
+ * @param index
+ * @return positive value if register is full filling
+ */
+int regs_clear_temp_buffer(temp_data_buffering_t * temp_data_buffering){
+    int res = 0;
+    if (temp_data_buffering!=NULL){
+        temp_data_buffering->reg_address = NULL;
+        temp_data_buffering->byte_writed_flags = 0;
+        temp_data_buffering->type = 0;
+        temp_data_buffering->index = 0xffff;
+        memset(temp_data_buffering->data.bytes,0,8);
     }
     return res;
 }

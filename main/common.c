@@ -49,6 +49,7 @@
 #include "regs.h"
 #include "mirror_storage.h"
 #include "esp_wifi.h"
+#include "pwm_test.h"
 
 #define DUTY_TASK_PERIOD_MS 100
 task_handle_t common_duty_task_handle;
@@ -103,7 +104,14 @@ int common_init_tasks(){
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create slip to wifi flow control task failed");
     }
-    task_create(slip_handle_uart_rx_task, "slip_modem_uart_rx_task", SLIP_RX_TASK_STACK_SIZE, &wifi_slip_config, SLIP_RX_TASK_PRIORITY, &wifi_slip_config.uart_rx_task);
+    res = task_create(slip_handle_uart_rx_task, "slip_modem_uart_rx_task", SLIP_RX_TASK_STACK_SIZE, &wifi_slip_config, SLIP_RX_TASK_PRIORITY, &wifi_slip_config.uart_rx_task);
+    if (res != pdTRUE) {
+        ESP_LOGE(TAG, "create slip_modem_uart_rx_task failed");
+    }
+    res = task_create(pwm_control_task, "pwm_control_task", 2048, &wifi_slip_config, (tskIDLE_PRIORITY + 2), &pwm_task_handle);
+    if (res != pdTRUE) {
+        ESP_LOGE(TAG, "create slip_modem_uart_rx_task failed");
+    }
     return res;
 }
 /**

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file    regs.h
  * @author  Shoma Gane <shomagan@gmail.com>
  * @author  Ayrat Girfanov <girfanov.ayrat@yandex.ru>
@@ -158,10 +158,12 @@ typedef struct {
   * @{
   */
 #define FW_VERSION_SIZE 4
-#define FW_VERSION {0,0,0,1}
+#define FW_VERSION {1,1,0,15}
+#define FW_VERSION_STR "1.1.0-beta.15"
+#define FW_FIRMWARE_HASH "176-fe2eee4a72476c8643e702e2a7c14f"
 #define FW_HASH 0x00000000
 #define REGS_MAX_NAME_SIZE 32
-#define DEVICE_NAME_SIZE 32
+#define DEVICE_NAME_SIZE 40
 #define BKRAM_BYTES_NUM 66
 #define WRITE_REG_MASK 0xFFFF
 #define WRITE_REG_CH_MASK 0xFFFF0000
@@ -187,7 +189,7 @@ typedef struct {
  *
  * @ingroup regs
  */
-/* #generator_use_descritption { "address_space" :0, "modbus_type" :"holding_registers", "modbus_address" :0}*/
+/* #generator_use_descritption {"space_name" :"main_vars_t", "address_space" :0, "modbus_type" :"holding_registers", "modbus_address" :0}*/
 typedef union{
     struct MCU_PACK{
         // start regs struct
@@ -233,6 +235,7 @@ typedef union{
     }vars;
     u8 bytes[GLOBAL_UNION_SIZE]; //for full bksram copy
 }main_vars_t;// #generator_use_descritption {"message":"end_struct"}
+extern main_vars_t regs_global;
 /**
  * @brief main struct
  * name variables uses for generate name in description file and then in get value by name
@@ -245,7 +248,7 @@ typedef union{
  *
  * @ingroup regs
  */
-/* #generator_use_descritption { "address_space" :1, "modbus_type" :"holding_registers", "modbus_address" :1000}*/
+/* #generator_use_descritption {"space_name" :"main_vars_part_1_t",  "address_space" :1, "modbus_type" :"holding_registers", "modbus_address" :1000}*/
 typedef union{
     struct MCU_PACK{
         // start regs struct
@@ -253,8 +256,32 @@ typedef union{
     }vars;
     u8 bytes[32]; //for full bksram copy
 }main_vars_part_1_t;// #generator_use_descritption {"message":"end_struct"}
-extern main_vars_t regs_global;
 extern main_vars_part_1_t regs_global_part1;
+/**
+ * @brief main struct
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *                  &crtcl- restart after change value, \n
+ *
+ * @ingroup regs
+ */
+/* #generator_use_descritption {"space_name" :"servo_control_part_t",  "address_space" :2, "modbus_type" :"holding_registers", "modbus_address" :2000}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        float servo_0;                   //!<"servo pwm value [0;100]" &def &save &min &max
+        float servo_1;                   //!<"servo pwm value [0;100]" &def &save &min &max
+        float servo_2;                   //!<"servo pwm value [0;100]" &def &save &min &max
+        float servo_3;                   //!<"servo pwm value [0;100]" &def &save &min &max
+    }vars;
+    u8 bytes[32]; //for full bksram copy
+}servo_control_part_t;// #generator_use_descritption {"message":"end_struct"}
+extern servo_control_part_t servo_control_part;
+
 /**
   * @brief registers for regs_event_handler
   * @ingroup regs
@@ -344,6 +371,18 @@ typedef enum {
     BOOT_KEY_DOWNLOAD_DISABLE =     (1 << 13),
     BOOT_KEY_REMOTE_UPDATE_ENABLE = (1 << 14),
 }rst_reason_t;
+typedef union{
+    operand_t operand;
+    u8 bytes[8];
+}data_buffer_t;
+
+typedef struct {
+    data_buffer_t data;
+    u8 byte_writed_flags;
+    void * reg_address;
+    u16 type;
+    u16 index;
+}temp_data_buffering_t;
 
 typedef enum {
     WIFI_ACCESS_POINT = 1,

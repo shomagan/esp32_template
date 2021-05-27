@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import os
 import re
 import fileinput
@@ -113,14 +113,31 @@ def change_version(git_base_path):
     repo = Repo(git_base_path)
     assert not repo.bare
     tags = sorted(repo.tags, key=lambda t: t.commit.committed_datetime)
+    head_commit = repo.head.commit
+    commits = list(repo.iter_commits('HEAD'))
+    count_commits = len(commits)
     print("current version {}".format(tags[-1]))
     version = str(tags[-1])
+    version_array = re.findall(r'\d+', version)
     version = version.replace("v", "")
     version = version.replace(".", ",")
     str_before = "\#define\s+OS_VERSION\s+\{[\d\,]+\}"
     str_to = "#define OS_VERSION {"+version+"}"
     print(str_before, str_to)
-    substitute_reg_exp("../main//regs.h", str_before, str_to)
+    substitute_reg_exp("../../inc/regs.h", str_before, str_to)
+    str_before = "\#define\s+OS_VERSION_STR\s+\"[\d\.\w\-]+\""
+    str_to = "#define OS_VERSION_STR \"{}.{}.{}-beta.{}\"".format(version_array[0],
+                                                                  version_array[1],
+                                                                  version_array[2],
+                                                                  version_array[3])
+    print(str_before, str_to)
+    substitute_reg_exp("../../inc/regs.h", str_before, str_to)
+    str_before = "\#define\s+OS_FIRMWARE_HASH\s+\"[\d\-\w]+\""
+    str_to = "#define OS_FIRMWARE_HASH \"{}-{}\"".format(count_commits, head_commit.hexsha[:30])
+    print(str_before, str_to)
+    substitute_reg_exp("../../inc/regs.h", str_before, str_to)
+
+    # define OS_FIRMWARE_HASH "1-abcdef"
 
 
 def get_git_version(git_base_path):
@@ -203,6 +220,7 @@ def write_exist_file():
         else:
             print(line, end='')
     fileinput.close()
+    template_file.close()
     if number:
         print('replace ' + str(number) + ' string in description file' + file_path)
     else:

@@ -43,34 +43,111 @@
 #include "pwm_test.h"
 #include "regs.h"
 #include "regs_description.h"
-
 #include "driver/mcpwm.h"
 #include "soc/mcpwm_periph.h"
+#include "common.h"
 static void mcpwm_example_gpio_initialize(void);
 #define GPIO_PWM0A_OUT 13   //Set GPIO 13 as PWM0A
 #define GPIO_PWM0B_OUT 15   //Set GPIO 15 as PWM0A
 
+#define GPIO_STEP0_OUT 13   //Set GPIO 33 as STEP0
+#define GPIO_STEP1_OUT 15   //Set GPIO 27 as STEP1
+#define GPIO_STEP2_OUT 14   //Set GPIO 14 as STEP2
+#define GPIO_STEP3_OUT 12   //Set GPIO 12 as STEP3
+static u8 compare_float_value(float a,float b, float diff);
+task_handle_t pwm_task_handle;
 static void mcpwm_example_gpio_initialize(void){
+#if PWM_AIR_ENABLE
     mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0A, GPIO_PWM0A_OUT);
     mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0B, GPIO_PWM0B_OUT);
+#elif PWM_STEP_CONTROL_ENABLE
+    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0A, GPIO_STEP0_OUT);
+    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0B, GPIO_STEP1_OUT);
+    mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM1A, GPIO_STEP2_OUT);
+    mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM1B, GPIO_STEP3_OUT);
+#endif
 }
 void pwm_test_set(float duty_cycle){
+#if PWM_AIR_ENABLE
     mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, duty_cycle);
     mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
     mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, duty_cycle);
     mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
+#endif
 }
 
 int pwm_test_init(void){
     mcpwm_example_gpio_initialize();
     mcpwm_config_t pwm_config = {0};
-    pwm_config.frequency = 22000;    //frequency = 500Hz,
+#if PWM_AIR_ENABLE
+    pwm_config.frequency = 22000;    //frequency =22000Hz,
     pwm_config.cmpr_a = regs_global_part1.vars.test_pwm_value;    //duty cycle of PWMxA = 0
     pwm_config.cmpr_b = regs_global_part1.vars.test_pwm_value;    //duty cycle of PWMxb = 0
     pwm_config.counter_mode = MCPWM_UP_COUNTER;
     pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
     mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config);    //Configure PWM0A & PWM0B with above settings
     pwm_test_set(regs_global_part1.vars.test_pwm_value);
+#elif PWM_STEP_CONTROL_ENABLE
+    pwm_config.frequency = 50;    //frequency = 50Hz,
+    pwm_config.cmpr_a = servo_control_part.vars.servo_0;    //duty cycle of PWMxA = 0
+    pwm_config.cmpr_b = servo_control_part.vars.servo_1;    //duty cycle of PWMxb = 0
+    pwm_config.counter_mode = MCPWM_UP_COUNTER;
+    pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
+    mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config);    //Configure PWM0A & PWM0B with above settings
+    pwm_config.frequency = 50;    //frequency = 50Hz,
+    pwm_config.cmpr_a = servo_control_part.vars.servo_2;    //duty cycle of PWMxA = 0
+    pwm_config.cmpr_b = servo_control_part.vars.servo_3;    //duty cycle of PWMxb = 0
+    pwm_config.counter_mode = MCPWM_UP_COUNTER;
+    pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
+    mcpwm_init(MCPWM_UNIT_1, MCPWM_TIMER_1, &pwm_config);    //Configure PWM0A & PWM0B with above settings
+#endif
+
     return 0;
+}
+void pwm_control_task(void *arg){
+    float servo0 = 0.0f;
+    float servo1 = 0.0f;
+    float servo2 = 0.0f;
+    float servo3 = 0.0f;
+    uint32_t signal_value;
+    while(1){
+        if(task_notify_wait(STOP_CHILD_PROCCES|PACKET_RECEIVED, &signal_value, 10)==pdTRUE){
+            /*by signal*/
+            if (signal_value & STOP_CHILD_PROCCES){
+            }else if(signal_value & PACKET_RECEIVED){
+            }
+        }
+#if PWM_STEP_CONTROL_ENABLE
+        if (!compare_float_value(servo0, servo_control_part.vars.servo_0, 0.01f)){
+            servo0=servo_control_part.vars.servo_0;
+            mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, servo0);
+            mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
+        }
+        if (!compare_float_value(servo1, servo_control_part.vars.servo_1, 0.01f)){
+            servo1=servo_control_part.vars.servo_1;
+            mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, servo1);
+            mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
+        }
+        if (!compare_float_value(servo2, servo_control_part.vars.servo_2, 0.01f)){
+            servo2=servo_control_part.vars.servo_2;
+            mcpwm_set_duty(MCPWM_UNIT_1, MCPWM_TIMER_1, MCPWM_OPR_A, servo2);
+            mcpwm_set_duty_type(MCPWM_UNIT_1, MCPWM_TIMER_1, MCPWM_OPR_A, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
+        }
+        if (!compare_float_value(servo3, servo_control_part.vars.servo_3, 0.01f)){
+            servo3=servo_control_part.vars.servo_3;
+            mcpwm_set_duty(MCPWM_UNIT_1, MCPWM_TIMER_1, MCPWM_OPR_B, servo3);
+            mcpwm_set_duty_type(MCPWM_UNIT_1, MCPWM_TIMER_1, MCPWM_OPR_B, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
+        }
+#endif
+    }
+}
+static u8 compare_float_value(float a,float b, float diff){
+    u8 res = 0;
+    if ((a>(b-diff))&&(a<(b+diff))){
+        res = 1;
+    }else{
+        res = 0;
+    }
+    return res;
 }
 #endif //PWM_TEST_C
