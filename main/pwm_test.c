@@ -50,12 +50,13 @@ static void mcpwm_example_gpio_initialize(void);
 #define GPIO_PWM0A_OUT 13   //Set GPIO 13 as PWM0A
 #define GPIO_PWM0B_OUT 15   //Set GPIO 15 as PWM0A
 
-#define GPIO_STEP0_OUT 13   //Set GPIO 33 as STEP0
-#define GPIO_STEP1_OUT 15   //Set GPIO 27 as STEP1
+#define GPIO_STEP0_OUT 13   //Set GPIO 13 as STEP0
+#define GPIO_STEP1_OUT 15   //Set GPIO 15 as STEP1
 #define GPIO_STEP2_OUT 14   //Set GPIO 14 as STEP2
 #define GPIO_STEP3_OUT 12   //Set GPIO 12 as STEP3
-static u8 compare_float_value(float a,float b, float diff);
+
 task_handle_t pwm_task_handle;
+static int pwm_test_init(void);
 static void mcpwm_example_gpio_initialize(void){
 #if PWM_AIR_ENABLE
     mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0A, GPIO_PWM0A_OUT);
@@ -76,7 +77,7 @@ void pwm_test_set(float duty_cycle){
 #endif
 }
 
-int pwm_test_init(void){
+static int pwm_test_init(void){
     mcpwm_example_gpio_initialize();
     mcpwm_config_t pwm_config = {0};
 #if PWM_AIR_ENABLE
@@ -110,6 +111,7 @@ void pwm_control_task(void *arg){
     float servo2 = 0.0f;
     float servo3 = 0.0f;
     uint32_t signal_value;
+    pwm_test_init();
     while(1){
         if(task_notify_wait(STOP_CHILD_PROCCES|PACKET_RECEIVED, &signal_value, 10)==pdTRUE){
             /*by signal*/
@@ -141,13 +143,5 @@ void pwm_control_task(void *arg){
 #endif
     }
 }
-static u8 compare_float_value(float a,float b, float diff){
-    u8 res = 0;
-    if ((a>(b-diff))&&(a<(b+diff))){
-        res = 1;
-    }else{
-        res = 0;
-    }
-    return res;
-}
+
 #endif //PWM_TEST_C

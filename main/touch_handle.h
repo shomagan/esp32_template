@@ -38,8 +38,8 @@
  * Author: Shoma Gane <shomagan@gmail.com>
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
  */
-#ifndef PWM_TEST_H
-#define PWM_TEST_H 1
+#ifndef TOUCH_HANDLE_H
+#define TOUCH_HANDLE_H 1
  
 /*add includes below */
 #include "type_def.h"
@@ -51,12 +51,10 @@
    extern "C" {
 #endif
 /*add functions and variable declarations below */
-extern task_handle_t pwm_task_handle;
-void pwm_test_set(float duty_cycle);
-
-void pwm_control_task(void *arg);
+extern task_handle_t touch_task_handle;
+void touch_task(void *arg);
 /*add functions and variable declarations before */
 #ifdef __cplusplus
 }
 #endif
-#endif //PWM_TEST_H
+#endif //TOUCH_HANDLE

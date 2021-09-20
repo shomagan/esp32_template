@@ -4,6 +4,7 @@
 /*add includes below */
 #include "type_def.h"
 #include "memory_handle.h"
+#include "modbus_tcp_client.h"
 /*add includes before */
 #ifdef __cplusplus 
    extern "C" {
@@ -34,6 +35,13 @@ enum modbus_type{
 #define MDB_INPUT_DISCRETES_RO 2
 #define MDB_HOLDING_REGS_RW 3
 #define MDB_INPUT_REGS_RO 4
+#define MODBUS_MAX_WORD_NUM 112
+#define MODBUS_MAX_READ_BITS 240
+#define MODBUS_PACKET_LEN 255
+enum packet_socket_channels{
+    PACKET_CHANNEL_UDP = 10 + 1,
+    PACKET_CHANNEL_TCP,
+};
 extern const os_pool_def_t pool_dinamic_addr_def;
 
 extern os_pool_cb_t * dinamic_address;
@@ -105,6 +113,9 @@ int modbus_dinamic_addr_check(u32 mdb_or_coil_addr,u8 command,u16 item_number);
  * @todo add description
  */
 void * modbus_dinamic_addr_get(int pool_id);
+/* Execute a modbus client transaction/request */
+int modbus_master_execute_request(client_request_t * client_requests,int socket_id);
+
 /*add functions and variable declarations before */
 #ifdef __cplusplus
 }

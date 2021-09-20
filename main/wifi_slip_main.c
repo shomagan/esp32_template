@@ -32,7 +32,9 @@
 #include "httpd.h"
 #include "pwm_test.h"
 #include "modbus_tcp/modbus_tcp.h"
-#include <string.h>
+#include <driver/spi_master.h>
+#include "udp_broadcast.h"
+
 /* The examples use WiFi configuration that you can set via project configuration menu.
    If you'd rather not, just change the below entries to strings with
    the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
@@ -49,7 +51,7 @@ static const char *TAG = "wifi_slip_main";
 static bool s_sta_is_connected = false;
 slip_handle_config_t wifi_slip_config;
 u8 sta_connected = 0;
-
+static int init_display(void);
 /**
  * @brief wifi_event_handler
  * @param arg
@@ -199,8 +201,8 @@ void app_main(void){
     preinit_global_vars();
     ESP_ERROR_CHECK(esp_slip_init(&wifi_slip_config));
     common_init();/*init common things*/
+    init_display();
     common_init_tasks();/*init all necessary tasks */
-    pwm_test_init();
     wifi_common_init();
     main_printf(TAG, "wifi setting %d",regs_global.vars.wifi_setting);
     main_printf(TAG, "ap_name:%s ap_password:%s sta_name:%s sta_password:%s channel:%d",
@@ -222,6 +224,37 @@ void app_main(void){
     }
     httpd_init_sofi();
     modbus_tcp_init();
+    udp_broadcast_init();
+}
+    u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
+    u8g2_t u8g2; // a structure which will contain all the data for one display
+static int init_display(){
+    int res=0;
+    // SDA - GPIO21
+    #define PIN_SDA 21
+    // SCL - GPIO22
+    #define PIN_SCL 22
+
+    u8g2_esp32_hal.sda   = PIN_SDA;
+    u8g2_esp32_hal.scl  = PIN_SCL;
+    u8g2_esp32_hal_init(u8g2_esp32_hal);
+
+    u8g2_Setup_ssd1306_i2c_128x32_univision_f(
+        &u8g2,
+        U8G2_R0,
+        //u8x8_byte_sw_i2c,
+        u8g2_esp32_i2c_byte_cb,
+        u8g2_esp32_gpio_and_delay_cb);  // init u8g2 structure
+    u8x8_SetI2CAddress(&u8g2.u8x8,0x78);
+    u8g2_InitDisplay(&u8g2); // send init sequence to the display, display is in sleep mode after this,
+    u8g2_SetPowerSave(&u8g2, 0); // wake up display
+    u8g2_ClearBuffer(&u8g2);
+    u8g2_DrawBox(&u8g2, 0, 26, 80,6);
+    u8g2_DrawFrame(&u8g2, 0,26,100,6);
+    u8g2_SetFont(&u8g2, u8g2_font_ncenB08_tr);
+    u8g2_DrawStr(&u8g2, 2,17,"Hi nkolban!");
+    u8g2_SendBuffer(&u8g2);
+    return res;
 }
 
 #endif //WIFI_SLIP_MAIN_C

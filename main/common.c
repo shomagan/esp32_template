@@ -41,7 +41,6 @@
 #ifndef COMMON_C
 #define COMMON_C 1
 #include "common.h"
-
 #include "pin_map.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -50,9 +49,12 @@
 #include "mirror_storage.h"
 #include "esp_wifi.h"
 #include "pwm_test.h"
-
+#include "main_config.h"
+#include "touch_handle.h"
+#include "modbus_tcp_client.h"
 #define DUTY_TASK_PERIOD_MS 100
 task_handle_t common_duty_task_handle;
+task_handle_t modbus_master_id;
 static const char *TAG = "common";
 /**
  * @brief duty_task - do several common functions
@@ -108,10 +110,26 @@ int common_init_tasks(){
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create slip_modem_uart_rx_task failed");
     }
+#if PWM_TEST_ENABLE
     res = task_create(pwm_control_task, "pwm_control_task", 2048, &wifi_slip_config, (tskIDLE_PRIORITY + 2), &pwm_task_handle);
     if (res != pdTRUE) {
-        ESP_LOGE(TAG, "create slip_modem_uart_rx_task failed");
+        ESP_LOGE(TAG, "create pwm_control_task failed");
     }
+#endif
+#if TOUCH_HANDLE_ENABLE
+    res = task_create(touch_task, "touch_task", 4096, NULL, (tskIDLE_PRIORITY + 2), &touch_task_handle);
+    if (res != pdTRUE) {
+        ESP_LOGE(TAG, "create touch_handle_task failed");
+    }
+#endif
+#if MODBUS_MASTER_ENABLE
+    res = task_create(modbus_tcp_client_task, "modbus_tcp_client_task", 4096, NULL, (tskIDLE_PRIORITY + 2), &modbus_master_id);
+    if(res != pdTRUE){
+        main_printf(TAG,"modbus tcp task inited success\n");
+    }
+#endif
+
+
     return res;
 }
 /**
@@ -246,5 +264,21 @@ int memcmp_not_equal(const u8 * buff_0,const u8 * buff_1,u32 len){
     }else{
         return -1;
     }
+}
+/**
+ * @brief compare_float_value
+ * @param a compare
+ * @param b to
+ * @param diff - max differ
+ * @return 1 if a out of range b (b-diff:b+diff)
+ */
+u8 compare_float_value(float a,float b, float diff){
+    u8 res = 0;
+    if ((a>(b-diff))&&(a<(b+diff))){
+        res = 1;
+    }else{
+        res = 0;
+    }
+    return res;
 }
 #endif //COMMON_C

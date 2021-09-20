@@ -2749,7 +2749,7 @@ err_t httpd_init_sofi(void){
     json_init_base();
     pcb = altcp_tcp_new_ip_type(IPADDR_TYPE_ANY);
     if(pcb != NULL){
-        httpd_init_pcb(pcb, 81);
+        httpd_init_pcb(pcb, 80);
 #if LWIP_HTTPD_SSI
         http_ssi_init();
 #endif

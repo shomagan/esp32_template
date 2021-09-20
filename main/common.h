@@ -49,8 +49,8 @@
    extern "C" {
 #endif
 #define TIME_FOR_PREPARE_RESET_MS 2000
-#define PWM_STEP_CONTROL_ENABLE 1
-#define PWM_AIR_ENABLE 0
+#define PWM_STEP_CONTROL_ENABLE 0
+#define PWM_AIR_ENABLE 1
 
 /*add functions and variable declarations below */
 
@@ -74,6 +74,15 @@
        PACKET_TRANSMITION_CLOSE    = (1<<16),   /*!< sent last byte */
        WIFI_CONNECTED              = (1<<17),   /*!< wifi connected*/
        PREPARE_TO_RESET            = (1<<18),   /*!< controller will reset througth TIME_FOR_PREPARE_RESET_MS*/
+       MODBUS_MASTER_COMMAND_COMPLETE_SUCCESSFULL = (1<<19),   /*!< command complete by modbas master thread*/
+       MODBUS_MASTER_COMMAND_COMPLETE_ERROR = (1<<20),   /*!< command complete by modbas master thread*/
+       MODBUS_MASTER_SET_0_SIGNAL         = (1<<21),   /*!< set first registers*/
+       MODBUS_MASTER_SET_1_SIGNAL         = (1<<22),   /*!< set second part of registers*/
+       MODBUS_MASTER_READ_0_SIGNAL         = (1<<23),   /*!< read set first part of registers*/
+       MODBUS_MASTER_CLOSE_CONNECTION_SIGNAL         = (1<<24),   /*!< close connection*/
+       MODBUS_MASTER_READ_1_SIGNAL         = (1<<25),   /*!< read set first part of registers*/
+       MODBUS_MASTER_SET_2_SIGNAL         = (1<<26),   /*!< set thirв part of registers*/
+       MODBUS_MASTER_PERIODIC_CONFIRMATION_SIGNAL = (1<<27),   /*!< set thirв part of registers*/
        //.............................................................................
        UNUSED_EVENT_1              = (1<<28),   /*!< we should not use this bit!!*/
        RAM_ADDRESS_IN_EVENT        = (1<<29),   /*!< instead event use ram address*/
@@ -82,7 +91,14 @@
    };
 
 extern task_handle_t common_duty_task_handle;
-
+/**
+ * @brief compare_float_value
+ * @param a compare
+ * @param b to
+ * @param diff - max differ
+ * @return 1 if a out of range b (b-diff:b+diff)
+ */
+u8 compare_float_value(float a,float b, float diff);
 /**
  * @brief led_blink_on enable the led on ms
  * @param time_ms

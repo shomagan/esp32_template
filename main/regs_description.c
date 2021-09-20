@@ -33,11 +33,11 @@ static const u8 def_board_ver = (u8)BOARD_VERSION;
 static const u16 def_permission = ENABLE_HTTP_FLAG;
 static const u8 def_wifi_name[WIFI_NAME_LEN] = "sofi_plc_net";               //!<"must be strong full filled", &save &def
 static const u8 def_wifi_password[WIFI_PASSWORD_LEN] = "bricsofi";            //!<"must be strong more then 8 byte", &save &def
-static const u8 def_wifi_router_name[WIFI_ROUTER_NAME_LEN] = "mikrotik_sofi";
-static const u8 def_wifi_router_password[WIFI_ROUTER_PASSWORD_LEN] = "sofi_1_142";
+static const u8 def_wifi_router_name[WIFI_ROUTER_NAME_LEN] = "MikroTik-Jul";
+static const u8 def_wifi_router_password[WIFI_ROUTER_PASSWORD_LEN] = "zyxel-206-rpu";
 static const u16 def_wifi_setting = WIFI_AP_STA;               //!<"type of wifi and settings" &save &def
 static const float def_test_pwm_value = 50.0f;
-const u32 def_table_version = 0x54;
+const u32 def_table_version = 0xb12e;
 static const float def_servo_0 = 10.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
 static const float def_min_servo_0 = 0.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
 static const float def_max_servo_0 = 100.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
@@ -49,7 +49,23 @@ static const float def_min_servo_2 = 0.0f;                   //!<"servo pwm valu
 static const float def_max_servo_2 = 100.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
 static const float def_servo_3 = 10.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
 static const float def_min_servo_3 = 0.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
-static const float def_max_servo_3 = 100.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
+static const float def_max_servo_3 = 100.0f;                  //!<"servo pwm value [0;100]" &def &save &min &max
+static const float def_impulse_cost = 0.0005f;
+static const u32 def_touch_1_count = 20000;                      //!< "ms or water counter long" &save &def
+static const u32 def_touch_2_count = 100000;                      //!< "ms or water counter long" &save &def
+static const u32 def_touch_3_count = 200000;                      //!< "ms or water counter long" &save &def
+static const float def_touch_1_liters = 0.125f;                      //!< "ms " &save &def
+static const float def_touch_2_liters = 1.75f;                      //!< "ms " &save &def
+static const float def_touch_3_liters = 5.0f;                      //!< "ms " &save &def
+static const u32 def_by_time = 0;                              //!< "by time or counter" &save &def
+static const float def_touch_0_trshld = 0.85f;                      //!< "in percents" &save &def
+static const float def_touch_1_trshld = 0.85f;                      //!< "in percents" &save &def
+static const float def_touch_2_trshld = 0.85f;                      //!< "in percents" &save &def
+static const float def_touch_3_trshld = 0.85f;                      //!< "in percents" &save &def
+static const u32 def_touch_handle_period = 300;                    //!< "in ms period of handle touchs" &save &def
+static const u16 def_slave_modbus_address = 3;
+static const u16 def_min_slave_modbus_address = 1;
+static const u16 def_max_slave_modbus_address = 247;
 
 regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { &def_mdb_addr, NULL, NULL, (u8*)&regs_global.vars.mdb_addr, 16,"modbus address","mdb_addr", U16_REGS_FLAG, 0, 0, 0x30000, 1, 5, 0 },//!<"modbus address" &save &def
@@ -88,11 +104,42 @@ regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { NULL, NULL, NULL, (u8*)&regs_global.vars.ap_connections_number, 0,"number of connections","ap_connections_number", U16_REGS_FLAG, 33, 194, 0x30061, 1, 3, 0 },//!< "number of connections" &ro
 { NULL, NULL, NULL, (u8*)&regs_global.vars.sta_connect, 0,"sta connect state","sta_connect", U16_REGS_FLAG, 34, 196, 0x30062, 1, 3, 0 },//!< "sta connect state" &ro
 { &def_table_version, NULL, NULL, (u8*)&regs_global.vars.table_version, 134,"change value in def_table_version for drop all regs to default value","table_version", U32_REGS_FLAG, 35, 198, 0x30063, 1, 7, 0 },//!< "change value in def_table_version for drop all regs to default value" &ro &def &save
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.test_pwm_value, 138,"test pwm value [0;100]","test_pwm_value", FLOAT_REGS_FLAG, 36, 202, 0x303e8, 1, 5, 1 },//!<"test pwm value [0;100]" &def &save
-{ &def_servo_0, &def_min_servo_0, &def_max_servo_0, (u8*)&servo_control_part.vars.servo_0, 142,"servo pwm value [0;100]","servo_0", FLOAT_REGS_FLAG, 37, 206, 0x307d0, 1, 197, 2 },//!<"servo pwm value [0;100]" &def &save &min &max
-{ &def_servo_1, &def_min_servo_1, &def_max_servo_1, (u8*)&servo_control_part.vars.servo_1, 146,"servo pwm value [0;100]","servo_1", FLOAT_REGS_FLAG, 38, 210, 0x307d2, 1, 197, 2 },//!<"servo pwm value [0;100]" &def &save &min &max
-{ &def_servo_2, &def_min_servo_2, &def_max_servo_2, (u8*)&servo_control_part.vars.servo_2, 150,"servo pwm value [0;100]","servo_2", FLOAT_REGS_FLAG, 39, 214, 0x307d4, 1, 197, 2 },//!<"servo pwm value [0;100]" &def &save &min &max
-{ &def_servo_3, &def_min_servo_3, &def_max_servo_3, (u8*)&servo_control_part.vars.servo_3, 154,"servo pwm value [0;100]","servo_3", FLOAT_REGS_FLAG, 40, 218, 0x307d6, 1, 197, 2 },//!<"servo pwm value [0;100]" &def &save &min &max
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.iirls_pairing_status, 0,"status","iirls_pairing_status", U16_REGS_FLAG, 36, 202, 0x30065, 1, 3, 0 },//!< "status" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.iirls_paired_ip[0], 0,"ip address of paired device","iirls_paired_ip", U8_REGS_FLAG, 37, 204, 0x30066, 4, 3, 0 },//!< "ip address of paired device" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_test_value, 0,"status","modbus_master_test_value", U16_REGS_FLAG, 38, 208, 0x30068, 1, 3, 0 },//!< "status" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.iirls_state, 138,"state","iirls_state", U16_REGS_FLAG, 39, 210, 0x30069, 1, 5, 0 },//!< "state" &save
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.paired_device_model_number[0], 0,"state","paired_device_model_number", U16_REGS_FLAG, 40, 212, 0x3006a, 40, 3, 0 },//!< "state" &ro
+{ &def_slave_modbus_address, &def_min_slave_modbus_address, &def_max_slave_modbus_address, (u8*)&regs_global.vars.slave_modbus_address, 140,"slave modbus address","slave_modbus_address", U16_REGS_FLAG, 41, 292, 0x30092, 1, 197, 0 },//!< "slave modbus address" &def &save &max &min
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_comm_period_current, 0,"modbus_master_comm_period_current","modbus_master_comm_period_current", U32_REGS_FLAG, 42, 294, 0x30093, 1, 1, 0 },//!< ""
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_comm_period_max, 0,"modbus_master_comm_period_max","modbus_master_comm_period_max", U32_REGS_FLAG, 43, 298, 0x30095, 1, 1, 0 },//!< ""
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_comm_period_min, 0,"modbus_master_comm_period_min","modbus_master_comm_period_min", U32_REGS_FLAG, 44, 302, 0x30097, 1, 1, 0 },//!< ""
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_succ_transactions_number, 0,"modbus_master_succ_transactions_number","modbus_master_succ_transactions_number", U32_REGS_FLAG, 45, 306, 0x30099, 1, 1, 0 },//!< ""
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_error_transactions_number, 0,"modbus_master_error_transactions_number","modbus_master_error_transactions_number", U32_REGS_FLAG, 46, 310, 0x3009b, 1, 1, 0 },//!< ""
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.test_pwm_value, 142,"test pwm value [0;100]","test_pwm_value", FLOAT_REGS_FLAG, 47, 314, 0x303e8, 1, 5, 1 },//!<"test pwm value [0;100]" &def &save
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_0, 0,"touch_0","touch_0", U16_REGS_FLAG, 48, 318, 0x303ea, 1, 1, 1 },
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1, 0,"touch_1","touch_1", U16_REGS_FLAG, 49, 320, 0x303eb, 1, 1, 1 },
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2, 0,"touch_2","touch_2", U16_REGS_FLAG, 50, 322, 0x303ec, 1, 1, 1 },
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3, 0,"touch_3","touch_3", U16_REGS_FLAG, 51, 324, 0x303ed, 1, 1, 1 },
+{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.water_counter, 146,"di counter","water_counter", U64_REGS_FLAG, 52, 326, 0x303ee, 1, 7, 1 },//!< "di counter" &save &ro
+{ &def_impulse_cost, NULL, NULL, (u8*)&regs_global_part1.vars.impulse_cost, 154,"cost of di impulse in liters","impulse_cost", FLOAT_REGS_FLAG, 53, 334, 0x303f2, 1, 5, 1 },//!< "cost of di impulse in liters" &save &def
+{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.liters, 158,"liters calculated","liters", FLOAT_REGS_FLAG, 54, 338, 0x303f4, 1, 5, 1 },//!< "liters calculated" &save
+{ &def_touch_1_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_count, 162,"ms ","touch_1_count", U32_REGS_FLAG, 55, 342, 0x303f6, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_2_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_count, 166,"ms ","touch_2_count", U32_REGS_FLAG, 56, 346, 0x303f8, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_3_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_count, 170,"ms ","touch_3_count", U32_REGS_FLAG, 57, 350, 0x303fa, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_1_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_liters, 174,"ms ","touch_1_liters", FLOAT_REGS_FLAG, 58, 354, 0x303fc, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_2_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_liters, 178,"ms ","touch_2_liters", FLOAT_REGS_FLAG, 59, 358, 0x303fe, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_3_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_liters, 182,"ms ","touch_3_liters", FLOAT_REGS_FLAG, 60, 362, 0x30400, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_0_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_0_trshld, 186,"in percents","touch_0_trshld", FLOAT_REGS_FLAG, 61, 366, 0x30402, 1, 5, 1 },//!< "in percents" &save &def
+{ &def_touch_1_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_trshld, 190,"in percents","touch_1_trshld", FLOAT_REGS_FLAG, 62, 370, 0x30404, 1, 5, 1 },//!< "in percents" &save &def
+{ &def_touch_2_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_trshld, 194,"in percents","touch_2_trshld", FLOAT_REGS_FLAG, 63, 374, 0x30406, 1, 5, 1 },//!< "in percents" &save &def
+{ &def_touch_3_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_trshld, 198,"in percents","touch_3_trshld", FLOAT_REGS_FLAG, 64, 378, 0x30408, 1, 5, 1 },//!< "in percents" &save &def
+{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.filter_use, 202,"use inside filter fot touch sensors or not ","filter_use", U32_REGS_FLAG, 65, 382, 0x3040a, 1, 5, 1 },//!< "use inside filter fot touch sensors or not " &save
+{ &def_touch_handle_period, NULL, NULL, (u8*)&regs_global_part1.vars.touch_handle_period, 206,"in ms period of handle touchs","touch_handle_period", U32_REGS_FLAG, 66, 386, 0x3040c, 1, 5, 1 },//!< "in ms period of handle touchs" &save &def
+{ &def_by_time, NULL, NULL, (u8*)&regs_global_part1.vars.by_time, 210,"by time or counter","by_time", U32_REGS_FLAG, 67, 390, 0x3040e, 1, 5, 1 },//!< "by time or counter" &save &def
+{ &def_servo_0, &def_min_servo_0, &def_max_servo_0, (u8*)&servo_control_part.vars.servo_0, 0,"servo pwm value [0;100]","servo_0", FLOAT_REGS_FLAG, 68, 394, 0x307d0, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ &def_servo_1, &def_min_servo_1, &def_max_servo_1, (u8*)&servo_control_part.vars.servo_1, 0,"servo pwm value [0;100]","servo_1", FLOAT_REGS_FLAG, 69, 398, 0x307d2, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ &def_servo_2, &def_min_servo_2, &def_max_servo_2, (u8*)&servo_control_part.vars.servo_2, 0,"servo pwm value [0;100]","servo_2", FLOAT_REGS_FLAG, 70, 402, 0x307d4, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ &def_servo_3, &def_min_servo_3, &def_max_servo_3, (u8*)&servo_control_part.vars.servo_3, 0,"servo pwm value [0;100]","servo_3", FLOAT_REGS_FLAG, 71, 406, 0x307d6, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
 };
 
 static const regs_description_t * regs_description_user =NULL;

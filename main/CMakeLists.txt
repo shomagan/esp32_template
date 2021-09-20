@@ -1,3 +1,4 @@
+idf_build_get_property(project_dir PROJECT_DIR)
 idf_component_register(
     SRCS "wifi_slip_main.c"
     SRCS "slip_handle.c"
@@ -16,7 +17,16 @@ idf_component_register(
     SRCS "memory_handle.c"
     SRCS "pwm_test.c"
     SRCS "modbus_tcp/modbus_tcp.c"
+    SRCS "modbus_tcp_client/modbus_tcp_client.c"
+    SRCS "udp_broadcast/udp_broadcast.c"
+    SRCS "touch_handle.c"
+    SRCS "u8g2_esp32_hal.c"
+    SRCS "iirls_handler.c"
     INCLUDE_DIRS "."
     INCLUDE_DIRS "http/."
-    REQUIRES esp_netif nvs_flash
+    INCLUDE_DIRS "udp_broadcast/."
+    INCLUDE_DIRS "modbus_tcp_client/."
+
+    EMBED_TXTFILES ${project_dir}/server_certs/ca_cert.pem
+    REQUIRES esp_netif nvs_flash u8g2
 )

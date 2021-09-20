@@ -72,7 +72,7 @@ static ip4_addr_t local_netmask;
 static ip4_addr_t local_gw;
 extern err_t tcpip_input(struct pbuf *p, struct netif *inp);
 esp_err_t esp_slip_init(slip_handle_config_t *slip_modem){
-    ESP_LOGD(TAG, "%s: Starting SLIP modem (modem %p)", __func__, (void*)slip_modem);
+    ESP_LOGI(TAG, "%s: Starting SLIP modem (modem %p)", __func__, (void*)slip_modem);
     // Build configuration
     uart_config_t uart_config = {
         .baud_rate = slip_modem->uart_baud,

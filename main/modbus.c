@@ -24,8 +24,35 @@
    ?"15 - Write Multiple Coils":     ('15', 'req_output', 1968, "BOOL",  1, "Q", "X", "Coil"),
     "16 - Write Multiple Registers": ('16', 'req_output',  123, "WORD", 16, "Q", "W", "Holding Register")}
 */
+static const char *TAG = "modbus";
 #define OWN_VARIABLE_BLOK_SIZE 0
 #define REG_AI_SHIFT 0
+/* Execute a transaction for functions that READ BITS.
+ * Bits are stored on an int array, one bit per int.
+ * Called by:  read_input_bits()
+ *             read_output_bits()
+ */
+static int modbus_master_read_bits(u8  function,u8  slave,u16 start_addr,u16 count,
+                                   u16 *dest,int dest_size,u16 channel,
+                                   u8  *error_code,u32 response_timeout,int socket_id);
+
+/* Execute a transaction for functions that READ REGISTERS. */
+static int modbus_master_read_registers(u8  function,u8  slave,u16 start_addr,u16 count,
+                                        u16 *dest,int dest_size,u16 channel,u8  *error_code,
+                                        u32 response_timeout,int socket_id);
+/* Execute a transaction for functions that WRITE a sinlge BIT. */
+static int modbus_master_set_single(u8  function,u8  slave,u16 start_addr,u16 value,
+                                    u16 channel,u8  *error_code,u32 response_timeout,int socket_id);
+
+/* FUNCTION 0x0F   - Force Multiple Coils */
+static int modbus_master_write_output_bits(u8  function,u8  slave,u16 start_addr,u16* data,u8 coil_count,
+                                    u16 channel,u8  *error_code,u32 response_timeout,int socket_id);
+
+/* FUNCTION 0x10   - Force Multiple Registers */
+static int modbus_master_write_output_words(u8  function,u8  slave,u16 start_addr,u16* data,u8 reg_numm,
+                                     u16 channel,u8  *error_code,u32 response_timeout,int socket_id);
+static int modbus_tcp_response_lenght(u8 function, u16 items_number);
+static int modbus_response_lenght(u8 function, u16 items_number);
 os_pool_def_t const pool_dinamic_addr_def= {.item_sz = sizeof(dinamic_address_space_t),
                             .pool_sz = DINAMIC_ADDRESS_SPACE_NUMM};
 
@@ -681,6 +708,25 @@ int modbus_make_packet (u8  slave_address,u8  function, u16 start_addr,
     }
     return byte;
 }
+int modbus_make_tcp_packet(u8  slave_address,u8  function, u16 start_addr,
+                           u16 reg_num, u8 * data_to_write, u8 * packet){
+    int byte=0;
+    static u16 transaction_identifier =0;
+    packet[0] = (u8)(transaction_identifier>>8);
+    packet[1] = (u8)transaction_identifier;
+    packet[2] = 0;
+    packet[3] = 0;
+    byte = modbus_make_packet (slave_address,function,start_addr,
+                             reg_num,data_to_write,&packet[MODBUS_TCP_HEADER_SIZE]);
+    if (byte>2){
+        byte -=2;/*without crc*/
+        packet[4] = (u8)(byte>>8);
+        packet[5] = (u8)byte;
+        byte+=6;
+        transaction_identifier++;
+    }
+    return byte;
+}
 /**
  * @brief add address space for modbus
  * @param mdb_address modbus space
@@ -763,8 +809,389 @@ void * modbus_dinamic_addr_get(int pool_id){
     }
     return res;
 }
+static int modbus_tcp_response_lenght(u8 function, u16 items_number){
+    int result;
+    result = modbus_response_lenght(function, items_number);
+    if (result>2){
+        result -=2;/*without crc*/
+        result +=MODBUS_TCP_HEADER_SIZE;/*plus header*/
+    }
+    return result;
+}
 
+static int modbus_response_lenght(u8 function, u16 items_number){
+    int result=0;
+    switch (function){
+    case 0:
+    case 1:
+    case 2:
+        result = items_number%8 + 1 + 5;
+        break;
+    case 3:
+    case 4:
+        result = items_number*2 + 5;
+        break;
+    case 5:
+    case 6:
+    case 15:
+    case 16:
+        result = 8;
+        break;
+    default:
+        result = -1;
+        break;
+    }
+    return result;
+}
 
+/* Execute a modbus client transaction/request */
+int modbus_master_execute_request(client_request_t * client_requests,int socket_id){
+    int result =-1;
+    u32 timer = task_get_tick_count();
+    switch (client_requests->mb_function){
+    case  1: /* read coils */
+        result = modbus_master_read_bits(1 ,client_requests->slave_id,\
+                                       client_requests->address, client_requests->count,
+                                       client_requests->coms_buffer, (int) client_requests->count,\
+                                       client_requests->channel,&client_requests->error_code,
+                                       client_requests->resp_timeout,socket_id);
+        break;
+    case  2: /* read discrete inputs */
+        result = modbus_master_read_bits(2 ,client_requests->slave_id,\
+                                       client_requests->address, client_requests->count,
+                                       client_requests->coms_buffer, (int) client_requests->count,\
+                                       client_requests->channel,&client_requests->error_code,
+                                       client_requests->resp_timeout,socket_id);
+        break;
+    case  3: /* read holding registers */
+        result = modbus_master_read_registers(3 ,client_requests->slave_id,\
+                                            client_requests->address, client_requests->count,
+                                            client_requests->coms_buffer, (int)client_requests->count,\
+                                            client_requests->channel,&client_requests->error_code,
+                                            client_requests->resp_timeout,socket_id);
+        break;
+    case  4: /* read input registers */
+        result = modbus_master_read_registers(4 ,client_requests->slave_id,\
+                                            client_requests->address, client_requests->count,
+                                            client_requests->coms_buffer, (int)client_requests->count,\
+                                            client_requests->channel,&client_requests->error_code,
+                                            client_requests->resp_timeout,socket_id);
+        break;
+    case  5: /* write single coil */
+        result = modbus_master_set_single(5,client_requests->slave_id,client_requests->address,
+                                        client_requests->coms_buffer[0],client_requests->channel,\
+                                        &client_requests->error_code,client_requests->resp_timeout,socket_id);
+        break;
+    case  6: /* write single register */
+        result = modbus_master_set_single(6,client_requests->slave_id,client_requests->address,
+                                        client_requests->coms_buffer[0],client_requests->channel,\
+                                        &client_requests->error_code,client_requests->resp_timeout,socket_id);
+        break;
+    case 15: /* write multiple coils */
+        result = modbus_master_write_output_bits(15,client_requests->slave_id,client_requests->address,client_requests->coms_buffer,\
+                                               (u8)client_requests->count,client_requests->channel,&client_requests->error_code,\
+                                               client_requests->resp_timeout,socket_id) ;
+        break;
+    case 16: /* write multiple registers */
+        result = modbus_master_write_output_words(16,client_requests->slave_id,client_requests->address,client_requests->coms_buffer,\
+                                                (u8)client_requests->count,client_requests->channel,&(client_requests->error_code),\
+                                                client_requests->resp_timeout,socket_id);
+        break;
+    default: break;  /* should never occur, if file generation is correct */
+    }
+
+    semaphore_take(regs_access_mutex, portMAX_DELAY );{
+    regs_global.vars.modbus_master_comm_period_current = (u16)(task_get_tick_count()-timer);
+    if (regs_global.vars.modbus_master_comm_period_current>
+            regs_global.vars.modbus_master_comm_period_max){
+        regs_global.vars.modbus_master_comm_period_max = regs_global.vars.modbus_master_comm_period_current;
+    }
+    if (regs_global.vars.modbus_master_comm_period_current<
+            regs_global.vars.modbus_master_comm_period_min){
+        regs_global.vars.modbus_master_comm_period_min = regs_global.vars.modbus_master_comm_period_current;
+    }
+    if (result>=0){
+        regs_global.vars.modbus_master_succ_transactions_number++;
+    }else{
+        regs_global.vars.modbus_master_error_transactions_number++;
+    }
+    }semaphore_release(regs_access_mutex);
+    return result;
+}
+
+/* Execute a transaction for functions that READ BITS.
+ * Bits are stored on an int array, one bit per int.
+ * Called by:  read_input_bits()
+ *             read_output_bits()
+ */
+static int modbus_master_read_bits(u8  function,u8  slave,u16 start_addr,u16 count,
+                                   u16 *dest,int dest_size,u16 channel,
+                                   u8  *error_code,u32 response_timeout,int socket_id) {
+    u8 packet[MODBUS_PACKET_LEN];  //use for sending and receiving data
+    int response_length;
+    int query_length;
+    int i, bit;
+    u8 temp;
+    int dest_pos = 0;
+    int coils_processed = 0;
+    int res = 0;
+    (void)error_code;
+    if ((channel == PACKET_CHANNEL_TCP)||(channel == PACKET_CHANNEL_UDP)){
+        query_length = modbus_make_tcp_packet(slave, function, start_addr, count, NULL, packet);
+        response_length = modbus_tcp_response_lenght(function,count);
+    }else{
+        query_length = modbus_make_packet(slave, function, start_addr, count, NULL, packet);
+        response_length = modbus_response_lenght(function,count);
+    }
+    if ((query_length <= 0) || (response_length<=2) ||
+            (response_length>256)){
+        main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+        res = INTERNAL_ERROR;
+    }else{
+        response_length = modbus_tcp_master_packet_transaction(channel,packet,(u16)query_length,
+                                                    (u16)response_length,response_timeout,socket_id);
+
+        if (response_length  < 6){
+            res = INVALID_FRAME;
+        }else{
+            u8 * body;
+            if((channel == PACKET_CHANNEL_TCP)||(channel == PACKET_CHANNEL_UDP)){
+                body = &packet[MODBUS_TCP_HEADER_SIZE];
+                *(u16*)(void*)(&packet[response_length]) = modbus_crc16((u8*)(packet+MODBUS_TCP_HEADER_SIZE),\
+                                                    (u16)response_length-MODBUS_TCP_HEADER_SIZE);
+            }else{
+                body = packet;
+            }
+            /* NOTE: Integer division. (count+7)/8 is equivalent to ceil(count/8) */
+            if ((body[2]  != (count+7)/8)||(body[0]!=slave))    {
+                res = 0;
+            }else{
+                u16 calc_len = body[2] + 3 + 2;//address + function + byte_num + crc + data
+                if (modbus_crc16_check(body,calc_len) && (dest !=0)){
+
+                    for( i = 0; (i < body[2]) && (i < dest_size); i++ ) {
+                        temp = body[3 + i];
+                        for( bit = 0x01; (bit & 0xff) && (coils_processed < count); ) {
+                            if((temp & (u8)bit)){
+                                dest[dest_pos] = 1;
+                            }else{
+                                dest[dest_pos] = 0;
+                            }
+                            coils_processed++;
+                            bit = bit << 1;
+                            dest_pos++;
+                        }
+                    }
+                }
+                res = response_length;
+            }
+        }
+    }
+    return res;
+}
+
+/* Execute a transaction for functions that READ REGISTERS. */
+static int modbus_master_read_registers(u8  function,u8  slave,u16 start_addr,u16 count,
+                                        u16 *dest,int dest_size,u16 channel,u8  *error_code,
+                                        u32 response_timeout,int socket_id) {
+    u8 packet[MODBUS_PACKET_LEN*4];
+    (void)error_code;
+    int response_length;
+    int query_length;
+    int i= 0;
+    int res = 0;
+    if ((channel == PACKET_CHANNEL_TCP)||
+            (channel == PACKET_CHANNEL_UDP)){
+        query_length = modbus_make_tcp_packet(slave, function, start_addr, count, NULL, packet);
+        response_length = modbus_tcp_response_lenght(function,count);
+    }else{
+        query_length = modbus_make_packet(slave, function, start_addr, count, NULL, packet);
+        response_length = modbus_response_lenght(function,count);
+    }
+    if ((query_length <= 0) || (response_length<=2) ||
+            (response_length>256)){
+        main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+        res = INTERNAL_ERROR;
+    }else{
+        response_length = modbus_tcp_master_packet_transaction(channel,packet,(u16)query_length,(u16)response_length,
+                                                               response_timeout,socket_id);
+        res = response_length;
+
+        if(response_length < 6){
+            res = INVALID_FRAME;
+        }else{
+            u8 * body;
+            if((channel == PACKET_CHANNEL_TCP)||(channel == PACKET_CHANNEL_UDP)){
+                body = &packet[MODBUS_TCP_HEADER_SIZE];
+                *(u16*)(void*)(&packet[response_length]) = modbus_crc16((u8*)(packet+MODBUS_TCP_HEADER_SIZE),\
+                                                    (u16)response_length-MODBUS_TCP_HEADER_SIZE);
+            }else{
+                body = packet;
+            }
+
+            if((body[2]   != 2*count)||(body[0]!=slave))    {
+                res = 0;
+            }else if(dest!=NULL){
+                u16 calc_len = body[2] + 3 + 2;//address + function + byte_num + crc + data
+                if (modbus_crc16_check(body,calc_len)){
+                    for(i = 0; (i < (u8)(count)) && (i < dest_size); i++ ) {
+                        dest[i] = (u16)(body[3 + i *2] << 8) | (u16)body[4 + i * 2];    /* copy reg hi byte to temp hi byte*/
+                    }
+                }else{
+
+                }
+            }
+        }
+    }
+    return res;
+}
+
+/* Execute a transaction for functions that WRITE a sinlge BIT. */
+static int modbus_master_set_single(u8  function,u8  slave,u16 start_addr,u16 value,
+                                    u16 channel,u8  *error_code,u32 response_timeout,int socket_id) {
+    u8 packet[MODBUS_PACKET_LEN];
+    int query_length, response_length,res;
+    (void)error_code;
+    if ((channel == PACKET_CHANNEL_TCP)||
+            (channel == PACKET_CHANNEL_UDP)){
+        query_length = modbus_make_tcp_packet(slave, function, start_addr, 1, (u8*)&value, packet);
+        response_length = modbus_tcp_response_lenght(function,1);
+    }else{
+        query_length = modbus_make_packet(slave, function, start_addr, 1, (u8*)&value, packet);
+        response_length = modbus_response_lenght(function,1);
+    }
+    if ((query_length <= 0) || (response_length<=2) ||
+            (response_length>256)){
+        main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+        res = INTERNAL_ERROR;
+    }else{
+        response_length = modbus_tcp_master_packet_transaction(channel,packet,(u16)query_length,
+                                                    (u16)response_length,response_timeout,socket_id);
+
+        u16 calc_len = 8;//address + function + byte_num + crc + data
+        if (response_length  < 6)  {
+            res = INVALID_FRAME;
+        }else{
+            u8 * body;
+            if((channel == PACKET_CHANNEL_TCP)||(channel == PACKET_CHANNEL_UDP)){
+                body = &packet[MODBUS_TCP_HEADER_SIZE];
+                *(u16*)(void*)(&packet[response_length]) = modbus_crc16((u8*)(packet+MODBUS_TCP_HEADER_SIZE),\
+                                                    (u16)response_length-MODBUS_TCP_HEADER_SIZE);
+            }else{
+                body = packet;
+            }
+
+            if ((modbus_crc16_check(body,calc_len)==0)||(body[0]!=slave)){
+                res = 0;
+            }else{
+                res = response_length;
+            }
+        }
+    }
+    return res;
+}
+
+/* FUNCTION 0x0F   - Force Multiple Coils */
+static int modbus_master_write_output_bits(u8  function,u8  slave,u16 start_addr,u16* data,u8 coil_count,
+                                    u16 channel,u8  *error_code,u32 response_timeout,int socket_id) {
+    int query_length, response_length, res;
+    u8 packet[MODBUS_PACKET_LEN];
+    (void)error_code;
+    if( coil_count > MODBUS_MAX_READ_BITS) {
+        coil_count = MODBUS_MAX_READ_BITS;
+    }
+    if ((channel == PACKET_CHANNEL_TCP)||
+            (channel == PACKET_CHANNEL_UDP)){
+        query_length = modbus_make_tcp_packet(slave, function, start_addr, coil_count, (u8*)data, packet);
+        response_length = modbus_tcp_response_lenght(function,coil_count);
+    }else{
+        query_length = modbus_make_packet(slave, function, start_addr, coil_count, (u8*)data, packet);
+        response_length = modbus_tcp_response_lenght(function,coil_count);
+    }
+    if ((query_length <= 0) || (response_length<=2) ||
+            (response_length>256)){
+        main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+        res = INTERNAL_ERROR;
+    }else{
+        /* NOTE: Integer division. (count+7)/8 is equivalent to ceil(count/8) */
+        response_length = modbus_tcp_master_packet_transaction(channel,packet,(u16)query_length,
+                                                    (u16)response_length,response_timeout,socket_id);
+        if (response_length  < 6){
+            res = INVALID_FRAME;
+        }else{
+            u8 * body;
+            if((channel == PACKET_CHANNEL_TCP)||(channel == PACKET_CHANNEL_UDP)){
+                body = &packet[MODBUS_TCP_HEADER_SIZE];
+                *(u16*)(void*)(&packet[response_length]) = modbus_crc16((u8*)(packet+MODBUS_TCP_HEADER_SIZE),\
+                                                    (u16)response_length-MODBUS_TCP_HEADER_SIZE);
+            }else{
+                body = packet;
+            }
+            if ((body[0] != slave) ||
+                   (body[1] != function) ||
+                   (body[2] != (u8)((start_addr>>8) & 0xff))||
+                   (body[3] != (u8)(start_addr & 0xff))||
+                   (body[4] != 0)||
+                   (body[5] != coil_count)){
+                res = 0;
+            }else{
+                res = response_length;
+            }
+        }
+    }
+    return res;
+}
+/* FUNCTION 0x10   - Force Multiple Registers */
+static int modbus_master_write_output_words(u8  function,u8  slave,u16 start_addr,u16* data,u8 reg_numm,
+                                     u16 channel,u8  *error_code,u32 response_timeout,int socket_id) {
+    int query_length, response_length, res ;
+    u8 packet[MODBUS_PACKET_LEN];
+    (void)error_code;
+    if( reg_numm > MODBUS_MAX_WORD_NUM) {
+        reg_numm = MODBUS_MAX_WORD_NUM;
+    }
+    if ((channel == PACKET_CHANNEL_TCP)||
+            (channel == PACKET_CHANNEL_UDP)){
+        query_length = modbus_make_tcp_packet(slave, function, start_addr, reg_numm, (u8*)data, packet);
+        response_length = modbus_tcp_response_lenght(function,reg_numm);
+    }else{
+        query_length = modbus_make_packet(slave, function, start_addr, reg_numm, (u8*)data, packet);
+        response_length = modbus_tcp_response_lenght(function,reg_numm);
+    }
+    if ((query_length <= 0) || (response_length<=2) ||
+            (response_length>256)){
+        main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+        res = INTERNAL_ERROR;
+    }else{
+        /* NOTE: Integer division. (count+7)/8 is equivalent to ceil(count/8) */
+        response_length = modbus_tcp_master_packet_transaction(channel,packet,(u16)query_length,
+                                                    (u16)response_length,response_timeout,socket_id);
+        if (response_length < 8){
+            res = INVALID_FRAME;
+        }else {
+            u8 * body;
+            if((channel == PACKET_CHANNEL_TCP)||(channel == PACKET_CHANNEL_UDP)){
+                body = &packet[MODBUS_TCP_HEADER_SIZE];
+                *(u16*)(void*)(&packet[response_length]) = modbus_crc16((u8*)(packet+MODBUS_TCP_HEADER_SIZE),\
+                                                    (u16)response_length-MODBUS_TCP_HEADER_SIZE);
+            }else{
+                body = packet;
+            }
+
+            if ((body[0] != slave) ||
+                  (body[1] != function) ||
+                  (body[2] != (u8)((start_addr>>8) & 0xff))||
+                  (body[3] != (u8)(start_addr & 0xff))||
+                  (body[4] != 0)||
+                  (body[5] != reg_numm)){
+                res = 0;
+            }else{
+                res = response_length;
+            }
+        }
+    }
+    return res;
+}
 
 
 #endif //MODBUS_C

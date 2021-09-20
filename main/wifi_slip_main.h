@@ -3,8 +3,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "os_type.h"
+#include <u8g2.h>
+#include "u8g2_esp32_hal.h"
+
 #define WIFI_SLIP_MAX_IP_PACKET (536+128)
 #define SLIP_MAX_RAW_PACKET WIFI_SLIP_MAX_IP_PACKET*2
+extern u8g2_esp32_hal_t u8g2_esp32_hal;
+extern u8g2_t u8g2; // a structure which will contain all the data for one display
 
 /**
   *use for slip to wifi queue

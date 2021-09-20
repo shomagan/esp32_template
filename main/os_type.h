@@ -76,6 +76,7 @@
 #define task_create(function, name, stack_size, param, prio, handler)\
     xTaskCreate(function, name, stack_size, param, prio, handler)
 #define task_delete(handler) vTaskDelete(handler)
+#define task_get_id   xTaskGetCurrentTaskHandle
 #define os_yield() taskYIELD()
 #define task_notify_wait(flags,signal,ms) xTaskNotifyWait(0,flags,signal,ms/portTICK_PERIOD_MS)
 #define task_notify_send(thread_id,signal,prev_value) xTaskGenericNotify( thread_id, (uint32_t)signal, eSetBits, prev_value)

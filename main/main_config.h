@@ -59,7 +59,10 @@
 #else
 #define MAIN_DEBUG_ASSERT(message, assertion)
 #endif  //main_noassert
-
+#define PWM_TEST_ENABLE 1
+#define TOUCH_HANDLE_ENABLE 1
+#define UDP_BROADCAST_ENABLE 1
+#define MODBUS_MASTER_ENABLE 1
 /*add functions and variable declarations before */
 #ifdef __cplusplus
 }

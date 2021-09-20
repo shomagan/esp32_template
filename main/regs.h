@@ -231,7 +231,17 @@ typedef union{
         u16 ap_connections_number; //!< "number of connections" &ro
         u16 sta_connect; //!< "sta connect state" &ro
         u32 table_version;     //!< "change value in def_table_version for drop all regs to default value" &ro &def &save
-
+        u16 iirls_pairing_status; //!< "status" &ro
+        u8 iirls_paired_ip[4];              //!< "ip address of paired device" &ro
+        u16 modbus_master_test_value; //!< "status" &ro
+        u16 iirls_state;                //!< "state" &save
+        u16 paired_device_model_number[40];//!< "state" &ro
+        u16 slave_modbus_address;       //!< "slave modbus address" &def &save &max &min
+        u32 modbus_master_comm_period_current; //!< ""
+        u32 modbus_master_comm_period_max; //!< ""
+        u32 modbus_master_comm_period_min; //!< ""
+        u32 modbus_master_succ_transactions_number; //!< ""
+        u32 modbus_master_error_transactions_number; //!< ""
     }vars;
     u8 bytes[GLOBAL_UNION_SIZE]; //for full bksram copy
 }main_vars_t;// #generator_use_descritption {"message":"end_struct"}
@@ -253,6 +263,26 @@ typedef union{
     struct MCU_PACK{
         // start regs struct
         float test_pwm_value;                   //!<"test pwm value [0;100]" &def &save
+        u16 touch_0;
+        u16 touch_1;
+        u16 touch_2;
+        u16 touch_3;
+        u64 water_counter;                      //!< "di counter" &save &ro
+        float impulse_cost;                     //!< "cost of di impulse in liters" &save &def
+        float liters;                           //!< "liters calculated" &save
+        u32 touch_1_count;                      //!< "ms " &save &def
+        u32 touch_2_count;                      //!< "ms " &save &def
+        u32 touch_3_count;                      //!< "ms " &save &def
+        float touch_1_liters;                      //!< "ms " &save &def
+        float touch_2_liters;                      //!< "ms " &save &def
+        float touch_3_liters;                      //!< "ms " &save &def
+        float touch_0_trshld;                      //!< "in percents" &save &def
+        float touch_1_trshld;                      //!< "in percents" &save &def
+        float touch_2_trshld;                      //!< "in percents" &save &def
+        float touch_3_trshld;                      //!< "in percents" &save &def
+        u32 filter_use;                             //!< "use inside filter fot touch sensors or not " &save
+        u32 touch_handle_period;                    //!< "in ms period of handle touchs" &save &def
+        u32 by_time;                              //!< "by time or counter" &save &def
     }vars;
     u8 bytes[32]; //for full bksram copy
 }main_vars_part_1_t;// #generator_use_descritption {"message":"end_struct"}
@@ -273,10 +303,10 @@ extern main_vars_part_1_t regs_global_part1;
 typedef union{
     struct MCU_PACK{
         // start regs struct
-        float servo_0;                   //!<"servo pwm value [0;100]" &def &save &min &max
-        float servo_1;                   //!<"servo pwm value [0;100]" &def &save &min &max
-        float servo_2;                   //!<"servo pwm value [0;100]" &def &save &min &max
-        float servo_3;                   //!<"servo pwm value [0;100]" &def &save &min &max
+        float servo_0;                   //!<"servo pwm value [0;100]" &def &min &max
+        float servo_1;                   //!<"servo pwm value [0;100]" &def &min &max
+        float servo_2;                   //!<"servo pwm value [0;100]" &def &min &max
+        float servo_3;                   //!<"servo pwm value [0;100]" &def &min &max
     }vars;
     u8 bytes[32]; //for full bksram copy
 }servo_control_part_t;// #generator_use_descritption {"message":"end_struct"}
@@ -349,6 +379,8 @@ typedef enum {
     REMOTE_UPDATE_DISABLE_COMM,/*!< 0x550a check BOOTKEY for downloas OS*/
     LAN_RESET_COMM,            /*!< 0x550b check BOOTKEY for downloas OS*/
     MAKE_TEST_COMM,            /*!< 0x550c command for debug purpose*/
+    IIRLS_HANDSHAKE = 0x7000,   /*!< 28672 Issues a command for slave to perform "handshake" procedure.*/
+    IIRLS_HANDSHAKE_CONFIRMATION = 0x7001,   /*!< 28673 Issues a command for slave to confirm successful "handshake".*/
 
 }main_command_t;
 typedef enum{
