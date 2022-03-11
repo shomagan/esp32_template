@@ -79,7 +79,8 @@
 #define task_get_id   xTaskGetCurrentTaskHandle
 #define os_yield() taskYIELD()
 #define task_notify_wait(flags,signal,ms) xTaskNotifyWait(0,flags,signal,ms/portTICK_PERIOD_MS)
-#define task_notify_send(thread_id,signal,prev_value) xTaskGenericNotify( thread_id, (uint32_t)signal, eSetBits, prev_value)
+
+#define task_notify_send(thread_id,signal,prev_value) xTaskGenericNotify( thread_id, 0, (uint32_t)signal, eSetBits, prev_value)
 
 /*add functions and variable declarations before */
 #ifdef __cplusplus
