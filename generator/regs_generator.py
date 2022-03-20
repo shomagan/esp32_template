@@ -22,6 +22,7 @@ def generate(type_module):
     regs_file_path = '../main/regs.h'
     user_describe_rst = open('address_space_' + type_module + '.rst', 'w', encoding='UTF-8')
     regs_description = open('regs_description.pat', 'w', encoding='UTF-8')
+    regs_description_client = open('regs_description_client.pat', 'w', encoding='UTF-8')
     regs_description_header_path = '../main/regs_description.h'
     rst_desc_table_head = ".. csv-table::\n"\
                           "   :header: \"index\",\"name\",\"type\",\"size\",\"byte\",\"mdb\",\"flags\", " \
@@ -29,15 +30,17 @@ def generate(type_module):
                           "   :widths: 3, 5, 3, 5, 5, 12, 10, 30\n\n"
     user_describe_rst.write(rst_desc_table_head)
     regs_hand = regs_handl.RegsHand()
-    regs_hand.regs_file_handling(regs_file_path, regs_description)
+    regs_hand.regs_file_handling(regs_file_path, regs_description, regs_description_client)
     user_describe_rst.write(regs_hand.user_describe_rst)
     user_describe_rst.close()
     regs_description.close()
+    regs_description_client.close()
     print("first config variable " + str(regs_hand.guid))
-    change_regs_num(regs_description_header_path, regs_hand.regs_num)
+    change_regs_num(regs_description_header_path, regs_hand.regs_self_num, regs_hand.regs_client_num)
     current_path = os.path.dirname(os.path.abspath(__file__))
     change_version(current_path + "/../")
-    print("find " + str(regs_hand.regs_num) + " own network variable")
+    print("find " + str(regs_hand.regs_self_num) + " own network variable")
+    print("find " + str(regs_hand.regs_client_num) + " client network variable")
     print("last bkram address " + str(regs_hand.saved_address))
     # rewrite exist file with new network variable settings
     write_exist_file()
@@ -151,9 +154,12 @@ def get_git_version(git_base_path):
     return version
 
 
-def change_regs_num(regs_description_header_path, regs_number):
+def change_regs_num(regs_description_header_path, regs_self_num, regs_client_num):
     str_before = '\#define\s+NUM_OF_SELF_VARS\s+[\d]+'
-    str_to = '#define NUM_OF_SELF_VARS ' + str(regs_number)
+    str_to = '#define NUM_OF_SELF_VARS ' + str(regs_self_num)
+    substitute_reg_exp(regs_description_header_path, str_before, str_to)
+    str_before = '\#define\s+NUM_OF_CLIENT_VARS\s+[\d]+'
+    str_to = '#define NUM_OF_CLIENT_VARS ' + str(regs_client_num)
     substitute_reg_exp(regs_description_header_path, str_before, str_to)
 
 
@@ -206,6 +212,32 @@ def write_exist_file():
     file_path = '../main/regs_description.c'
     for line in fileinput.input(file_path, inplace=1):
         if re.search("\s*regs_description_t\s+const\s+regs_description\[\s*NUM_OF_SELF_VARS\s*\]\s*\=\s*\{",line):
+            replace = 1
+            print(line, end='')
+        elif replace:
+            cancel = re.compile('^\s*\}\;', re.ASCII)
+            test = cancel.match(line)
+            if test:
+                replace = 0
+                for own_line in template_file:
+                    print(own_line, end='')
+                    number += 1
+                print('};')
+        else:
+            print(line, end='')
+    fileinput.close()
+    template_file.close()
+    if number:
+        print('replace ' + str(number) + ' string in description file' + file_path)
+    else:
+        print("don't find regs_description_t struct in file" + file_path)
+
+    template_file = open('regs_description_client.pat', 'r', encoding='UTF-8')
+    replace = 0
+    number = 0
+    file_path = '../main/regs_description.c'
+    for line in fileinput.input(file_path, inplace=1):
+        if re.search("\s*regs_description_t\s+const\s+regs_description_client\[\s*NUM_OF_CLIENT_VARS\s*\]\s*\=\s*\{",line):
             replace = 1
             print(line, end='')
         elif replace:

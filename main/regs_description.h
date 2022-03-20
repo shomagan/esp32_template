@@ -23,6 +23,7 @@
 #define  MAX_ARRAY_SIZE 256
 #define  MAX_DESCRIPTIONS_REGS  2048
 #define NUM_OF_SELF_VARS 72
+#define NUM_OF_CLIENT_VARS 7
 extern const u32 def_table_version;
 
 enum property{
@@ -91,6 +92,7 @@ typedef enum{
 }regs_description_guid;
 
 extern regs_description_t const regs_description[];
+extern regs_description_t const regs_description_client[];
 extern const u16 def_table_id;
 int regs_description_get_by_name(regs_template_t * regs_template);
 int regs_description_get_by_ind(regs_template_t * regs_template);

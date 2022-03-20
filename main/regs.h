@@ -189,7 +189,7 @@ typedef struct {
  *
  * @ingroup regs
  */
-/* #generator_use_descritption {"space_name" :"main_vars_t", "address_space" :0, "modbus_type" :"holding_registers", "modbus_address" :0}*/
+/* #generator_use_description {"space_name" :"main_vars_t", "modbus_type" :"server", "address_space" :0, "modbus_function" :"holding_registers", "register_start_address" :0}*/
 typedef union{
     struct MCU_PACK{
         // start regs struct
@@ -244,7 +244,7 @@ typedef union{
         u32 modbus_master_error_transactions_number; //!< ""
     }vars;
     u8 bytes[GLOBAL_UNION_SIZE]; //for full bksram copy
-}main_vars_t;// #generator_use_descritption {"message":"end_struct"}
+}main_vars_t;// #generator_use_description {"message":"end_struct"}
 extern main_vars_t regs_global;
 /**
  * @brief main struct
@@ -258,7 +258,7 @@ extern main_vars_t regs_global;
  *
  * @ingroup regs
  */
-/* #generator_use_descritption {"space_name" :"main_vars_part_1_t",  "address_space" :1, "modbus_type" :"holding_registers", "modbus_address" :1000}*/
+/* #generator_use_description {"space_name" :"main_vars_part_1_t", "modbus_type" :"server", "address_space" :1, "modbus_function" :"holding_registers", "register_start_address" :1000}*/
 typedef union{
     struct MCU_PACK{
         // start regs struct
@@ -285,7 +285,7 @@ typedef union{
         u32 by_time;                              //!< "by time or counter" &save &def
     }vars;
     u8 bytes[32]; //for full bksram copy
-}main_vars_part_1_t;// #generator_use_descritption {"message":"end_struct"}
+}main_vars_part_1_t;// #generator_use_description {"message":"end_struct"}
 extern main_vars_part_1_t regs_global_part1;
 /**
  * @brief main struct
@@ -299,7 +299,7 @@ extern main_vars_part_1_t regs_global_part1;
  *
  * @ingroup regs
  */
-/* #generator_use_descritption {"space_name" :"servo_control_part_t",  "address_space" :2, "modbus_type" :"holding_registers", "modbus_address" :2000}*/
+/* #generator_use_description {"space_name" :"servo_control_part_t",  "address_space" :2, "modbus_type" :"server", "modbus_function" :"holding_registers", "register_start_address" :2000}*/
 typedef union{
     struct MCU_PACK{
         // start regs struct
@@ -309,8 +309,38 @@ typedef union{
         float servo_3;                   //!<"servo pwm value [0;100]" &def &min &max
     }vars;
     u8 bytes[32]; //for full bksram copy
-}servo_control_part_t;// #generator_use_descritption {"message":"end_struct"}
+}servo_control_part_t;// #generator_use_description {"message":"end_struct"}
 extern servo_control_part_t servo_control_part;
+
+/**
+ * @brief struct for reading modbus data from another device
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * will be in struct regs_description_client
+ * additional space modbus_address, specific space read_holding_registers
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *                  regs_description \n
+ *
+ * @ingroup regs
+ */
+/* #generator_use_description {"space_name" :"client_part_0",  "address_space" :0, "modbus_type" :"client", "modbus_function" :"holding_registers", "modbus_address" :3,"register_start_address" :0}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        u16 mdb_addr;                   //!<"modbus address" &save &def
+        u8 ip[4];                       //!<"device ip address, warning!!! changes can lead to lost connection" &save
+        u8 netmask[4];                  //!<"netmask address for main wifi net", &save
+        u8 gate[4];                 //!<"gateaway address, warning!!! changes can lead to lost connection " &save
+        u8 slip_ip[4];                       //!<"ip address for local net",&save ,
+        u8 slip_netmask[4];                  //!<"netmask address for local net", &save ,
+        u8 slip_gate[4];                 //!<"gateaway address for local net", &save,
+    }vars;
+    u8 bytes[32]; //for full bksram copy
+}client_part_0_t;// #generator_use_description {"message":"end_struct"}
+extern client_part_0_t client_part_0;
 
 /**
   * @brief registers for regs_event_handler

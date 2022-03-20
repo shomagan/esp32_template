@@ -67,7 +67,7 @@ class RegsHand(base_object.Base):
     MIN_VALUE_FLAG = 0x40
     MAX_VALUE_FLAG = 0x80
 
-    GENERATOR_MARKER = "#generator_use_descritption"
+    GENERATOR_MARKER = "#generator_use_description"
     REGS_DESCRIPTION_SETTINGS = MIN_VALUE_FLAG | MAX_VALUE_FLAG
 
     def __init__(self):
@@ -88,7 +88,8 @@ class RegsHand(base_object.Base):
         self.reg_opt_is_struct = 0
         self.flag = 0x00
         self.temp_description = "//"
-        self.regs_num = 0
+        self.regs_self_num = 0
+        self.regs_client_num = 0
         self.is_reduced = 0
         self.dict = []
         self.structure_number = 0
@@ -96,7 +97,7 @@ class RegsHand(base_object.Base):
         self.current_struct_json = {}
         self.modbus_areas = {}
 
-    def regs_file_handling(self, path_to_file, regs_description):
+    def regs_file_handling(self, path_to_file, regs_description, regs_description_client):
         regs_file = open(path_to_file, 'r', errors='ignore')
         struct_started = 0
         line_number = 0
@@ -144,14 +145,14 @@ class RegsHand(base_object.Base):
                             self.additional_name = self.internal_name + str(i)
                             self.size_array = self.size_value
                             self.user_describe_rst += self.add_variable_desc_rst()
-                            self.add_variable_to_regs_description(regs_description, i)
+                            self.add_variable_to_regs_description(regs_description, regs_description_client, i)
                             self.guid += self.size_value * REGS_SIZE[self.type]
                             self.byte_number += self.size_value * REGS_SIZE[self.type]
                             if self.flag & self.SAVE_TYPE_FLAG:
                                 self.saved_address += self.size_value * REGS_SIZE[self.type]
                     else:
                         self.user_describe_rst += self.add_variable_desc_rst()
-                        self.add_variable_to_regs_description(regs_description, 0)
+                        self.add_variable_to_regs_description(regs_description, regs_description_client, 0)
                         self.guid += self.size_array * REGS_SIZE[self.type]
                         self.byte_number += self.size_array * REGS_SIZE[self.type]
                         if self.flag & self.SAVE_TYPE_FLAG:
@@ -260,7 +261,7 @@ class RegsHand(base_object.Base):
             self.size_array = 0
 
     def add_variable_desc(self):
-        mdb_base = self.modbus_structures_description[self.structure_number - 1]["modbus_address"]
+        mdb_base = self.modbus_structures_description[self.structure_number - 1]["register_start_address"]
         flag_str = ""
         if self.flag & self.RO_TYPE_FLAG:
             flag_str += "READ_ONLY"
@@ -274,7 +275,6 @@ class RegsHand(base_object.Base):
             flag_str += ",HAVE_MIN_VALUE"
         if self.flag & self.MAX_VALUE_FLAG:
             flag_str += ",HAVE_MAX_VALUE"
-
         description = self.temp_description.replace("//", " ")
         description = description.replace("\n", " ")
         description = description.replace("!<", " ")
@@ -285,22 +285,24 @@ class RegsHand(base_object.Base):
         description = description.replace("&def", "")
         description = description.replace("&credential", "")
         description = description.replace("&crtcl", "")
-        modbus_function = MODBUS_FUNCTIONS[self.modbus_structures_description[self.structure_number - 1]["modbus_type"]]
-        modbus_address = (mdb_base + self.byte_number // 2) + (modbus_function << 16)
-        return "|{}|{}|{}|{}|{}|{}|{}|{}|\n".format(str(self.ind), self.internal_name, short_name(self.type),
-                                                    str(self.size_array), str(self.guid), str(hex(modbus_address)), flag_str,
-                                                    description)
+        modbus_function = MODBUS_FUNCTIONS[self.modbus_structures_description[self.structure_number - 1]["modbus_function"]]
+        modbus_type = MODBUS_FUNCTIONS[
+            self.modbus_structures_description[self.structure_number - 1]["modbus_type"]]
+        register_start_address = (mdb_base + self.byte_number // 2) + (modbus_function << 16)
+        return f"|{modbus_type}|{str(self.ind)}|{self.internal_name}|{short_name(self.type)}|{str(self.size_array)}|" \
+               f"{str(self.guid)}|{str(hex(register_start_address))}|{flag_str}|{description}|\n"
 
     def add_variable_desc_rst(self):
         flag_str = ""
-        mdb_base = self.modbus_structures_description[self.structure_number - 1]["modbus_address"]
-        modbus_address = mdb_base + self.byte_number // 2
-        mdb_type = self.modbus_structures_description[self.structure_number - 1]["modbus_type"]
+        mdb_base = self.modbus_structures_description[self.structure_number - 1]["register_start_address"]
+        register_start_address = mdb_base + self.byte_number // 2
+        modbus_function = self.modbus_structures_description[self.structure_number - 1]["modbus_function"]
+        modbus_type = self.modbus_structures_description[self.structure_number - 1]["modbus_type"]
         if self.flag & self.RO_TYPE_FLAG:
             flag_str += "READ_ONLY"
-            mdb_description = "{}_{} function-4".format(mdb_type, modbus_address)
+            mdb_description = "{}_{} function-4".format(modbus_function, register_start_address)
         else:
-            mdb_description = "{}_{} function-3,4,6,16".format(mdb_type, modbus_address)
+            mdb_description = "{}_{} function-3,4,6,16".format(modbus_function, register_start_address)
         if self.flag & self.SAVE_TYPE_FLAG:
             flag_str += " SAVED"
         if self.flag & self.CREDENTIAL_FLAG:
@@ -311,7 +313,6 @@ class RegsHand(base_object.Base):
             flag_str += ",HAVE_MIN_VALUE"
         if self.flag & self.MAX_VALUE_FLAG:
             flag_str += ",HAVE_MAX_VALUE"
-
         description = self.temp_description.replace("//", "")
         description = description.replace("\"", "")
         description = description.replace("\n", "")
@@ -323,18 +324,16 @@ class RegsHand(base_object.Base):
         description = description.replace("&def", "")
         description = description.replace("&credential", "")
         description = description.replace("&crtcl", "")
-        return '    {},\"{}\",\"{}\",{},{},\"{}\",\"{}\",\"{}\"\n'.format(str(self.ind), self.internal_name,
-                                                                          short_name(self.type),
-                                                                          str(self.size_array), str(self.guid),
-                                                                          mdb_description, flag_str,
-                                                                          description)
+        return f'    \"{modbus_type}\",{str(self.ind)},\"{self.internal_name}\",\"{short_name(self.type)}\",{str(self.size_array)},' \
+               f'{str(self.guid)},\"{mdb_description}\",\"{flag_str}\",\"{description}\"\n'
 
-    def add_variable_to_regs_description(self, regs_description_write_file, number):
+    def add_variable_to_regs_description(self, regs_description_write_file, regs_description_client, number):
         mdb_regs_global_name = self.modbus_structures_description[self.structure_number - 1]["regs_global_name"]
-        mdb_base = self.modbus_structures_description[self.structure_number - 1]["modbus_address"]
-        modbus_function = MODBUS_FUNCTIONS[self.modbus_structures_description[self.structure_number - 1]["modbus_type"]]
-        modbus_address = (mdb_base + self.byte_number // 2) + (modbus_function << 16)
-
+        mdb_base = self.modbus_structures_description[self.structure_number - 1]["register_start_address"]
+        modbus_function = MODBUS_FUNCTIONS[
+            self.modbus_structures_description[self.structure_number - 1]["modbus_function"]]
+        modbus_type = self.modbus_structures_description[self.structure_number - 1]["modbus_type"]
+        register_start_address = (mdb_base + self.byte_number // 2) + (modbus_function << 16)
         if self.flag & self.SAVE_TYPE_FLAG:
             saved_address = self.saved_address
         else:
@@ -347,29 +346,43 @@ class RegsHand(base_object.Base):
             p_value = "(u8*)&{}.vars.{}[{}]".format(mdb_regs_global_name, self.internal_name, number)
         else:
             p_value = "(u8*)&{}.vars.{}".format(mdb_regs_global_name, self.internal_name)
-        regs_description_write_file.writelines('{{ {}, {}, {}, {}, {},\"{}\",\"{}\", {}, {}, {}, {}, {}, {}, {} }},'
+        if modbus_type == "client":
+            regs_description_client.writelines('{{ {}, {}, {}, {}, {},\"{}\",\"{}\", {}, {}, {}, {}, {}, {}, {} }},'
                                                '{}'.format(self.p_default, self.p_min_value, self.p_max_value,
                                                            p_value, str(saved_address), self.description
                                                            , name, self.type, str(self.ind),
-                                                           str(int(self.guid)), str(hex(modbus_address)),
+                                                           str(int(self.guid)), str(hex(register_start_address)),
                                                            str(self.size_array), str(self.flag),
                                                            (self.structure_number - 1), self.temp_description))
-        temp_description = {"regs_num": self.regs_num, "p_default": self.p_default, "p_min_value": self.p_min_value,
+            self.regs_client_num += 1
+        else:
+            regs_description_write_file.writelines('{{ {}, {}, {}, {}, {},\"{}\",\"{}\", {}, {}, {}, {}, {}, {}, {} }},'
+                                               '{}'.format(self.p_default, self.p_min_value, self.p_max_value,
+                                                           p_value, str(saved_address), self.description
+                                                           , name, self.type, str(self.ind),
+                                                           str(int(self.guid)), str(hex(register_start_address)),
+                                                           str(self.size_array), str(self.flag),
+                                                           (self.structure_number - 1), self.temp_description))
+            self.regs_self_num += 1
+        temp_description = {"regs_self_num": self.regs_self_num,"regs_client_num" : self.regs_client_num,
+                            "p_default": self.p_default, "p_min_value": self.p_min_value,
                             "p_max_value": self.p_min_value, "p_value": p_value,
                             "description": self.description, "internal_name": self.internal_name,
                             "additional_name": self.additional_name, "type": self.type, "ind": self.ind,
                             "guid": self.guid, "saved_address": self.saved_address, "size_array": self.size_array,
                             "size_value": self.size_value, "is_struct": self.reg_opt_is_struct, "flag": self.flag,
-                            "modbus_address": modbus_address, "space_name" : self.modbus_structures_description[self.structure_number - 1]["space_name"]}
+                            "register_start_address": register_start_address,
+                            "space_name" : self.modbus_structures_description[self.structure_number - 1]["space_name"],
+                            "modbus_type" : modbus_type}
         self.check_reg_name(temp_description)
         self.update_modbus_area(temp_description, int(mdb_base), modbus_function)
         self.dict.append(temp_description)
-        self.regs_num += 1
         self.ind += 1
 
     def check_reg_name(self, reg_description):
         for reg in self.dict:
-            if reg["internal_name"] == reg_description["internal_name"]:
+            if reg["internal_name"] == reg_description["internal_name"] and\
+               reg["modbus_type"] == reg_description["modbus_type"]:
                 self.print_error("reg with name - {} already exist, current struct -{}"
                                  "preview struct - {}"
                                  "".format(reg_description["internal_name"],
@@ -377,27 +390,29 @@ class RegsHand(base_object.Base):
                                            reg["space_name"]))
 
     def update_modbus_area(self, reg_description, mdb_base, modbus_function):
-        modbus_area = {"mdb_base": mdb_base,
-                       "modbus_function": modbus_function,
-                       "modbus_last": reg_description["modbus_address"] & 0xffff +
+        modbus_area = { "modbus_type" : reg_description["modbus_type"],
+                        "mdb_base": mdb_base,
+                        "modbus_function": modbus_function,
+                        "modbus_last": reg_description["register_start_address"] & 0xffff +
                                (reg_description["size_value"] * REGS_SIZE[reg_description["type"]]) // 2}
         if reg_description["space_name"] in self.modbus_areas:
             if self.modbus_areas[reg_description["space_name"]]["mdb_base"] != mdb_base or\
                self.modbus_areas[reg_description["space_name"]]["modbus_function"] != modbus_function or \
                self.modbus_areas[reg_description["space_name"]]["modbus_last"] >= \
-                    (reg_description["modbus_address"] & 0xffff + (reg_description["size_value"] *
+                    (reg_description["register_start_address"] & 0xffff + (reg_description["size_value"] *
                                                                    REGS_SIZE[reg_description["type"]])//2):
                 self.print_error("area error mdb_base - {}, modbus_function - {}, size"
                                  "".format(mdb_base, modbus_function,
-                                           (reg_description["modbus_address"] +
+                                           (reg_description["register_start_address"] +
                                             (reg_description["size_value"] * REGS_SIZE[reg_description["type"]])//2)))
-        start_address = reg_description["modbus_address"] & 0xffff
-        last_address = reg_description["modbus_address"] & 0xffff +\
+        start_address = reg_description["register_start_address"] & 0xffff
+        last_address = reg_description["register_start_address"] & 0xffff +\
                        (reg_description["size_value"] * REGS_SIZE[reg_description["type"]]) // 2
         for area in self.modbus_areas:
             if area != reg_description["space_name"]:
-                if (self.modbus_areas[area]["mdb_base"] <= start_address < self.modbus_areas[area]["modbus_last"]) or\
-                 (self.modbus_areas[area]["mdb_base"] <= last_address < self.modbus_areas[area]["modbus_last"]):
+                if ((self.modbus_areas[area]["mdb_base"] <= start_address < self.modbus_areas[area]["modbus_last"]) or\
+                    (self.modbus_areas[area]["mdb_base"] <= last_address < self.modbus_areas[area]["modbus_last"])) and\
+                    (reg_description["modbus_type"] == self.modbus_areas[area]["modbus_type"]):
                     self.print_error("modbus address space intersections "
                                      "reg - {} with area - {}".format(reg_description["internal_name"],
                                                                       self.modbus_areas[area]))
@@ -433,18 +448,18 @@ class RegsHand(base_object.Base):
         res = 0
         if "address_space" in json_structure:
             if 100 > json_structure["address_space"] >= 0:
-                if "modbus_type" in json_structure:
-                    if json_structure["modbus_type"] == "holding_registers" or \
-                            json_structure["modbus_type"] == "input_registers" or \
-                            json_structure["modbus_type"] == "coil_registers" or \
-                            json_structure["modbus_type"] == "discrete_registers":
-                        if "modbus_address" in json_structure:
-                            if 65535 > json_structure["modbus_address"] >= 0:
+                if "modbus_function" in json_structure:
+                    if json_structure["modbus_function"] == "holding_registers" or \
+                            json_structure["modbus_function"] == "input_registers" or \
+                            json_structure["modbus_function"] == "coil_registers" or \
+                            json_structure["modbus_function"] == "discrete_registers":
+                        if "register_start_address" in json_structure:
+                            if 65535 > json_structure["register_start_address"] >= 0:
                                 res = 1
                             else:
                                 self.print_error("incorrect address space for structure {}".format(json_structure))
                     else:
-                        self.print_error("modbus_type not correct in struct {}".format(json_structure))
+                        self.print_error("modbus_function not correct in struct {}".format(json_structure))
             else:
                 self.print_error("incorrect address space for structure {}".format(json_structure))
         return res
