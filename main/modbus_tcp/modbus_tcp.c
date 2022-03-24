@@ -317,28 +317,22 @@ static err_t modbus_tcp_recv(void *arg, struct altcp_pcb *pcb,\
     semaphore_take(modbus_tcp_mutex, portMAX_DELAY );
     connection->retries = 0;
     if(p->tot_len<MODBUS_TCP_MAX_PACKET_SIZE){
-        struct pbuf *q;
-        u32 len_temp=0;
-        for (q = p;q!=NULL;q=q->next){
-            memcpy(connection->buff_received + len_temp,q->payload,q->len);
-            len_temp += q->len;
-        }
+        pbuf_copy_partial(p, connection->buff_received, p->tot_len, 0);
         connection->len = p->tot_len;
-
 #if DEBUG
         time_recv = osKernelSysTick();
 #endif
         semaphore_release(modbus_tcp_mutex);
         u16 len_return=0;
-        if(it_modbus_request_check(connection->buff_received,(u16)len_temp)==1){
+        if(it_modbus_request_check(connection->buff_received,(u16)connection->len)==1){
             //rtu packet over tcp
-            if(modbus_packet_for_me(connection->buff_received,(u16)len_temp)){
-                len_return = modbus_rtu_packet(connection->buff_received,(u16)len_temp);
+            if(modbus_packet_for_me(connection->buff_received,(u16)connection->len)){
+                len_return = modbus_rtu_packet(connection->buff_received,(u16)connection->len);
             }
-        }else if(it_modbus_tcp_full_check(connection->buff_received,(u16)len_temp)==1){
+        }else if(it_modbus_tcp_full_check(connection->buff_received,(u16)connection->len)==1){
             //modbus tcp packet
-            if(modbus_packet_for_me(&connection->buff_received[MODBUS_TCP_HEADER_SIZE],(u16)len_temp)){
-                len_return = modbus_tcp_packet(connection->buff_received,(u16)len_temp);
+            if(modbus_packet_for_me(&connection->buff_received[MODBUS_TCP_HEADER_SIZE],(u16)connection->len)){
+                len_return = modbus_tcp_packet(connection->buff_received,(u16)connection->len);
             }
         }else{
             len_return = modbus_err_packet_type(MODBUS_TCP_PACKET,\

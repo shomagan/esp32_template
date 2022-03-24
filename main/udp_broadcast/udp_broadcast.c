@@ -12,7 +12,7 @@
 #include <string.h>
 #include "modbus_tcp_client.h"
 #include "os_type.h"
-#define IIRLS_NAME "IIRLS-PCBS-1.0.0"
+#define ADVERTISMENT_REQUEST "UDP_REQUEST"
 /**
  * @brief udp_broadcast use for bradcast advertisment
  *
@@ -24,40 +24,16 @@
 /**
 answer example
 {
-    "pcbs": "HVEL1-PCBS-4.0.0",
+    "modbus_address": 3,
     "name": "HVEL",
     "serial": "HVEL10000",
     "model": "HVEL1-0123456789ABCD",
     "firmware": "1.0.0-alpha.1",
-    "firmwareMetaData": "0-g123456789ABCDEF",
-    "gid": "G00000R00",
-    "mech": "HVEL1-MECH-1.0.0",
-    "icbls": "HVEL1-ICBLS-1.0.0",
-    "ecbls": "HVEL1-ECBLS-1.0.0",
-    "ethernet": {
-        "lan": {
-        "ip": "192.168.1.100",
-        "netmask": "255.255.255.0",
-        "gateway": "192.168.1.1",
-        "dhcp": true
-        },
-        "service": {
-        "ip": "192.168.1.100",
-        "netmask": "255.255.255.0",
-        "gateway": "192.168.1.1"
-        }
-    },
-    "communications": [
-        {
-        "type": "Modbus/TCP",
-        "port": 502,
-        "unitId": 3
-        },
-        {
-        "type": "XML/TCP",
-        "port": 65550
-        }
-    ]
+    "ip": "192.168.1.100",
+    "netmask": "255.255.255.0",
+    "gateway": "192.168.1.1",
+    "dhcp": false,
+    "modbus_port": 502
 }
 */
 
@@ -78,26 +54,19 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
     static char answer_buff[UDP_BROADCAST_MAX_PACKET_SIZE];
     int len = 0;
     char *buff = (char*)p->payload;
-    if(ip_addr_isbroadcast(ip_current_dest_addr(), ip_current_netif())){
-        len += sprintf(answer_buff,"{\"pcbs\": \"IIRLS-PCBS-1.0.0\"");
-        len += sprintf(&answer_buff[len],",\"ethernet\": {\"lan\": {\"ip\": [%u.%u.%u.%u],",regs_global.vars.ip[0],regs_global.vars.ip[1],
+    if (strncmp(ADVERTISMENT_REQUEST, &buff[0], sizeof(ADVERTISMENT_REQUEST))==0){
+        len += sprintf(answer_buff,"{\"modbus_address\": %u,",regs_global.vars.mdb_addr);
+        len += sprintf(&answer_buff[len],"\"name\": \"chili\",");
+        len += sprintf(&answer_buff[len],"\"serial\": \"0000\",");
+        len += sprintf(&answer_buff[len],"\"model\": \"son\",");
+        len += sprintf(&answer_buff[len],"\"firmware\": \"0.0.1\",");
+        len += sprintf(&answer_buff[len],",\"ip\": \"%u.%u.%u.%u\",",regs_global.vars.ip[0],regs_global.vars.ip[1],
                        regs_global.vars.ip[2],regs_global.vars.ip[3]);
         len += sprintf(&answer_buff[len],"\"netmask\": [%u.%u.%u.%u],",regs_global.vars.netmask[0],regs_global.vars.netmask[1],
                 regs_global.vars.netmask[2],regs_global.vars.netmask[3]);
         len += sprintf(&answer_buff[len],"\"gateway\": [%u.%u.%u.%u],",regs_global.vars.gate[0],regs_global.vars.gate[1],
                 regs_global.vars.gate[2],regs_global.vars.gate[3]);
-        len += sprintf(&answer_buff[len],"}},\"communications\": [{\"type\": \"Modbus/TCP\",\"port\": 502,\"unitID\": %u}]}",regs_global.vars.mdb_addr);
-    }else{
-        /*master slave communication advertisment*/
-        if (strncmp(IIRLS_NAME, &buff[10], 5)==0){
-            add_ip_to_slave_table((uc8*)addr);
-            u8 ip_address_temp[4];
-            memcpy(ip_address_temp,addr,4);
-            main_printf("udp","we received advertisment from slave %u.%u.%u.%u",ip_address_temp[0],
-                    ip_address_temp[1],ip_address_temp[2],ip_address_temp[3]);
-            len += sprintf(answer_buff,"master confirmation");
-        }
-        /*master slave communication advertisment end*/
+        len += sprintf(&answer_buff[len],",\"port\": 502,}");
     }
     if (len){
         udp_broadcast_send_pbuff = pbuf_alloc(PBUF_TRANSPORT, (u16)len, PBUF_RAM);
@@ -119,7 +88,7 @@ int udp_broadcast_advertisement(void){
         if (res == ERR_OK){
             udp_broadcast_send_pbuff = pbuf_alloc(PBUF_TRANSPORT, (u16)len, PBUF_RAM);
             if (udp_broadcast_send_pbuff != NULL) {
-                memcpy(udp_broadcast_send_pbuff->payload,temp_buff,(u16)len);
+                pbuf_take(udp_broadcast_send_pbuff,temp_buff,(u16)len);
                 udp_sendto(udp_broadcast_pcb, udp_broadcast_send_pbuff, IP_ADDR_BROADCAST, UDP_BROADCAST_SELF_PORT);
                 pbuf_free(udp_broadcast_send_pbuff);
             }else{
