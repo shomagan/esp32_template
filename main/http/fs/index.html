@@ -4,6 +4,9 @@
 		<title>sofi_table</title>
 		<meta charset="utf-8">
 		<script>
+			function registers_page_on_load(){
+			}
+
             let by_id = function( id ) { return document.getElementById( id ); };
             let create = function( id ) { return document.createElement( id ); };
 			let addr = "";
@@ -14,7 +17,13 @@
 			function print(message){
 				console.log(message);
 			}
+            function get_all_client_regs(){
+                by_id("get_client_vars").style = "display: none";
+                by_id("table_client").style = "display: inline";
+            }
 			function get_all_regs(){
+                by_id("get_vars").style = "display: none";
+                by_id("table").style = "display: inline";
 				max_regs_num = get_regs_num();
 				print("will be request "+max_regs_num+" registers");
 				let i = 0;
@@ -342,30 +351,51 @@
 			}
 		</style>
 	</head>
-	<body onload="get_all_regs()">
+	<body onload="registers_page_on_load()">
 		<h1>wifi to slip bridge</h1>
 		<div id="buttons" class="buttons-popup">
 			<input style="display: inline" 	id="wifi_settings" type="button" value="wifi_settings" onclick="location.href='/wifi_settings.html'">
 		</div>
 		<br>
-		<table id="table" style="width: 100%">
-			<thead>
-				<tr style="background-color: GhostWhite">
-					<th style="width: 50px">Index</th>
-					<th style="width: 150px">Name</th>
-					<th style="width: 70px">Type</th>
-					<th style="width: 70px">Modbus function</th>
-					<th style="width: 70px">Modbus address</th>
-					<th style="width: 150px">Flags</th>
-					<th style="width: 400px; min-width: 200px">Description</th>
-					<th style="width: 700px; min-width: 200px">Value</th>
-					<th style="display: none">raw_value</th>
-					<th style="min-width: 180px"></th>
-				</tr>
-			</thead>
-			<tbody>
-			</tbody>
-		</table>
+  		<input style="display: inline; width: 100%; height: 200px" 	id="get_vars"		type="button" value="Click here to get own variables" onclick="get_all_regs()">
+  		<table id="table" style="width: 100%; display:none">
+  			<thead>
+  				<tr style="background-color: GhostWhite">
+  					<th style="width: 50px">Index</th>
+  					<th style="width: 150px">Name</th>
+  					<th style="width: 70px">Type</th>
+  					<th style="width: 70px">Modbus function</th>
+  					<th style="width: 70px">ModBus address</th>
+  					<th style="width: 150px">Flags</th>
+  					<th style="width: 350px">Description</th>
+  					<th style="width: 350px">Value</th>
+  					<th style="display: none">raw_value</th>
+  					<th style="min-width: 180px"></th>
+  				</tr>
+  			</thead>
+  			<tbody>
+  			</tbody>
+  		</table>
+  		<input style="display: inline; width: 100%; height: 200px" 	id="get_client_vars"		type="button" value="Click here to get clients variables" onclick="get_all_client_regs()">
+  		<table id="table_client" style="width: 100%; display:none">
+  			<thead>
+  				<tr style="background-color: GhostWhite">
+  					<th style="width: 50px">Index</th>
+  					<th style="width: 150px">Name</th>
+  					<th style="width: 70px">Type</th>
+  					<th style="width: 70px">Modbus function</th>
+  					<th style="width: 70px">ModBus address</th>
+  					<th style="width: 150px">Flags</th>
+  					<th style="width: 350px">Description</th>
+  					<th style="width: 350px">Value</th>
+  					<th style="display: none">raw_value</th>
+  					<th style="min-width: 180px"></th>
+  				</tr>
+  			</thead>
+  			<tbody>
+  			</tbody>
+  		</table>
+
 		<div class="form-popup" id="send_form">
 			<h1 id="reg_name" style="text-align: center;"></h1>
 			<form id="reg_set_form" name="reg_set_form" ><!--  style="width: 250px" -->

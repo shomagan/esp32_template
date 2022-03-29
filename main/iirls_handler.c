@@ -39,7 +39,7 @@ void isimfw400_task(void *pvParameters ){
     for( ;; ){
         {
             if(itt%1000==0){
-                u8g2_ClearBuffer(&u8g2);
+                /*u8g2_ClearBuffer(&u8g2);
                 u8g2_SetFont(&u8g2, u8g2_font_ncenB08_tr);
                 char temp[30];
                 sprintf(temp,"tx/rx - %lu",regs_global.vars.modbus_master_succ_transactions_number);
@@ -47,7 +47,7 @@ void isimfw400_task(void *pvParameters ){
                 sprintf(temp,"err - %lu",regs_global.vars.modbus_master_error_transactions_number);
                 u8g2_DrawStr(&u8g2, 2,25,temp);
 
-                u8g2_SendBuffer(&u8g2);
+                u8g2_SendBuffer(&u8g2);*/
             }
 
             ///reading analog RAW data, i need to see RAW for calibration

@@ -201,7 +201,7 @@ void app_main(void){
     preinit_global_vars();
     ESP_ERROR_CHECK(esp_slip_init(&wifi_slip_config));
     common_init();/*init common things*/
-    init_display();
+    //init_display();
     common_init_tasks();/*init all necessary tasks */
     wifi_common_init();
     main_printf(TAG, "wifi setting %d",regs_global.vars.wifi_setting);
