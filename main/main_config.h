@@ -62,6 +62,7 @@
 #define PWM_TEST_ENABLE 1
 #define TOUCH_HANDLE_ENABLE 1
 #define UDP_BROADCAST_ENABLE 1
+#define UDP_ADVERTISMENT_PERIOD 1000
 #define MODBUS_MASTER_ENABLE 1
 /*add functions and variable declarations before */
 #ifdef __cplusplus

@@ -521,21 +521,28 @@ static int close_socket_connection(int * socket){
     return 0;
 }
 #define MAX_NUMBER_OF_SLAVES 255
-static u8 slaves_ip_table[sizeof(in_addr_t)*MAX_NUMBER_OF_SLAVES] = {0};
+typedef struct MCU_PACK{
+    in_addr_t ip;
+    u8 modbus_id;
+}slave_table_item_t;
+
+#define SLAVE_TABLE_ITEM_SIZE (sizeof(slave_table_item_t))
+#define SLAVE_TABLE_SIZE (SLAVE_TABLE_ITEM_SIZE*MAX_NUMBER_OF_SLAVES)
+static slave_table_item_t slaves_ip_table[MAX_NUMBER_OF_SLAVES] = {{0,0}};
 static u16 slaves_number = 0;
 int clean_slave_table(void){
     semaphore_take(modbus_tcp_client_access_mutex, portMAX_DELAY );{
-        memset(slaves_ip_table,0,sizeof(in_addr_t)*MAX_NUMBER_OF_SLAVES);
+        memset(slaves_ip_table,0,SLAVE_TABLE_SIZE);
         slaves_number = 0;
     }semaphore_release(modbus_tcp_client_access_mutex);
     return 0;
 }
-int add_ip_to_slave_table(uc8 ip_addr[4]){
+int add_ip_to_slave_table(uc8 ip_addr[4], u8 modbus_id){
     u8 exist = 0;
     int res =0;
     semaphore_take(modbus_tcp_client_access_mutex, portMAX_DELAY );{
         for(u32 i=0;i<slaves_number;i++){
-            if (memcmp(ip_addr,&slaves_ip_table[i*sizeof(in_addr_t)],sizeof(in_addr_t))==0){
+            if (memcmp(ip_addr,&slaves_ip_table[i].ip,sizeof(in_addr_t))==0){
                 exist =1;
             }
         }
@@ -543,7 +550,8 @@ int add_ip_to_slave_table(uc8 ip_addr[4]){
     if (!exist){
         if (slaves_number<MAX_NUMBER_OF_SLAVES){
             semaphore_take(modbus_tcp_client_access_mutex, portMAX_DELAY );{
-                memcpy(&slaves_ip_table[slaves_number*sizeof(in_addr_t)],ip_addr,sizeof(in_addr_t));
+                memcpy(&slaves_ip_table[slaves_number].ip,ip_addr,sizeof(in_addr_t));
+                memcpy(&slaves_ip_table[slaves_number].modbus_id,&modbus_id,1);
                 slaves_number++;
             }semaphore_release(modbus_tcp_client_access_mutex);
         }else{

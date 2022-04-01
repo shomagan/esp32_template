@@ -173,7 +173,7 @@ int clean_slave_table(void);
  * @param ip_addr
  * @return
  */
-int add_ip_to_slave_table(uc8 ip_addr[4]);
+int add_ip_to_slave_table(uc8 ip_addr[4], u8 modbus_id);
 /**
  * @brief get_ip_slaves_table_size
  * @return number of stored slaves ip

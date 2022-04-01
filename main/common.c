@@ -52,6 +52,10 @@
 #include "main_config.h"
 #include "touch_handle.h"
 #include "modbus_tcp_client.h"
+#if UDP_BROADCAST_ENABLE
+#include "udp_broadcast.h"
+#endif
+
 #define DUTY_TASK_PERIOD_MS 100
 task_handle_t common_duty_task_handle;
 task_handle_t modbus_master_id;
@@ -186,6 +190,12 @@ static void common_duty_task(void *pvParameters ){
             if(((task_tick)%(1000/DUTY_TASK_PERIOD_MS))==0u){
                 /* rtc time update start */
                 led_blink_on(250);
+            }
+            if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==0u){
+#if UDP_BROADCAST_ENABLE && UDP_ADVERTISMENT_PERIOD
+                main_printf(TAG,"send advrtsmnt");
+                udp_broadcast_advertisement();
+#endif
             }
             if(((task_tick)%(5000/DUTY_TASK_PERIOD_MS))==0u){    // every 5 sec
                 main_printf(TAG,"tick %u",task_tick);

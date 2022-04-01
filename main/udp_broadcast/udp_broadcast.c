@@ -12,7 +12,6 @@
 #include <string.h>
 #include "modbus_tcp_client.h"
 #include "os_type.h"
-#define ADVERTISMENT_REQUEST "UDP_REQUEST"
 /**
  * @brief udp_broadcast use for bradcast advertisment
  *
@@ -21,6 +20,10 @@
 #if UDP_BROADCAST_ENABLE
 #include "lwip/udp.h"
 #include "lwip/timeouts.h"
+#define ADVERTISMENT_REQUEST "UDP_REQUEST"
+#define MODBUS_FIELD "modbus_address"
+#define MODBUS_FIELD_SIZE sizeof(MODBUS_FIELD)
+static const char *TAG = "udp_broadcast";
 /**
 answer example
 {
@@ -52,9 +55,12 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
     LWIP_UNUSED_ARG(arg);
     LWIP_UNUSED_ARG(upcb);
     static char answer_buff[UDP_BROADCAST_MAX_PACKET_SIZE];
+    char receive_buff[UDP_BROADCAST_MAX_PACKET_SIZE];
     int len = 0;
-    char *buff = (char*)p->payload;
-    if (strncmp(ADVERTISMENT_REQUEST, &buff[0], sizeof(ADVERTISMENT_REQUEST))==0){
+    int receive_len = p->tot_len;
+    receive_len = receive_len>UDP_BROADCAST_MAX_PACKET_SIZE?UDP_BROADCAST_MAX_PACKET_SIZE:receive_len;
+    pbuf_copy_partial(p, receive_buff, receive_len, 0);
+    if (strncmp(ADVERTISMENT_REQUEST, &receive_buff[0], sizeof(ADVERTISMENT_REQUEST))==0){
         len += sprintf(answer_buff,"{\"modbus_address\": %u,",regs_global.vars.mdb_addr);
         len += sprintf(&answer_buff[len],"\"name\": \"chili\",");
         len += sprintf(&answer_buff[len],"\"serial\": \"0000\",");
@@ -67,6 +73,24 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
         len += sprintf(&answer_buff[len],"\"gateway\": [%u.%u.%u.%u],",regs_global.vars.gate[0],regs_global.vars.gate[1],
                 regs_global.vars.gate[2],regs_global.vars.gate[3]);
         len += sprintf(&answer_buff[len],",\"port\": 502,}");
+    }else {
+        int position_modbus_id = -1;
+        for (u16 i=0;i<receive_len-MODBUS_FIELD_SIZE;i++){
+            if (strncmp(MODBUS_FIELD,&receive_buff[i],MODBUS_FIELD_SIZE) == 0){
+                position_modbus_id = i;
+                break;
+            }
+        }
+        if (position_modbus_id>=0){
+            u8 modbus_id = (u8)atoi(&receive_buff[position_modbus_id+MODBUS_FIELD_SIZE  +3]);
+            if(add_ip_to_slave_table((uc8*)addr,modbus_id)){
+                main_printf(TAG, "new modbus device was found\n");
+            }
+            u8 ip_address_temp[4];
+            memcpy(ip_address_temp,addr,4);
+            main_printf(TAG, "we received advertisment from slave %u.%u.%u.%u id %u",ip_address_temp[0],ip_address_temp[1],
+                    ip_address_temp[2],ip_address_temp[3],modbus_id);
+        }
     }
     if (len){
         udp_broadcast_send_pbuff = pbuf_alloc(PBUF_TRANSPORT, (u16)len, PBUF_RAM);
@@ -79,11 +103,11 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
     pbuf_free(p);
 }
 int udp_broadcast_advertisement(void){
-    char temp_buff[UDP_BROADCAST_MAX_PACKET_SIZE];
+    static char temp_buff[UDP_BROADCAST_MAX_PACKET_SIZE];
     int res = 0;
     if(udp_broadcast_pcb!=NULL){
         int len = 0;
-        len += sprintf(temp_buff,"advertisement");
+        len += sprintf(temp_buff,ADVERTISMENT_REQUEST);
         res = udp_connect(udp_broadcast_pcb, IP_ADDR_ANY, UDP_BROADCAST_SELF_PORT);
         if (res == ERR_OK){
             udp_broadcast_send_pbuff = pbuf_alloc(PBUF_TRANSPORT, (u16)len, PBUF_RAM);
