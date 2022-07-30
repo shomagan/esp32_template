@@ -347,13 +347,15 @@ class RegsHand(base_object.Base):
         else:
             p_value = "(u8*)&{}.vars.{}".format(mdb_regs_global_name, self.internal_name)
         if modbus_type == "client":
+            clien_space_number = int(self.modbus_structures_description[self.structure_number - 1]["modbus_address"])
+            clien_space_number |= ((self.structure_number - 1)<<8)&0xff00
             regs_description_client.writelines('{{ {}, {}, {}, {}, {},\"{}\",\"{}\", {}, {}, {}, {}, {}, {}, {} }},'
                                                '{}'.format(self.p_default, self.p_min_value, self.p_max_value,
                                                            p_value, str(saved_address), self.description
                                                            , name, self.type, str(self.ind),
                                                            str(int(self.guid)), str(hex(register_start_address)),
                                                            str(self.size_array), str(self.flag),
-                                                           (self.structure_number - 1), self.temp_description))
+                                                           hex(clien_space_number),self.temp_description))
             self.regs_client_num += 1
         else:
             regs_description_write_file.writelines('{{ {}, {}, {}, {}, {},\"{}\",\"{}\", {}, {}, {}, {}, {}, {}, {} }},'

@@ -51,13 +51,19 @@ typedef struct MCU_PACK{//struct for reg description generic from regs.h
   u16 type;   //!<variable type u8 u16 u32 float double
   u16 ind;    //!<index
   u32 guid;   //!<guid uniq for variable
-  u32 modbus_description; //!<separate guid and modbus address
+  u32 modbus_description; //!<separate guid and modbus address @ref RD_MDB_ADDRESS and RD_MDB_FUNCTION
   u16 size;    //!<array size in type value 
   u16 property;      //!< @ref property (bit0 - writeable)
-  u16 space_number;     //!< space number
+  u16 space_number;     //!< space number for own client, and modbus address for client
 } regs_description_t;//!< @property this item must be unchangable name because using in beremiz user generator
+/** @brief use it for field modbus_description in regs_description_t*/
 #define RD_MDB_ADDRESS(desc) (desc&0x0000ffff)
+/** @brief use it for field modbus_description in regs_description_t*/
 #define RD_MDB_FUNCTION(desc) ((((u32)desc)>>16)&0x0000000f)
+/** @brief use it for field space_number in regs_description_t*/
+#define RD_MDB_CLIENT_SPACE_NUMBER(desc) ((((u16)desc)>>8)&0xff)
+/** @brief use it for field space_number in regs_description_t*/
+#define RD_MDB_CLIENT_MDB_ADDRESS(desc) (((u16)desc)&0xff)
 
 /**
   * @brief struct regs_template_t use it for access to variable throuth regs access

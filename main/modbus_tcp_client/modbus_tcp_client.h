@@ -154,6 +154,13 @@ typedef struct{
    u8 location0;
    u8 location1;
 } area_node_t;
+
+#define MAX_NUMBER_OF_SLAVES 256
+typedef struct MCU_PACK{
+    in_addr_t ip;
+    u8 modbus_id;
+}slave_table_item_t;
+
 extern client_request_t client_requests[];
 extern area_node_t area_nodes[];
 /* Execute a Query/Response suspended transaction between client and server */
@@ -179,13 +186,6 @@ int add_ip_to_slave_table(uc8 ip_addr[4], u8 modbus_id);
  * @return number of stored slaves ip
  */
 u16 get_ip_slaves_table_size(void);
-/**
- * @brief get_ip_slaves_by_number
- * @param ip_address pointer where address will be coppied
- * @param number should be less then slaves_number
- * @return 1 if ip address was coppied to ip_address
- */
-int get_ip_slaves_by_number(u8 * ip_address,u16 number);
 /**
  * @brief need_to_prefill_data
  * @return 1 if need to make prefetch
@@ -214,7 +214,7 @@ int prefill_data_to_buff(u16 position,u16 data);
  */
 int start_prefetch_adc_buffer(void);
 extern task_handle_t modbus_master_id;
-FNCT_NO_RETURN void modbus_tcp_client_task(void * argument);
+FNCT_NO_RETURN void modbus_tcp_client_common_task(void * argument);
 /*add functions and variable declarations before */
 #ifdef __cplusplus
 }

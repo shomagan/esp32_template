@@ -31,6 +31,7 @@ static const char *TAG = "regs_c";
 main_vars_t regs_global;
 main_vars_part_1_t regs_global_part1;
 servo_control_part_t servo_control_part;
+client_part_0_t client_part_0;
 
 /**
  * @brief mutex for access to global regs

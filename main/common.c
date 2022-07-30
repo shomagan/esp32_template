@@ -127,7 +127,7 @@ int common_init_tasks(){
     }
 #endif
 #if MODBUS_MASTER_ENABLE
-    res = task_create(modbus_tcp_client_task, "modbus_tcp_client_task", 4096, NULL, (tskIDLE_PRIORITY + 2), &modbus_master_id);
+    res = task_create(modbus_tcp_client_common_task, "modbus_tcp_client_common_task", 4096, NULL, (tskIDLE_PRIORITY + 2), &modbus_master_id);
     if(res != pdTRUE){
         main_printf(TAG,"modbus tcp task inited success\n");
     }
