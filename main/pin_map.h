@@ -52,6 +52,21 @@
 #define CONFIG_LED_BLINK_GPIO (2)
 #define CONFIG_RXD_GPIO (16)
 #define CONFIG_TXD_GPIO (17)
+// ssd1306 SDA - GPIO21
+#define PIN_SDA 21u
+// ssd1306 SCL - GPIO22
+#define PIN_SCL 22u
+// ssd1306 reset 
+#define PIN_RESET 19u
+//touch pind config
+#define GPIO_TOUCH_0 0
+#define GPIO_TOUCH_1 7
+#define GPIO_TOUCH_2 8
+#define GPIO_TOUCH_3 9
+#define DRIVE_PIN 25
+#define GPIO_WATER_COUNTER_INPUT     23
+#define GPIO_WATER_COUNTER_INPUT_MASK  (1ULL<<GPIO_WATER_COUNTER_INPUT)
+
 
 
 /*add functions and variable declarations before */

@@ -39,18 +39,21 @@
    If you'd rather not, just change the below entries to strings with
    the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
 */
-#define ESP_WIFI_CHANNEL   1
-#define MAX_STA_CONN       4
+#define ESP_WIFI_CHANNEL   1u
+#define MAX_STA_CONN       4u
 #define CONFIG_RTS_GPIO (UART_PIN_NO_CHANGE)
 #define CONFIG_CTS_GPIO (UART_PIN_NO_CHANGE)
-#define CONFIG_UART_PORT_NUM      (2)
-#define CONFIG_UART_BAUD_RATE     (115200)
-#define CONFIG_IPV4 (1)
-#define BUF_SIZE (512)
+#define CONFIG_UART_PORT_NUM      (2u)
+#define CONFIG_UART_BAUD_RATE     (115200u)
+#define CONFIG_IPV4 (1u)
+#define BUF_SIZE (512u)
 static const char *TAG = "wifi_slip_main";
 static bool s_sta_is_connected = false;
 slip_handle_config_t wifi_slip_config;
 u8 sta_connected = 0;
+u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
+u8g2_t u8g2; // a structure which will contain all the data for one display
+
 static int init_display(void);
 /**
  * @brief wifi_event_handler
@@ -91,7 +94,9 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         }
     }else if(event_base==IP_EVENT){
         if (event_id==IP_EVENT_STA_GOT_IP){
-            regs_global.vars.sta_connect=1;
+            ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
+            regs_global.vars.sta_connect = 1;
+            memcpy(&regs_global.vars.sta_ip, &event->ip_info.ip.addr, sizeof(uint32_t));
             ESP_LOGI(TAG, "IP_EVENT_STA_GOT_IP");
         }
     }
@@ -201,7 +206,7 @@ void app_main(void){
     preinit_global_vars();
     ESP_ERROR_CHECK(esp_slip_init(&wifi_slip_config));
     common_init();/*init common things*/
-    //init_display();
+    init_display();
     common_init_tasks();/*init all necessary tasks */
     wifi_common_init();
     main_printf(TAG, "wifi setting %d",regs_global.vars.wifi_setting);
@@ -226,19 +231,26 @@ void app_main(void){
     modbus_tcp_init();
     udp_broadcast_init();
 }
-    u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
-    u8g2_t u8g2; // a structure which will contain all the data for one display
 static int init_display(){
     int res=0;
-    // SDA - GPIO21
-    #define PIN_SDA 21
-    // SCL - GPIO22
-    #define PIN_SCL 22
-
+    gpio_config_t io_conf = {0};
+    //disable interrupt
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    //set as output mode
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    //bit mask of the pins that you want to set,e.g.GPIO18/19
+    io_conf.pin_bit_mask = 1<<PIN_RESET;
+    //disable pull-down mode
+    io_conf.pull_down_en = 0;
+    //disable pull-up mode
+    io_conf.pull_up_en = 0;
+    //configure GPIO with the given settings
+    gpio_config(&io_conf);
+    gpio_set_level(PIN_RESET, 0);
+    gpio_set_level(PIN_RESET, 1);
     u8g2_esp32_hal.sda   = PIN_SDA;
     u8g2_esp32_hal.scl  = PIN_SCL;
     u8g2_esp32_hal_init(u8g2_esp32_hal);
-
     u8g2_Setup_ssd1306_i2c_128x32_univision_f(
         &u8g2,
         U8G2_R0,
@@ -246,13 +258,16 @@ static int init_display(){
         u8g2_esp32_i2c_byte_cb,
         u8g2_esp32_gpio_and_delay_cb);  // init u8g2 structure
     u8x8_SetI2CAddress(&u8g2.u8x8,0x78);
+    regs_global.vars.i2c_display_address = 0x78>>1;
     u8g2_InitDisplay(&u8g2); // send init sequence to the display, display is in sleep mode after this,
+    main_printf(TAG, "init display passed");
     u8g2_SetPowerSave(&u8g2, 0); // wake up display
+    main_printf(TAG, "set power save passed");
     u8g2_ClearBuffer(&u8g2);
-    u8g2_DrawBox(&u8g2, 0, 26, 80,6);
-    u8g2_DrawFrame(&u8g2, 0,26,100,6);
-    u8g2_SetFont(&u8g2, u8g2_font_ncenB08_tr);
-    u8g2_DrawStr(&u8g2, 2,17,"Hi nkolban!");
+    char address[64] = {0};
+    sprintf(address,"mdb: %u, ip: %u.%u.%u.%u",regs_global.vars.mdb_addr,regs_global.vars.sta_ip[0],regs_global.vars.sta_ip[1],regs_global.vars.sta_ip[2],regs_global.vars.sta_ip[3]);
+    u8g2_SetFont(&u8g2, u8g2_font_u8glib_4_tf);
+    u8g2_DrawStr(&u8g2, 0,5, address);
     u8g2_SendBuffer(&u8g2);
     return res;
 }

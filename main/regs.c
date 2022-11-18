@@ -615,7 +615,7 @@ static void execute_main_command(u16 command){
         break;
 
     case ENABLE_SPECIAL_HTTP_COMM:
-            regs_global.vars.permission |= ENABLE_CREDENTIAL_FLAG;
+        regs_global.vars.permission |= ENABLE_CREDENTIAL_FLAG;
         break;
     case DISABLE_SPECIAL_HTTP_COMM:
         regs_global.vars.permission &= ~ENABLE_CREDENTIAL_FLAG;

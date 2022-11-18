@@ -46,13 +46,11 @@ void isimfw400_task(void *pvParameters ){
                 u8g2_DrawStr(&u8g2, 2,10,temp);
                 sprintf(temp,"err - %lu",regs_global.vars.modbus_master_error_transactions_number);
                 u8g2_DrawStr(&u8g2, 2,25,temp);
-
                 u8g2_SendBuffer(&u8g2);*/
             }
-
+            /**/
             ///reading analog RAW data, i need to see RAW for calibration
             static u8 prefetch_started = 0;
-
             u8 end_of_cycle = 0;
             if(is_prefetching_state() ){
                 if (prefetch_started){

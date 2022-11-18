@@ -204,7 +204,6 @@ typedef union{
         u8 wifi_password[WIFI_PASSWORD_LEN];            //!<"must be strong 8 byte", &save &def &crtcl
         u8 wifi_router_name[WIFI_ROUTER_NAME_LEN];               //!<"must be ended by zero", &save &def &crtcl
         u8 wifi_router_password[WIFI_ROUTER_PASSWORD_LEN];            //!<"must be more or equal 8 byte", &save &def &crtcl
-
         u16 wifi_setting;               //!<"type of wifi and settings" &save &def &crtcl
         u32 reset_num;                  //!<"number of reset" &save
         u16 wifi_state;                 //!<"wifi state" &ro
@@ -226,7 +225,6 @@ typedef union{
         u32 system_error;           //!< "system global error" &ro
         u16 permission;                 //!<"flags with permissions" &ro &def
         u32 async_flags;            //!< "async flags" &ro
-
         u64 slip_packet_counter;    //!< "count all slip packet"
         u16 ap_connections_number; //!< "number of connections" &ro
         u16 sta_connect; //!< "sta connect state" &ro
@@ -242,6 +240,8 @@ typedef union{
         u32 modbus_master_comm_period_min; //!< ""
         u32 modbus_master_succ_transactions_number; //!< ""
         u32 modbus_master_error_transactions_number; //!< ""
+        u16 i2c_display_address; //!< "address of display" &ro
+        u8 sta_ip[4]; //!< "ip address of sta" &ro &save
     }vars;
     u8 bytes[GLOBAL_UNION_SIZE]; //for full bksram copy
 }main_vars_t;// #generator_use_description {"message":"end_struct"}

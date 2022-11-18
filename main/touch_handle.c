@@ -17,17 +17,11 @@
 #include "driver/gpio.h"
 #include "mirror_storage.h"
 #include "math.h"
+#include "pin_map.h"
 static const char *TAG = "touch_handle";
 static void touch_gpio_initialize(void);
 static int touch_handle_init(void);
 static int handle_touch_value(u16 touch_0,u16 touch_1,u16 touch_2,u16 touch_3);
-#define TOUCH_0 0
-#define TOUCH_1 7
-#define TOUCH_2 8
-#define TOUCH_3 9
-#define DRIVE_PIN 25
-#define GPIO_INPUT_IO_0     23
-#define GPIO_INPUT_PIN_SEL  (1ULL<<GPIO_INPUT_IO_0)
 #define TOUCH_THRESH_NO_USE   (0)
 #define TOUCHPAD_FILTER_TOUCH_PERIOD (10)
 #define MAX_ENABLED_PERIOD_MS 600000UL
@@ -47,7 +41,7 @@ typedef enum{
 
 static void IRAM_ATTR gpio_isr_handler(void* arg){
     uint32_t gpio_num = (uint32_t) arg;
-    if (gpio_num == GPIO_INPUT_IO_0){
+    if (gpio_num == GPIO_WATER_COUNTER_INPUT){
         regs_global_part1.vars.water_counter++;
     }
 }
@@ -68,25 +62,23 @@ static void touch_gpio_initialize(void){
     io_conf.pull_up_en = 0;
     //configure GPIO with the given settings
     gpio_config(&io_conf);
-    touch_pad_config(TOUCH_0, TOUCH_THRESH_NO_USE);
-    touch_pad_config(TOUCH_1, TOUCH_THRESH_NO_USE);
-    touch_pad_config(TOUCH_2, TOUCH_THRESH_NO_USE);
-    touch_pad_config(TOUCH_3, TOUCH_THRESH_NO_USE);
+    touch_pad_config(GPIO_TOUCH_0, TOUCH_THRESH_NO_USE);
+    touch_pad_config(GPIO_TOUCH_1, TOUCH_THRESH_NO_USE);
+    touch_pad_config(GPIO_TOUCH_2, TOUCH_THRESH_NO_USE);
+    touch_pad_config(GPIO_TOUCH_3, TOUCH_THRESH_NO_USE);
     //interrupt of rising edge
     io_conf.intr_type = GPIO_INTR_POSEDGE;
     //bit mask of the pins, use GPIO4/5 here
-    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
+    io_conf.pin_bit_mask = GPIO_WATER_COUNTER_INPUT_MASK;
     //set as input mode
     io_conf.mode = GPIO_MODE_INPUT;
     //enable pull-up mode
     io_conf.pull_up_en = 0;
     gpio_config(&io_conf);
-    gpio_set_intr_type(GPIO_INPUT_IO_0, GPIO_INTR_POSEDGE);
+    gpio_set_intr_type(GPIO_WATER_COUNTER_INPUT, GPIO_INTR_POSEDGE);
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
     //hook isr handler for specific gpio pin
-    gpio_isr_handler_add(GPIO_INPUT_IO_0, gpio_isr_handler, (void*) GPIO_INPUT_IO_0);
-
-
+    gpio_isr_handler_add(GPIO_WATER_COUNTER_INPUT, gpio_isr_handler, (void*) GPIO_WATER_COUNTER_INPUT);
 }
 
 int touch_handle_init(void){
@@ -111,20 +103,20 @@ void touch_task(void *arg){
     u16 touch_0,touch_1,touch_2,touch_3;
     u16 touch_temp;
     uint16_t touch_value;
-    touch_pad_read_raw_data(TOUCH_0, &touch_value);
-    touch_pad_read_filtered(TOUCH_0, &touch_temp);
+    touch_pad_read_raw_data(GPIO_TOUCH_0, &touch_value);
+    touch_pad_read_filtered(GPIO_TOUCH_0, &touch_temp);
     regs_global_part1.vars.touch_0 = touch_temp;
     touch_0 = touch_temp;
-    touch_pad_read_raw_data(TOUCH_1, &touch_value);
-    touch_pad_read_filtered(TOUCH_1, &touch_temp);
+    touch_pad_read_raw_data(GPIO_TOUCH_1, &touch_value);
+    touch_pad_read_filtered(GPIO_TOUCH_1, &touch_temp);
     regs_global_part1.vars.touch_1 = touch_temp;
     touch_1 = touch_temp;
-    touch_pad_read_raw_data(TOUCH_2, &touch_value);
-    touch_pad_read_filtered(TOUCH_2, &touch_temp);
+    touch_pad_read_raw_data(GPIO_TOUCH_2, &touch_value);
+    touch_pad_read_filtered(GPIO_TOUCH_2, &touch_temp);
     regs_global_part1.vars.touch_2 = touch_temp;
     touch_2 = touch_temp;
-    touch_pad_read_raw_data(TOUCH_3, &touch_value);
-    touch_pad_read_filtered(TOUCH_3, &touch_temp);
+    touch_pad_read_raw_data(GPIO_TOUCH_3, &touch_value);
+    touch_pad_read_filtered(GPIO_TOUCH_3, &touch_temp);
     regs_global_part1.vars.touch_3 = touch_temp;
     touch_3 = touch_temp;
     u32 filter_use = regs_global_part1.vars.filter_use;
@@ -143,26 +135,26 @@ void touch_task(void *arg){
             }
         }
         if (filter_use){
-            touch_pad_read_raw_data(TOUCH_0, &touch_value);
-            touch_pad_read_filtered(TOUCH_0, &touch_temp);
+            touch_pad_read_raw_data(GPIO_TOUCH_0, &touch_value);
+            touch_pad_read_filtered(GPIO_TOUCH_0, &touch_temp);
             regs_global_part1.vars.touch_0 = touch_temp;
-            touch_pad_read_raw_data(TOUCH_1, &touch_value);
-            touch_pad_read_filtered(TOUCH_1, &touch_temp);
+            touch_pad_read_raw_data(GPIO_TOUCH_1, &touch_value);
+            touch_pad_read_filtered(GPIO_TOUCH_1, &touch_temp);
             regs_global_part1.vars.touch_1 = touch_temp;
-            touch_pad_read_raw_data(TOUCH_2, &touch_value);
-            touch_pad_read_filtered(TOUCH_2, &touch_temp);
+            touch_pad_read_raw_data(GPIO_TOUCH_2, &touch_value);
+            touch_pad_read_filtered(GPIO_TOUCH_2, &touch_temp);
             regs_global_part1.vars.touch_2 = touch_temp;
-            touch_pad_read_raw_data(TOUCH_3, &touch_value);
-            touch_pad_read_filtered(TOUCH_3, &touch_temp);
+            touch_pad_read_raw_data(GPIO_TOUCH_3, &touch_value);
+            touch_pad_read_filtered(GPIO_TOUCH_3, &touch_temp);
             regs_global_part1.vars.touch_3 = touch_temp;
         }else{
-            touch_pad_read(TOUCH_0, &touch_temp);
+            touch_pad_read(GPIO_TOUCH_0, &touch_temp);
             regs_global_part1.vars.touch_0 = touch_temp;
-            touch_pad_read(TOUCH_1, &touch_temp);
+            touch_pad_read(GPIO_TOUCH_1, &touch_temp);
             regs_global_part1.vars.touch_1 = touch_temp;
-            touch_pad_read(TOUCH_2, &touch_temp);
+            touch_pad_read(GPIO_TOUCH_2, &touch_temp);
             regs_global_part1.vars.touch_2 = touch_temp;
-            touch_pad_read(TOUCH_3, &touch_temp);
+            touch_pad_read(GPIO_TOUCH_3, &touch_temp);
             regs_global_part1.vars.touch_3 = touch_temp;
         }
         if(ticks%(regs_global_part1.vars.touch_handle_period/10)==0){

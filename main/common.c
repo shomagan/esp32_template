@@ -55,6 +55,7 @@
 #if UDP_BROADCAST_ENABLE
 #include "udp_broadcast.h"
 #endif
+#include "wifi_slip_main.h"
 
 #define DUTY_TASK_PERIOD_MS 100
 task_handle_t common_duty_task_handle;
@@ -106,7 +107,7 @@ int common_init_tasks(){
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create wifi to slip flow control task failed");
     }
-    res = task_create(common_duty_task, "common_duty_task", 2048, NULL, (tskIDLE_PRIORITY + 2), &common_duty_task_handle);
+    res = task_create(common_duty_task, "common_duty_task", 2548, NULL, (tskIDLE_PRIORITY + 2), &common_duty_task_handle);
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create slip to wifi flow control task failed");
     }
@@ -176,7 +177,7 @@ static void common_duty_task(void *pvParameters ){
     ui32 prepare_time = 0;
     uint32_t task_tick = 0;
     uint32_t signal_value;
-    for( ;; ){
+    while(1){
         /* Place this task in the blocked state until it is time to run again. */
         signal_value = 0;
         if(task_notify_wait(STOP_CHILD_PROCCES|PREPARE_TO_RESET, &signal_value, DUTY_TASK_PERIOD_MS)!=pdTRUE){
@@ -190,6 +191,11 @@ static void common_duty_task(void *pvParameters ){
             if(((task_tick)%(1000/DUTY_TASK_PERIOD_MS))==0u){
                 /* rtc time update start */
                 led_blink_on(250);
+                char address[64] = {0};
+                sprintf(address,"mdb: %u, ip: %u.%u.%u.%u",regs_global.vars.mdb_addr,regs_global.vars.sta_ip[0],regs_global.vars.sta_ip[1],regs_global.vars.sta_ip[2],regs_global.vars.sta_ip[3]);
+                u8g2_ClearBuffer(&u8g2);
+                u8g2_DrawStr(&u8g2, 0,5, address);
+                u8g2_SendBuffer(&u8g2);
             }
             if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==0u){
 #if UDP_BROADCAST_ENABLE && UDP_ADVERTISMENT_PERIOD
