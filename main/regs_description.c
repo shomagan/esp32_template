@@ -28,6 +28,7 @@ static const u8 def_slip_gate[4] = {172,16,1,232};
 static const u16 def_uart_debug_sets = 0xC853;
 static const u8 def_fw_version[FW_VERSION_SIZE] = FW_VERSION;
 static const u16 def_num_of_vars = NUM_OF_SELF_VARS;
+static const u16 def_client_num_of_vars = NUM_OF_CLIENT_VARS;
 static const u8 def_board_ver = (u8)BOARD_VERSION;
 static const u16 def_permission = ENABLE_HTTP_FLAG;
 static const u8 def_wifi_name[WIFI_NAME_LEN] = "sofi_plc_net";               //!<"must be strong full filled", &save &def
@@ -36,7 +37,7 @@ static const u8 def_wifi_router_name[WIFI_ROUTER_NAME_LEN] = "lastik";
 static const u8 def_wifi_router_password[WIFI_ROUTER_PASSWORD_LEN] = "K568!j16!lis";
 static const u16 def_wifi_setting = WIFI_AP_STA;               //!<"type of wifi and settings" &save &def
 static const float def_test_pwm_value = 50.0f;
-const u32 def_table_version = 0x126e;
+const u32 def_table_version = 0x128e;
 static const float def_servo_0 = 10.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
 static const float def_min_servo_0 = 0.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
 static const float def_max_servo_0 = 100.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
@@ -91,58 +92,59 @@ regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { NULL, NULL, NULL, (u8*)&regs_global.vars.cur_free_heap, 0,"in bytes","cur_free_heap", U32_REGS_FLAG, 21, 144, 0x30048, 1, 3, 0 },//!<"in bytes",&ro
 { NULL, NULL, NULL, (u8*)&regs_global.vars.min_free_heap, 0,"in bytes","min_free_heap", U32_REGS_FLAG, 22, 148, 0x3004a, 1, 3, 0 },//!<"in bytes",&ro
 { NULL, NULL, NULL, (u8*)&regs_global.vars.debug_info[0], 0,"reserved use for debug","debug_info", U8_REGS_FLAG, 23, 152, 0x3004c, 8, 3, 0 },//!<"reserved use for debug"&ro
-{ &def_num_of_vars, NULL, NULL, (u8*)&regs_global.vars.num_of_vars, 0,"num_of_vars","num_of_vars", U16_REGS_FLAG, 24, 160, 0x30050, 1, 3, 0 },//!<"number of vars self + config(user)&ro &def
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.temperature_mcu, 0,"temperature mcu Celsius","temperature_mcu", FLOAT_REGS_FLAG, 25, 162, 0x30051, 1, 3, 0 },//!<"temperature mcu Celsius" &ro
-{ &def_fw_version, NULL, NULL, (u8*)&regs_global.vars.fw_version[0], 0,"version like 0.1.1.0","fw_version", U8_REGS_FLAG, 26, 166, 0x30053, 4, 3, 0 },//!<"version like 0.1.1.0",&ro,&def
-{ &def_board_ver, NULL, NULL, (u8*)&regs_global.vars.board_ver, 0,"board version","board_ver", U16_REGS_FLAG, 27, 170, 0x30055, 1, 3, 0 },//!< "board version", &ro, &def
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.firmware_hash, 0,"hash os","firmware_hash", U32_REGS_FLAG, 28, 172, 0x30056, 1, 3, 0 },//!< "hash os" &ro
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.system_error, 0,"system global error","system_error", U32_REGS_FLAG, 29, 176, 0x30058, 1, 3, 0 },//!< "system global error" &ro
-{ &def_permission, NULL, NULL, (u8*)&regs_global.vars.permission, 0,"flags with permissions","permission", U16_REGS_FLAG, 30, 180, 0x3005a, 1, 3, 0 },//!<"flags with permissions" &ro &def
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.async_flags, 0,"async flags","async_flags", U32_REGS_FLAG, 31, 182, 0x3005b, 1, 3, 0 },//!< "async flags" &ro
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.slip_packet_counter, 0,"count all slip packet","slip_packet_counter", U64_REGS_FLAG, 32, 186, 0x3005d, 1, 1, 0 },//!< "count all slip packet"
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.ap_connections_number, 0,"number of connections","ap_connections_number", U16_REGS_FLAG, 33, 194, 0x30061, 1, 3, 0 },//!< "number of connections" &ro
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.sta_connect, 0,"sta connect state","sta_connect", U16_REGS_FLAG, 34, 196, 0x30062, 1, 3, 0 },//!< "sta connect state" &ro
-{ &def_table_version, NULL, NULL, (u8*)&regs_global.vars.table_version, 134,"change value in def_table_version for drop all regs to default value","table_version", U32_REGS_FLAG, 35, 198, 0x30063, 1, 7, 0 },//!< "change value in def_table_version for drop all regs to default value" &ro &def &save
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.iirls_pairing_status, 0,"status","iirls_pairing_status", U16_REGS_FLAG, 36, 202, 0x30065, 1, 3, 0 },//!< "status" &ro
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.iirls_paired_ip[0], 0,"ip address of paired device","iirls_paired_ip", U8_REGS_FLAG, 37, 204, 0x30066, 4, 3, 0 },//!< "ip address of paired device" &ro
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_test_value, 0,"status","modbus_master_test_value", U16_REGS_FLAG, 38, 208, 0x30068, 1, 3, 0 },//!< "status" &ro
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.iirls_state, 138,"state","iirls_state", U16_REGS_FLAG, 39, 210, 0x30069, 1, 5, 0 },//!< "state" &save
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.paired_device_model_number[0], 0,"state","paired_device_model_number", U16_REGS_FLAG, 40, 212, 0x3006a, 40, 3, 0 },//!< "state" &ro
-{ &def_slave_modbus_address, &def_min_slave_modbus_address, &def_max_slave_modbus_address, (u8*)&regs_global.vars.slave_modbus_address, 140,"slave modbus address","slave_modbus_address", U16_REGS_FLAG, 41, 292, 0x30092, 1, 197, 0 },//!< "slave modbus address" &def &save &max &min
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_comm_period_current, 0,"modbus_master_comm_period_current","modbus_master_comm_period_current", U32_REGS_FLAG, 42, 294, 0x30093, 1, 1, 0 },//!< ""
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_comm_period_max, 0,"modbus_master_comm_period_max","modbus_master_comm_period_max", U32_REGS_FLAG, 43, 298, 0x30095, 1, 1, 0 },//!< ""
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_comm_period_min, 0,"modbus_master_comm_period_min","modbus_master_comm_period_min", U32_REGS_FLAG, 44, 302, 0x30097, 1, 1, 0 },//!< ""
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_succ_transactions_number, 0,"modbus_master_succ_transactions_number","modbus_master_succ_transactions_number", U32_REGS_FLAG, 45, 306, 0x30099, 1, 1, 0 },//!< ""
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_error_transactions_number, 0,"modbus_master_error_transactions_number","modbus_master_error_transactions_number", U32_REGS_FLAG, 46, 310, 0x3009b, 1, 1, 0 },//!< ""
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.i2c_display_address, 0,"address of display","i2c_display_address", U16_REGS_FLAG, 47, 314, 0x3009d, 1, 3, 0 },//!< "address of display" &ro
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.sta_ip[0], 142,"ip address of sta","sta_ip", U8_REGS_FLAG, 48, 316, 0x3009e, 4, 7, 0 },//!< "ip address of sta" &ro &save
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.test_pwm_value, 146,"test pwm value [0;100]","test_pwm_value", FLOAT_REGS_FLAG, 49, 320, 0x303e8, 1, 5, 1 },//!<"test pwm value [0;100]" &def &save
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_0, 0,"touch_0","touch_0", U16_REGS_FLAG, 50, 324, 0x303ea, 1, 1, 1 },
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1, 0,"touch_1","touch_1", U16_REGS_FLAG, 51, 326, 0x303eb, 1, 1, 1 },
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2, 0,"touch_2","touch_2", U16_REGS_FLAG, 52, 328, 0x303ec, 1, 1, 1 },
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3, 0,"touch_3","touch_3", U16_REGS_FLAG, 53, 330, 0x303ed, 1, 1, 1 },
-{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.water_counter, 150,"di counter","water_counter", U64_REGS_FLAG, 54, 332, 0x303ee, 1, 7, 1 },//!< "di counter" &save &ro
-{ &def_impulse_cost, NULL, NULL, (u8*)&regs_global_part1.vars.impulse_cost, 158,"cost of di impulse in liters","impulse_cost", FLOAT_REGS_FLAG, 55, 340, 0x303f2, 1, 5, 1 },//!< "cost of di impulse in liters" &save &def
-{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.liters, 162,"liters calculated","liters", FLOAT_REGS_FLAG, 56, 344, 0x303f4, 1, 5, 1 },//!< "liters calculated" &save
-{ &def_touch_1_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_count, 166,"ms ","touch_1_count", U32_REGS_FLAG, 57, 348, 0x303f6, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_2_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_count, 170,"ms ","touch_2_count", U32_REGS_FLAG, 58, 352, 0x303f8, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_3_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_count, 174,"ms ","touch_3_count", U32_REGS_FLAG, 59, 356, 0x303fa, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_1_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_liters, 178,"ms ","touch_1_liters", FLOAT_REGS_FLAG, 60, 360, 0x303fc, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_2_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_liters, 182,"ms ","touch_2_liters", FLOAT_REGS_FLAG, 61, 364, 0x303fe, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_3_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_liters, 186,"ms ","touch_3_liters", FLOAT_REGS_FLAG, 62, 368, 0x30400, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_0_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_0_trshld, 190,"in percents","touch_0_trshld", FLOAT_REGS_FLAG, 63, 372, 0x30402, 1, 5, 1 },//!< "in percents" &save &def
-{ &def_touch_1_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_trshld, 194,"in percents","touch_1_trshld", FLOAT_REGS_FLAG, 64, 376, 0x30404, 1, 5, 1 },//!< "in percents" &save &def
-{ &def_touch_2_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_trshld, 198,"in percents","touch_2_trshld", FLOAT_REGS_FLAG, 65, 380, 0x30406, 1, 5, 1 },//!< "in percents" &save &def
-{ &def_touch_3_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_trshld, 202,"in percents","touch_3_trshld", FLOAT_REGS_FLAG, 66, 384, 0x30408, 1, 5, 1 },//!< "in percents" &save &def
-{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.filter_use, 206,"use inside filter fot touch sensors or not ","filter_use", U32_REGS_FLAG, 67, 388, 0x3040a, 1, 5, 1 },//!< "use inside filter fot touch sensors or not " &save
-{ &def_touch_handle_period, NULL, NULL, (u8*)&regs_global_part1.vars.touch_handle_period, 210,"in ms period of handle touchs","touch_handle_period", U32_REGS_FLAG, 68, 392, 0x3040c, 1, 5, 1 },//!< "in ms period of handle touchs" &save &def
-{ &def_by_time, NULL, NULL, (u8*)&regs_global_part1.vars.by_time, 214,"by time or counter","by_time", U32_REGS_FLAG, 69, 396, 0x3040e, 1, 5, 1 },//!< "by time or counter" &save &def
-{ &def_servo_0, &def_min_servo_0, &def_max_servo_0, (u8*)&servo_control_part.vars.servo_0, 0,"servo pwm value [0;100]","servo_0", FLOAT_REGS_FLAG, 70, 400, 0x307d0, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
-{ &def_servo_1, &def_min_servo_1, &def_max_servo_1, (u8*)&servo_control_part.vars.servo_1, 0,"servo pwm value [0;100]","servo_1", FLOAT_REGS_FLAG, 71, 404, 0x307d2, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
-{ &def_servo_2, &def_min_servo_2, &def_max_servo_2, (u8*)&servo_control_part.vars.servo_2, 0,"servo pwm value [0;100]","servo_2", FLOAT_REGS_FLAG, 72, 408, 0x307d4, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
-{ &def_servo_3, &def_min_servo_3, &def_max_servo_3, (u8*)&servo_control_part.vars.servo_3, 0,"servo pwm value [0;100]","servo_3", FLOAT_REGS_FLAG, 73, 412, 0x307d6, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ &def_num_of_vars, NULL, NULL, (u8*)&regs_global.vars.num_of_vars, 0,"num_of_vars","num_of_vars", U16_REGS_FLAG, 24, 160, 0x30050, 1, 3, 0 },//!<"number of vars self + config(user) &ro &def
+{ &def_client_num_of_vars, NULL, NULL, (u8*)&regs_global.vars.client_num_of_vars, 0,"number of client vars self","client_num_of_vars", U16_REGS_FLAG, 25, 162, 0x30051, 1, 3, 0 },//!<"number of client vars self" &ro &def        
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.temperature_mcu, 0,"temperature mcu Celsius","temperature_mcu", FLOAT_REGS_FLAG, 26, 164, 0x30052, 1, 3, 0 },//!<"temperature mcu Celsius" &ro
+{ &def_fw_version, NULL, NULL, (u8*)&regs_global.vars.fw_version[0], 0,"version like 0.1.1.0","fw_version", U8_REGS_FLAG, 27, 168, 0x30054, 4, 3, 0 },//!<"version like 0.1.1.0",&ro,&def
+{ &def_board_ver, NULL, NULL, (u8*)&regs_global.vars.board_ver, 0,"board version","board_ver", U16_REGS_FLAG, 28, 172, 0x30056, 1, 3, 0 },//!< "board version", &ro, &def
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.firmware_hash, 0,"hash os","firmware_hash", U32_REGS_FLAG, 29, 174, 0x30057, 1, 3, 0 },//!< "hash os" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.system_error, 0,"system global error","system_error", U32_REGS_FLAG, 30, 178, 0x30059, 1, 3, 0 },//!< "system global error" &ro
+{ &def_permission, NULL, NULL, (u8*)&regs_global.vars.permission, 0,"flags with permissions","permission", U16_REGS_FLAG, 31, 182, 0x3005b, 1, 3, 0 },//!<"flags with permissions" &ro &def
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.async_flags, 0,"async flags","async_flags", U32_REGS_FLAG, 32, 184, 0x3005c, 1, 3, 0 },//!< "async flags" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.slip_packet_counter, 0,"count all slip packet","slip_packet_counter", U64_REGS_FLAG, 33, 188, 0x3005e, 1, 1, 0 },//!< "count all slip packet"
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.ap_connections_number, 0,"number of connections","ap_connections_number", U16_REGS_FLAG, 34, 196, 0x30062, 1, 3, 0 },//!< "number of connections" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.sta_connect, 0,"sta connect state","sta_connect", U16_REGS_FLAG, 35, 198, 0x30063, 1, 3, 0 },//!< "sta connect state" &ro
+{ &def_table_version, NULL, NULL, (u8*)&regs_global.vars.table_version, 134,"change value in def_table_version for drop all regs to default value","table_version", U32_REGS_FLAG, 36, 200, 0x30064, 1, 7, 0 },//!< "change value in def_table_version for drop all regs to default value" &ro &def &save
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.iirls_pairing_status, 0,"status","iirls_pairing_status", U16_REGS_FLAG, 37, 204, 0x30066, 1, 3, 0 },//!< "status" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.iirls_paired_ip[0], 0,"ip address of paired device","iirls_paired_ip", U8_REGS_FLAG, 38, 206, 0x30067, 4, 3, 0 },//!< "ip address of paired device" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_test_value, 0,"status","modbus_master_test_value", U16_REGS_FLAG, 39, 210, 0x30069, 1, 3, 0 },//!< "status" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.iirls_state, 138,"state","iirls_state", U16_REGS_FLAG, 40, 212, 0x3006a, 1, 5, 0 },//!< "state" &save
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.paired_device_model_number[0], 0,"state","paired_device_model_number", U16_REGS_FLAG, 41, 214, 0x3006b, 40, 3, 0 },//!< "state" &ro
+{ &def_slave_modbus_address, &def_min_slave_modbus_address, &def_max_slave_modbus_address, (u8*)&regs_global.vars.slave_modbus_address, 140,"slave modbus address","slave_modbus_address", U16_REGS_FLAG, 42, 294, 0x30093, 1, 197, 0 },//!< "slave modbus address" &def &save &max &min
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_comm_period_current, 0,"modbus_master_comm_period_current","modbus_master_comm_period_current", U32_REGS_FLAG, 43, 296, 0x30094, 1, 1, 0 },//!< ""
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_comm_period_max, 0,"modbus_master_comm_period_max","modbus_master_comm_period_max", U32_REGS_FLAG, 44, 300, 0x30096, 1, 1, 0 },//!< ""
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_comm_period_min, 0,"modbus_master_comm_period_min","modbus_master_comm_period_min", U32_REGS_FLAG, 45, 304, 0x30098, 1, 1, 0 },//!< ""
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_succ_transactions_number, 0,"modbus_master_succ_transactions_number","modbus_master_succ_transactions_number", U32_REGS_FLAG, 46, 308, 0x3009a, 1, 1, 0 },//!< ""
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.modbus_master_error_transactions_number, 0,"modbus_master_error_transactions_number","modbus_master_error_transactions_number", U32_REGS_FLAG, 47, 312, 0x3009c, 1, 1, 0 },//!< ""
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.i2c_display_address, 0,"address of display","i2c_display_address", U16_REGS_FLAG, 48, 316, 0x3009e, 1, 3, 0 },//!< "address of display" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.sta_ip[0], 142,"ip address of sta","sta_ip", U8_REGS_FLAG, 49, 318, 0x3009f, 4, 7, 0 },//!< "ip address of sta" &ro &save
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.test_pwm_value, 146,"test pwm value [0;100]","test_pwm_value", FLOAT_REGS_FLAG, 50, 322, 0x303e8, 1, 5, 1 },//!<"test pwm value [0;100]" &def &save
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_0, 0,"touch_0","touch_0", U16_REGS_FLAG, 51, 326, 0x303ea, 1, 1, 1 },
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1, 0,"touch_1","touch_1", U16_REGS_FLAG, 52, 328, 0x303eb, 1, 1, 1 },
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2, 0,"touch_2","touch_2", U16_REGS_FLAG, 53, 330, 0x303ec, 1, 1, 1 },
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3, 0,"touch_3","touch_3", U16_REGS_FLAG, 54, 332, 0x303ed, 1, 1, 1 },
+{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.water_counter, 150,"di counter","water_counter", U64_REGS_FLAG, 55, 334, 0x303ee, 1, 7, 1 },//!< "di counter" &save &ro
+{ &def_impulse_cost, NULL, NULL, (u8*)&regs_global_part1.vars.impulse_cost, 158,"cost of di impulse in liters","impulse_cost", FLOAT_REGS_FLAG, 56, 342, 0x303f2, 1, 5, 1 },//!< "cost of di impulse in liters" &save &def
+{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.liters, 162,"liters calculated","liters", FLOAT_REGS_FLAG, 57, 346, 0x303f4, 1, 5, 1 },//!< "liters calculated" &save
+{ &def_touch_1_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_count, 166,"ms ","touch_1_count", U32_REGS_FLAG, 58, 350, 0x303f6, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_2_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_count, 170,"ms ","touch_2_count", U32_REGS_FLAG, 59, 354, 0x303f8, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_3_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_count, 174,"ms ","touch_3_count", U32_REGS_FLAG, 60, 358, 0x303fa, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_1_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_liters, 178,"ms ","touch_1_liters", FLOAT_REGS_FLAG, 61, 362, 0x303fc, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_2_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_liters, 182,"ms ","touch_2_liters", FLOAT_REGS_FLAG, 62, 366, 0x303fe, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_3_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_liters, 186,"ms ","touch_3_liters", FLOAT_REGS_FLAG, 63, 370, 0x30400, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_0_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_0_trshld, 190,"in percents","touch_0_trshld", FLOAT_REGS_FLAG, 64, 374, 0x30402, 1, 5, 1 },//!< "in percents" &save &def
+{ &def_touch_1_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_trshld, 194,"in percents","touch_1_trshld", FLOAT_REGS_FLAG, 65, 378, 0x30404, 1, 5, 1 },//!< "in percents" &save &def
+{ &def_touch_2_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_trshld, 198,"in percents","touch_2_trshld", FLOAT_REGS_FLAG, 66, 382, 0x30406, 1, 5, 1 },//!< "in percents" &save &def
+{ &def_touch_3_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_trshld, 202,"in percents","touch_3_trshld", FLOAT_REGS_FLAG, 67, 386, 0x30408, 1, 5, 1 },//!< "in percents" &save &def
+{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.filter_use, 206,"use inside filter fot touch sensors or not ","filter_use", U32_REGS_FLAG, 68, 390, 0x3040a, 1, 5, 1 },//!< "use inside filter fot touch sensors or not " &save
+{ &def_touch_handle_period, NULL, NULL, (u8*)&regs_global_part1.vars.touch_handle_period, 210,"in ms period of handle touchs","touch_handle_period", U32_REGS_FLAG, 69, 394, 0x3040c, 1, 5, 1 },//!< "in ms period of handle touchs" &save &def
+{ &def_by_time, NULL, NULL, (u8*)&regs_global_part1.vars.by_time, 214,"by time or counter","by_time", U32_REGS_FLAG, 70, 398, 0x3040e, 1, 5, 1 },//!< "by time or counter" &save &def
+{ &def_servo_0, &def_min_servo_0, &def_max_servo_0, (u8*)&servo_control_part.vars.servo_0, 0,"servo pwm value [0;100]","servo_0", FLOAT_REGS_FLAG, 71, 402, 0x307d0, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ &def_servo_1, &def_min_servo_1, &def_max_servo_1, (u8*)&servo_control_part.vars.servo_1, 0,"servo pwm value [0;100]","servo_1", FLOAT_REGS_FLAG, 72, 406, 0x307d2, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ &def_servo_2, &def_min_servo_2, &def_max_servo_2, (u8*)&servo_control_part.vars.servo_2, 0,"servo pwm value [0;100]","servo_2", FLOAT_REGS_FLAG, 73, 410, 0x307d4, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ &def_servo_3, &def_min_servo_3, &def_max_servo_3, (u8*)&servo_control_part.vars.servo_3, 0,"servo pwm value [0;100]","servo_3", FLOAT_REGS_FLAG, 74, 414, 0x307d6, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
 };
-regs_description_t const regs_description_client[NUM_OF_CLIENT_VARS]={
+regs_description_t const regs_description_user[NUM_OF_CLIENT_VARS]={
 { &def_mdb_addr, NULL, NULL, (u8*)&client_part_0.vars.mdb_addr, 218,"modbus address","mdb_addr", U16_REGS_FLAG, 74, 416, 0x30000, 1, 5, 0x303 },//!<"modbus address" &save &def
 { NULL, NULL, NULL, (u8*)&client_part_0.vars.ip[0], 220,"device ip address, warning!!! ","ip", U8_REGS_FLAG, 75, 418, 0x30001, 4, 5, 0x303 },//!<"device ip address, warning!!! " &save
 { NULL, NULL, NULL, (u8*)&client_part_0.vars.netmask[0], 224,"netmask address for main wifi net","netmask", U8_REGS_FLAG, 76, 422, 0x30003, 4, 5, 0x303 },//!<"netmask address for main wifi net", &save
@@ -151,9 +153,7 @@ regs_description_t const regs_description_client[NUM_OF_CLIENT_VARS]={
 { NULL, NULL, NULL, (u8*)&client_part_0.vars.slip_netmask[0], 236,"netmask address for local net","slip_netmask", U8_REGS_FLAG, 79, 434, 0x30009, 4, 5, 0x303 },//!<"netmask address for local net", &save ,
 { NULL, NULL, NULL, (u8*)&client_part_0.vars.slip_gate[0], 240,"gateaway address for local net","slip_gate", U8_REGS_FLAG, 80, 438, 0x3000b, 4, 5, 0x303 },//!<"gateaway address for local net", &save,
 };
-static const regs_description_t * regs_description_user =NULL;
-
-
+const regs_description_t * regs_description_client = regs_description_user;
 /**
  * @brief regs_description_get_by_name gets full description by name
  * @param regs_template
@@ -168,19 +168,27 @@ int regs_description_get_by_name(regs_template_t * regs_template){
     if(name_size > REGS_MAX_NAME_SIZE){
        name_size = REGS_MAX_NAME_SIZE;
     }
-    const regs_description_t * description_temp =NULL;
-    for (i=0 ; i<regs_global.vars.num_of_vars; i++){
-        if (memcmp(regs_template->name, regs_description[i].name, name_size) == 0){
-            description_temp = &regs_description[i];
-            result = 0;
+    for (i=0 ; i<NUM_OF_SELF_VARS + NUM_OF_CLIENT_VARS; i++){
+        if(i<NUM_OF_SELF_VARS){
+            if (memcmp(regs_template->name, regs_description[i].name, name_size) == 0){
+                memcpy(regs_template,&regs_description[i],sizeof(regs_description_t));
+                regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
+                result = 0;
+                break;
+            }
+        }else if(regs_description_user!=NULL){
+            if (memcmp(regs_template->name, regs_description_user[i-NUM_OF_SELF_VARS].name, name_size) == 0){
+                memcpy(regs_template,&regs_description_user[i-NUM_OF_SELF_VARS],sizeof(regs_description_t));
+                regs_template->ind = regs_description_user[i-NUM_OF_SELF_VARS].ind+NUM_OF_SELF_VARS;
+                regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
+                result = 0;
+                break;
+            }
+        }else{
+            result =-2;
             break;
         }
     }
-    if((description_temp != NULL) && (result==0)){
-        memcpy(regs_template,description_temp,sizeof(regs_description_t));
-        regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
-    }
-
     return result;
 }
 /**
@@ -190,13 +198,18 @@ int regs_description_get_by_name(regs_template_t * regs_template){
  */
 int regs_description_get_by_ind(regs_template_t * regs_template){
     int result = 0;
-    regs_global.vars.num_of_vars = (regs_global.vars.num_of_vars<NUM_OF_SELF_VARS)?NUM_OF_SELF_VARS:regs_global.vars.num_of_vars;
-    if(regs_template->ind < regs_global.vars.num_of_vars){
+    if(regs_template->ind < NUM_OF_SELF_VARS + NUM_OF_CLIENT_VARS){
         const regs_description_t * description_temp =NULL;
-        description_temp = &regs_description[regs_template->ind];
-        if(description_temp != NULL){
-            memcpy(regs_template,description_temp,sizeof(regs_description_t));
+        if(regs_template->ind<NUM_OF_SELF_VARS){
+            memcpy(regs_template,&regs_description[regs_template->ind],sizeof(regs_description_t));
             regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
+        }else if(regs_description_user!=NULL){
+            description_temp = &regs_description_user[regs_template->ind-NUM_OF_SELF_VARS];
+            int len = sizeof(regs_description_t);
+            memcpy(regs_template,&regs_description_user[regs_template->ind-NUM_OF_SELF_VARS],sizeof(regs_description_t));
+            regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
+        }else{
+            result = -2;
         }
     }else{
         result = -1;
@@ -211,18 +224,27 @@ int regs_description_get_by_ind(regs_template_t * regs_template){
 int regs_description_get_by_guid(regs_template_t * regs_template){
     int result = -1;
     u16 i;
-    const regs_description_t * description_temp =NULL;
-    regs_global.vars.num_of_vars = (regs_global.vars.num_of_vars<NUM_OF_SELF_VARS)?NUM_OF_SELF_VARS:regs_global.vars.num_of_vars;
-    for (i=0 ; i<regs_global.vars.num_of_vars ; i++){
-        if (regs_template->guid == regs_description[i].guid){
-            description_temp = &regs_description[i];
-            result = 0;
+    for (i=0 ; i<NUM_OF_SELF_VARS + NUM_OF_CLIENT_VARS; i++){
+        if(i<NUM_OF_SELF_VARS){
+            if (regs_template->guid == regs_description[i].guid){
+                memcpy(regs_template,&regs_description[i],sizeof(regs_description_t));
+                regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
+                result = 0;
+                break;
+            }
+        }else if(regs_description_user!=NULL){
+            if (regs_template->guid == regs_description_user[i-NUM_OF_SELF_VARS].guid){
+                memcpy(regs_template,&regs_description_user[i-NUM_OF_SELF_VARS],sizeof(regs_description_t));
+                regs_template->ind = regs_description_user[i-NUM_OF_SELF_VARS].ind+NUM_OF_SELF_VARS;
+                //regs_template->group |= GROUP_USER;
+                regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
+                result = 0;
+                break;
+            }
+        }else{
+            result = -2;
             break;
         }
-    }
-    if((description_temp != NULL) && (result==0)){
-        memcpy(regs_template,description_temp,sizeof(regs_description_t));
-        regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
     }
     return result;
 }
@@ -253,23 +275,6 @@ int regs_description_write_value(regs_template_t * regs_template_to_write, const
 }
 
 /**
- * @brief regs_description_add_user_vars udd users description space
- * @param user_description
- * @param num_of_user_vars
- * @return
- */
-int regs_description_add_user_vars(const regs_description_t * user_description, u16 num_of_user_vars){
-    int result = 0;
-    regs_global.vars.num_of_vars = (regs_global.vars.num_of_vars<NUM_OF_SELF_VARS)?NUM_OF_SELF_VARS:regs_global.vars.num_of_vars;
-    if ((num_of_user_vars+regs_global.vars.num_of_vars) < MAX_DESCRIPTIONS_REGS){
-        regs_global.vars.num_of_vars = NUM_OF_SELF_VARS + num_of_user_vars;
-        regs_description_user = user_description;
-    }else{
-        result = -1;
-    }
-    return result;
-}
-/**
  * @brief reg_is_writeable
  * @param reg_index
  * @return 0 if RO, and 1 if writeable
@@ -280,6 +285,12 @@ u8 regs_description_is_writable (u16 reg_index){
     u8 result = 0;
     if (reg_index < NUM_OF_SELF_VARS){
         if(regs_description[reg_index].property & READ_ONLY){
+            result = 0;
+        }else{
+            result = 1;
+        }
+    }else{
+        if(regs_description_user[reg_index - NUM_OF_SELF_VARS].property & READ_ONLY){
             result = 0;
         }else{
             result = 1;
@@ -302,7 +313,13 @@ u8 regs_description_is_credential(u16 reg_index){
         }else{
             result = 0;
         }
-    }
+    }else{
+        if(regs_description_user[reg_index - NUM_OF_SELF_VARS].property & CREDENTIAL_FLAG){
+            result = 1;
+        }else{
+            result = 0;
+        }
+    }    
     return result;
 }
 /**
@@ -320,7 +337,13 @@ u8 regs_description_is_saved(u16 reg_index){
         }else{
             result = 0;
         }
-    }
+    }else{
+        if(regs_description_user[reg_index - NUM_OF_SELF_VARS].property & SAVING){
+            result = 1;
+        }else{
+            result = 0;
+        }
+    }    
     return result;
 }
 /**
@@ -329,17 +352,22 @@ u8 regs_description_is_saved(u16 reg_index){
  * @param flag
  * @return  1 if flag exist
  */
-u8 regs_description_flag_check (u16 index, u8 flag){
+u8 regs_description_flag_check (u16 reg_index, u8 flag){
     u8 result = 0;
-    if (index < NUM_OF_SELF_VARS){
-        if(regs_description[index].property & flag){
+    if (reg_index < NUM_OF_SELF_VARS){
+        if(regs_description[reg_index].property & flag){
             result = 1;
         }else{
             result = 0;
         }
-    }
+    }else{
+        if(regs_description_user[reg_index - NUM_OF_SELF_VARS].property & flag){
+            result = 1;
+        }else{
+            result = 0;
+        }
+    }        
     return result;
-
 }
 
 /**
@@ -356,6 +384,15 @@ int regs_description_get_index_by_guid(u32 byte_address){
             break;
         }
     }
+    if (result == -1){
+        for (int i = 0;i<NUM_OF_CLIENT_VARS;i++){
+            if ((byte_address>= regs_description_user[i].guid) &&
+                (byte_address < (regs_description_user[i].guid+regs_size_in_byte(regs_description_user[i].type)*regs_description_user[i].size))){
+                result = i + NUM_OF_SELF_VARS;
+                break;
+            }
+        }
+    }
     return result;
 }
 
@@ -366,11 +403,20 @@ int regs_description_get_index_by_guid(u32 byte_address){
  */
 int regs_description_get_index_by_address(const void * address){
     int result = -1;
-    for (int i = 0;i<NUM_OF_SELF_VARS;i++){
+    for (int i = 0; i < NUM_OF_SELF_VARS; i++){
         if ((address >= (void*)regs_description[i].p_value) &&
             (address < (void*)(regs_description[i].p_value+regs_size_in_byte(regs_description[i].type)*regs_description[i].size))){
             result = i;
             break;
+        }
+    }
+    if (result == -1){
+        for (int i = 0; i<NUM_OF_CLIENT_VARS; i++){
+            if ((address >= (void*)regs_description_user[i].p_value) &&
+                (address < (void*)(regs_description_user[i].p_value + regs_size_in_byte(regs_description_user[i].type)*regs_description_user[i].size))){
+                result = i + NUM_OF_SELF_VARS;
+                break;
+            }
         }
     }
     return result;
@@ -417,6 +463,17 @@ int set_regs_def_values (void){
             }
         }
     }
+    for (u16 i=0; i<NUM_OF_CLIENT_VARS; i++){
+        reg_template.ind = i + NUM_OF_SELF_VARS;
+        if(regs_description_get_by_ind(&reg_template)==0){
+            if(reg_template.p_default == NULL){
+                memset(reg_template.p_value,0,reg_template.size_in_bytes);
+            }else{
+                memcpy(reg_template.p_value,reg_template.p_default,reg_template.size_in_bytes);
+            }
+        }
+    }
+
     return res;
 }
 /**
@@ -430,7 +487,7 @@ int end_of_saved_reg_addr(void * reg_end_address){
     u16 i;
     int result = -1;
     regs_template_t regs_template;
-    for (i=0 ; i<regs_global.vars.num_of_vars; i++){
+    for (i=0 ; i < NUM_OF_SELF_VARS + NUM_OF_CLIENT_VARS; i++){
         regs_template.ind = i;
         regs_description_get_by_ind(&regs_template);
         if ((regs_template.property & SAVING) &&

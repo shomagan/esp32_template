@@ -102,7 +102,8 @@ typedef enum{
    REGS_SET_REQUEST,
    ARC_GET_REQUEST,
    LOG_GET_REQUEST,
-   SET_STRING
+   SET_STRING,
+   CLIENT_REGS_NUM_REQUEST,
 }request_t;
 
 /**

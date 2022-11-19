@@ -77,6 +77,7 @@ u32 mirror_access_get_size(){
 int mirror_access_write(regs_template_t * regs_template){
     int res = 0;
     if(mirror_space_is_changing((u16)regs_template->saved_address,regs_template->p_value,regs_template->size_in_bytes) == 1){
+        main_printf(TAG, "mirror_access_write: mirror_space_is_changing");
         if(regs_template->saved_address+regs_template->size_in_bytes<= mirror_access_get_size()){
             if (global_vars_mirror_mutex!=NULL){
                 semaphore_take(global_vars_mirror_mutex, portMAX_DELAY );

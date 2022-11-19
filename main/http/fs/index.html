@@ -20,6 +20,30 @@
             function get_all_client_regs(){
                 by_id("get_client_vars").style = "display: none";
                 by_id("table_client").style = "display: inline";
+				max_regs_num = get_regs_num();
+				let max_regs_num_client = get_client_regs_num();
+				print("will be request "+ max_regs_num_client + " registers");
+				let i = max_regs_num;
+                let pack = {
+					"request":"regs",
+					"reg_num":"1",
+					"get_type":"full",
+					"index":String(i),
+				}
+                let response;
+				print("pack preview:");
+				print(pack);
+				for (i = max_regs_num; i < max_regs_num + max_regs_num_client; i++){
+					pack.index = String(i);
+					response = send_json(pack);
+					if(response.name === "pass_key"){
+						device_pass_key = response.value&0xFFFFFFFF;
+						device_pass_key_ind = response.index;
+						print("device_pass: " + device_pass_key);
+					}
+					add_data_to_table(response, "table_client");
+				}
+
             }
 			function get_all_regs(){
                 by_id("get_vars").style = "display: none";
@@ -44,12 +68,12 @@
 						device_pass_key_ind = response.index;
 						print("device_pass: " + device_pass_key);
 					}
-					add_data_to_table(response);
+					add_data_to_table(response, "table");
 				}
 			}
-			function add_data_to_table(data){
+			function add_data_to_table(data, table_id){
 				if(by_id("index_"+data.index) == null){
-					let tbody = by_id("table").getElementsByTagName('TBODY')[0];
+					let tbody = by_id(table_id).getElementsByTagName('TBODY')[0];
 					let line = create("TR");
 					line.id = "line_"+data.index;
     				line.style = "background-color: GhostWhite";
@@ -167,6 +191,20 @@
                 let json_response = send_json(pack);
 				if(json_response !== "Request_error"){
 					return json_response.regs_num;
+				}else{
+					print("Server is not responding");
+					alert("Server is not responding");
+					return 0;
+				}
+			}
+			function get_client_regs_num(){
+				let pack = {
+					"request":"client_regs_num",
+				}
+				print("client regs_num request");
+                let json_response = send_json(pack);
+				if(json_response !== "Request_error"){
+					return json_response.client_regs_num;
 				}else{
 					print("Server is not responding");
 					alert("Server is not responding");

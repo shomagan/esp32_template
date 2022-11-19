@@ -217,7 +217,8 @@ typedef union{
         u32 cur_free_heap;      //!<"in bytes",&ro
         u32 min_free_heap;      //!<"in bytes",&ro
         u8 debug_info[8];       //!<"reserved use for debug"&ro
-        u16 num_of_vars;        //!<"number of vars self + config(user)&ro &def
+        u16 num_of_vars;        //!<"number of vars self + config(user) &ro &def
+        u16 client_num_of_vars;        //!<"number of client vars self" &ro &def        
         float temperature_mcu;  //!<"temperature mcu Celsius" &ro
         u8 fw_version[FW_VERSION_SIZE];      //!<"version like 0.1.1.0",&ro,&def
         u16 board_ver;              //!< "board version", &ro, &def

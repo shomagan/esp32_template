@@ -91,6 +91,7 @@ int regs_set(void * reg_address,regs_access_t reg){
 
         }
         if (regs_check_temp_buffer(&temp_data_buffering, writable_var_index)>0){
+            main_printf(TAG,"regs_set: regs_check_temp_buffer OK");
             if (regs_write_value_check(&temp_data_buffering)){
                 semaphore_take(regs_access_mutex, portMAX_DELAY );{
                     memcpy(temp_data_buffering.reg_address, temp_data_buffering.data.bytes,
@@ -110,7 +111,7 @@ int regs_set(void * reg_address,regs_access_t reg){
 /**
  * @brief regs_write_access
  * @param byte_address - byte address
- * @return 1 if enabled access, 0 if disabled , <0 if error occured
+ * @return more than 0 if enabled access, <0 if not 
  */
 static int regs_write_access(void * reg_address){
     int res = -ILLEGAL_DATA_ADDRESS;
@@ -126,6 +127,11 @@ static int regs_write_access(void * reg_address){
     }
     return res;
 }
+/**
+ * @brief regs_write_value_check
+ * @param temp_data_buffering - 
+ * @return 
+ */
 static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
     int result = 0;
     regs_template_t regs_template = {0};
@@ -457,13 +463,16 @@ static int regs_hadle_sets(void * reg_address,regs_access_t reg,u16 reg_index){
     int result;
     result = 0;
     void * end_addr = (void*)((u32)reg_address + regs_size_in_byte(reg.flag));
-    int ind = end_of_saved_reg_addr(end_addr);
     if (regs_description_is_saved(reg_index)){/*regs saved in mirror*/
+        main_printf(TAG,"\n register is saved %u reg_index", reg_index);
         regs_template_t reg_template;
         reg_template.ind = (u16)reg_index;
         if(regs_description_get_by_ind(&reg_template)==0){
+            main_printf(TAG, "\n reg_template.saved_address %lu", reg_template.saved_address);
             mirror_access_write(&reg_template);
         }
+    }else{
+        main_printf(TAG,"\n register is not saved %u reg_index", reg_index);
     }
     /*special*/
     if ((end_addr == end_of_reg_addr(&regs_global.vars.ip))||
