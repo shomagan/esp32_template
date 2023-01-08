@@ -197,7 +197,7 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
     memset(server_ip,0,4);
     memset(&server_address,0,sizeof(struct sockaddr_in));
     while(1){
-        int event_is_signal = task_notify_wait(MODBUS_MASTER_CLOSE_CONNECTION_SIGNAL|STOP_CHILD_PROCCES,&signal_value,100);
+        int event_is_signal = task_notify_wait(MODBUS_MASTER_CLOSE_CONNECTION_SIGNAL|STOP_CHILD_PROCCES,&signal_value,250);
         if (slave_connection->first_regs_description==NULL){
             close_socket_connection(&client_socket_fd);
             slave_connection->task_id = NULL;
@@ -239,7 +239,6 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                     client_requests.count = slave_connection->size_in_words;
                     int res = modbus_master_execute_request(&client_requests,client_socket_fd);
                     if (res<0){
-                        close_socket_connection(&client_socket_fd);
                         errors_in_the_row++;
                         slave_connection->failed_requests++;
                     }else{
@@ -263,8 +262,8 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
             if (client_socket_fd>=0){
                 close_socket_connection(&client_socket_fd);
             }
-            slave_connection->task_id = NULL;
-            task_delete(task_get_id());
+            /*slave_connection->task_id = NULL;
+            task_delete(task_get_id());*/
         }
         if((event_is_signal==pdTRUE)&&(signal_value & MODBUS_MASTER_CLOSE_CONNECTION_SIGNAL)){
             memcpy(server_ip,zero_array,sizeof(in_addr_t));
