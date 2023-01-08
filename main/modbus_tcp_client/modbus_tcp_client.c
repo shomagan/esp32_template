@@ -28,7 +28,6 @@
 #include <sys/socket.h>
 #include <u8g2.h>
 #include "u8g2_esp32_hal.h"
-#include "regs_description.h"
 #ifndef DEBUG_SOCKET
 #define DEBUG_SOCKET 1
 #endif
@@ -38,12 +37,7 @@
 #define MAX_NUMBER_OF_REGS_BLOCKS 256
 static const char *TAG = "modbus_tcp_client";
 
-typedef struct MCU_PACK{
-    task_handle_t task_id;
-    const regs_description_t * first_regs_description;
-    u32 size_in_words;
-}slave_connections_t;
-static slave_connections_t slave_connections[MAX_NUMBER_OF_SLAVES_CONNECTIONS] = {{NULL,NULL}};
+modbus_tcp_client_slave_connections_t modbus_tcp_client_slave_connections[MAX_NUMBER_OF_SLAVES_CONNECTIONS];
 /** unlike modbus tcp server, client based on BSD sockets
   */
 /**
@@ -62,16 +56,16 @@ static u8 prepare_server_address(const u8 * address, int port, struct sockaddr_i
  */
 static int get_slaves_info_by_number(slave_table_item_t * slave_table_item, u16 number);
 /**
- * @brief get_ip_address_by_modbus_number
+ * @brief get_ip_address_by_modbus
  * @param slave_table_item
  * @param modbus_id - [0;250]
  * @return
  */
-static int get_ip_address_by_modbus_number(slave_table_item_t * slave_table_item, u8 modbus_id);
+static int get_ip_address_by_modbus(slave_table_item_t * slave_table_item, u8 modbus_id);
 static void activate_keep_alive(int sd);
 static int handleset_wait_ready(unsigned int timeout_ms,int socket);
 static int close_socket_connection(int * socket);
-static inline int handle_ip_address_changes(u8 * server_ip_arg,u8 * own_ip_arg,u8 modbus_id);
+static inline int ip_addresses_were_changed(u8 * server_ip_arg,u8 * own_ip_arg,u8 modbus_id);
 static FNCT_NO_RETURN void modbus_tcp_client_connection_task(void * argument);
 /**
  * @brief connection_proccess
@@ -99,26 +93,46 @@ static int modbus_master_init(void){
     number_separate_client_spaces = 0;
     char name[20] = "mdb_client_000";
     for (int i =0;(i < NUM_OF_CLIENT_VARS) && (number_separate_client_spaces < MAX_NUMBER_OF_SLAVES_CONNECTIONS);i++){
-        if((i==(NUM_OF_CLIENT_VARS-1)) || regs_description_client[i].space_number != space_number_prev){
+        if((regs_description_client[i].space_number != space_number_prev)||
+            (i==(NUM_OF_CLIENT_VARS-1))){
+            int modbus_first = -1;
+            int modbus_last = -1;
+            int last_item_size = -1;
             if(i==0){
-                slave_connections[number_separate_client_spaces].first_regs_description = &regs_description_client[i];
+                modbus_tcp_client_slave_connections[0].first_regs_description = &regs_description_client[i];
+                modbus_first = RD_MDB_ADDRESS(modbus_tcp_client_slave_connections[0].first_regs_description->modbus_description);
             }else{
-                u16 modbus_first = RD_MDB_ADDRESS(slave_connections[number_separate_client_spaces-1].first_regs_description->modbus_description);
-                u16 modbus_last = RD_MDB_ADDRESS(regs_description_client[i-1].modbus_description);
-                u32 last_item_size = (regs_description_client[i-1].size*regs_size_in_byte(regs_description_client[i-1].type))/2;
-                slave_connections[number_separate_client_spaces-1].size_in_words = modbus_last+modbus_first+last_item_size;
-#if MODBUS_MASTER_ENABLE
+
+                if(i==(NUM_OF_CLIENT_VARS-1)){
+                    modbus_first = RD_MDB_ADDRESS(modbus_tcp_client_slave_connections[0].first_regs_description->modbus_description);
+                    modbus_last = RD_MDB_ADDRESS(regs_description_client[i].modbus_description);
+                    last_item_size = (regs_description_client[i].size*regs_size_in_byte(regs_description_client[i].type))/2;
+                }else if (number_of_clients_connections > 0){
+                    modbus_first = RD_MDB_ADDRESS(modbus_tcp_client_slave_connections[number_separate_client_spaces-1].first_regs_description->modbus_description);
+                    if (i>0){
+                        modbus_last = RD_MDB_ADDRESS(regs_description_client[i-1].modbus_description);
+                        last_item_size = (regs_description_client[i-1].size*regs_size_in_byte(regs_description_client[i-1].type))/2;
+                    }
+                }else{
+                    main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+                }
+                
                 name[11] = '0';
                 name[12] = '0';
                 name[13] = '0';
                 sprintf(name,"mdb_client_%i",number_separate_client_spaces);
-                res = task_create(modbus_tcp_client_connection_task, name, 1096, &slave_connections[number_separate_client_spaces], (tskIDLE_PRIORITY + 2), &slave_connections[number_separate_client_spaces].task_id);
+                res = task_create(modbus_tcp_client_connection_task, name, 4096, &modbus_tcp_client_slave_connections[number_separate_client_spaces], (tskIDLE_PRIORITY + 2), &modbus_tcp_client_slave_connections[number_separate_client_spaces].task_id);
                 if(res != pdTRUE){
-                    main_printf(TAG,"modbus tcp task inited success\n");
+                    main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
                 }
-#endif
                 number_separate_client_spaces++;
-                slave_connections[number_separate_client_spaces].first_regs_description = &regs_description_client[i];
+                //goes after an increment
+                if ((modbus_first >= 0) && (modbus_last >= 0) &&  
+                    (modbus_first <= modbus_last) && (modbus_last< 65535) && ((last_item_size+(modbus_last - modbus_first)) <= 65535) ){
+                    modbus_tcp_client_slave_connections[number_separate_client_spaces-1].size_in_words = (modbus_last - modbus_first) + last_item_size;
+                }else{
+                    main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+                }
             }
         }
         space_number_prev = regs_description_client[i].space_number;
@@ -131,31 +145,34 @@ static int modbus_master_deinit(void){
     semaphore_delete(modbus_tcp_client_access_mutex);
     return res;
 }
-static u8 prefetch_adc_state = 0;
-static u16 prefetch_adc_buffer[100];
-
-
 static fd_set write_set;
 static fd_set read_set;
 static fd_set error_set;
-static int errors_in_the_row=0;
+
 static uc8 zero_array[4] = {0,0,0,0};
-
-
 static u32 lap_time = 0;
-
 /**
  * @brief
  * @param argument unused
  */
 FNCT_NO_RETURN void modbus_tcp_client_common_task( void  * argument ){
     uint32_t signal_value;
-    int client_socket_fd =-1;
     ( void ) argument ;//unused because used only once at init proccess
     modbus_master_init();/*allocated memmory and clear state*/
-
     while(1){
-        int event_is_signal = task_notify_wait(0xffffffff,&signal_value,500);
+        signal_value = 0;
+        if(task_notify_wait(STOP_CHILD_PROCCES|PREPARE_TO_RESET, &signal_value, 1000)!=pdTRUE){
+            main_debug(TAG,"modbus tcp client task,table size - %u,clients %u\n %u",get_ip_slaves_table_size(),
+            number_separate_client_spaces,(uint32_t)&regs_description_client[0]);
+        }else{
+            if(signal_value & STOP_CHILD_PROCCES){
+                /*todo add break consequence*/
+                modbus_master_deinit();
+            }
+            if(signal_value & PREPARE_TO_RESET){
+                /*todo add break consequence*/
+            }
+        }
     }
 }
 /**
@@ -164,12 +181,15 @@ FNCT_NO_RETURN void modbus_tcp_client_common_task( void  * argument ){
  */
 FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
     uint32_t signal_value;
+    uint32_t counter = 0;
     int client_socket_fd =-1;
-    slave_connections_t * slave_connection;
+    modbus_tcp_client_slave_connections_t * slave_connection;
     u16 master_slave_state = 0;
     u8 server_ip[4] = {0};
     struct sockaddr_in server_address;
     u8 own_ip[4] = {0};
+    int errors_in_the_row=0;
+    int success_packet_transaction_number=0;
     client_socket_fd =-1;
     master_slave_state = 0;
     slave_connection = argument;
@@ -177,17 +197,18 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
     memset(server_ip,0,4);
     memset(&server_address,0,sizeof(struct sockaddr_in));
     while(1){
-        int event_is_signal = task_notify_wait(0xffffffff,&signal_value,25);
+        int event_is_signal = task_notify_wait(MODBUS_MASTER_CLOSE_CONNECTION_SIGNAL|STOP_CHILD_PROCCES,&signal_value,100);
         if (slave_connection->first_regs_description==NULL){
             close_socket_connection(&client_socket_fd);
             slave_connection->task_id = NULL;
             task_delete(task_get_id());
         }
-        if (handle_ip_address_changes(server_ip, own_ip,RD_MDB_ADDRESS(slave_connection->first_regs_description->modbus_description))>0){
+        if (ip_addresses_were_changed(server_ip, own_ip,RD_MDB_CLIENT_MDB_ADDRESS(slave_connection->first_regs_description->space_number))>0){
             close_socket_connection(&client_socket_fd);
         }
         if (memcmp(zero_array,server_ip,sizeof(server_ip))!=0){
             if (client_socket_fd<0){
+                main_debug(TAG,"TCP_CLIENT trying to connnect to - %u.%u.%u.%u\n",server_ip[0],server_ip[1],server_ip[2],server_ip[3]);
                 connection_proccess(server_ip,&client_socket_fd,&server_address);
             }
         }else{
@@ -197,22 +218,22 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
         }
         if(event_is_signal!=pdTRUE){
             if (client_socket_fd>=0){
-                const regs_description_t * regs_description = slave_connection->first_regs_description;
+                const regs_description_t * regs_description_temp = slave_connection->first_regs_description;
                 u16 space_number_prev ;
-                u16 reg_index ;
+                //u16 reg_index ;
                 client_request_t client_requests;
-                for (int i =0;(i<MAX_NUMBER_OF_REGS_BLOCKS) && regs_description!=NULL;i++){
-                    space_number_prev = regs_description->space_number;
-                    reg_index = regs_description->ind;
-                    client_requests.address = RD_MDB_ADDRESS(regs_description->modbus_description);
-                    client_requests.slave_id = RD_MDB_CLIENT_MDB_ADDRESS(regs_description->space_number);
+                for (int i =0;(i<MAX_NUMBER_OF_REGS_BLOCKS) && regs_description_temp != NULL;i++){
+                    space_number_prev = regs_description_temp->space_number;
+                    //reg_index = regs_description_temp->ind;
+                    client_requests.address = RD_MDB_ADDRESS(regs_description_temp->modbus_description);
+                    client_requests.slave_id = RD_MDB_CLIENT_MDB_ADDRESS(regs_description_temp->space_number);
                     client_requests.channel = PACKET_CHANNEL_TCP;
                     client_requests.retries = 2;
                     client_requests.req_type = req_input;
                     client_requests.error_code = 0;
                     client_requests.prev_error = 0;
-                    client_requests.coms_buffer = (u16*)regs_description->p_value;
-                    client_requests.mb_function = RD_MDB_FUNCTION(regs_description->modbus_description);
+                    client_requests.coms_buffer = (u16*)regs_description_temp->p_value;
+                    client_requests.mb_function = RD_MDB_FUNCTION(regs_description_temp->modbus_description);
                     client_requests.resp_timeout = 200;
                     client_requests.plcv_buffer = NULL;
                     client_requests.count = slave_connection->size_in_words;
@@ -220,8 +241,21 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                     if (res<0){
                         close_socket_connection(&client_socket_fd);
                         errors_in_the_row++;
+                        slave_connection->failed_requests++;
+                    }else{
+                        errors_in_the_row=0;
+                        success_packet_transaction_number++;
+                        slave_connection->success_requests++;
                     }
                 }
+            }
+            counter++;
+            if(counter%10==0){
+                const regs_description_t * regs_description_temp = slave_connection->first_regs_description;
+                main_debug(TAG,"TCP_CLIENT %u server_ip - %u.%u.%u.%u \n modbus_address - %lu %i %i \n address in memmory 0x%08x size in words %lu",\
+                    RD_MDB_CLIENT_MDB_ADDRESS(regs_description_temp->space_number),server_ip[0],server_ip[1],server_ip[2],server_ip[3],\
+                    RD_MDB_ADDRESS(regs_description_temp->modbus_description),errors_in_the_row,success_packet_transaction_number,\
+                    (uint32_t)slave_connection->first_regs_description,slave_connection->size_in_words);
             }
         }
         if(errors_in_the_row>10){
@@ -368,7 +402,7 @@ int clean_slave_table(void){
 }
 int add_ip_to_slave_table(uc8 ip_addr[4], u8 modbus_id){
     u8 exist = 0;
-    int res =0;
+    int res = 0;
     semaphore_take(modbus_tcp_client_access_mutex, portMAX_DELAY );{
         for(u32 i=0;i<slaves_number;i++){
             if (memcmp(ip_addr,&slaves_ip_table[i].ip,sizeof(in_addr_t))==0){
@@ -377,12 +411,14 @@ int add_ip_to_slave_table(uc8 ip_addr[4], u8 modbus_id){
         }
     }semaphore_release(modbus_tcp_client_access_mutex);
     if (!exist){
+        main_debug(TAG,"add ip to slave table modbus_id - %i,ip - %i.%i.%i.%i",modbus_id,ip_addr[0],ip_addr[1],ip_addr[2],ip_addr[3]);
         if (slaves_number<MAX_NUMBER_OF_SLAVES){
             semaphore_take(modbus_tcp_client_access_mutex, portMAX_DELAY );{
                 memcpy(&slaves_ip_table[slaves_number].ip,ip_addr,sizeof(in_addr_t));
                 memcpy(&slaves_ip_table[slaves_number].modbus_id,&modbus_id,1);
                 slaves_number++;
             }semaphore_release(modbus_tcp_client_access_mutex);
+            res = 1;
         }else{
             res = -1;
         }
@@ -415,12 +451,12 @@ static int get_slaves_info_by_number(slave_table_item_t * slave_table_item, u16 
     return res;
 }
 /**
- * @brief get_ip_address_by_modbus_number
+ * @brief get_ip_address_by_modbus
  * @param slave_table_item
  * @param modbus_id - [0;250]
  * @return
  */
-static int get_ip_address_by_modbus_number(slave_table_item_t * slave_table_item, u8 modbus_id){
+static int get_ip_address_by_modbus(slave_table_item_t * slave_table_item, u8 modbus_id){
     int result = 0;
     u16 table_size = get_ip_slaves_table_size();
     for(u16 i=0;i<table_size;i++){
@@ -432,11 +468,11 @@ static int get_ip_address_by_modbus_number(slave_table_item_t * slave_table_item
     return result;
 }
 
-static inline int handle_ip_address_changes(u8 * server_ip_arg,u8 * own_ip_arg,u8 modbus_id){
+static inline int ip_addresses_were_changed(u8 * server_ip_arg,u8 * own_ip_arg,u8 modbus_id){
     int res =0;
     /*take server ip address and check*/
     slave_table_item_t slave_table_item;
-    int result = get_ip_address_by_modbus_number(&slave_table_item,modbus_id);
+    int result = get_ip_address_by_modbus(&slave_table_item,modbus_id);
     if(result>0){
         if(memcmp(&slave_table_item.ip,server_ip_arg,sizeof(in_addr_t))!=0){
             memcpy(server_ip_arg,&slave_table_item.ip,sizeof(in_addr_t));

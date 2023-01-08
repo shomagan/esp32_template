@@ -14,6 +14,7 @@
 #include "type_def.h"
 #include "os_type.h"
 #include "main_config.h"
+#include "regs_description.h"
 
 /*add includes before */
 #ifdef __cplusplus 
@@ -160,6 +161,15 @@ typedef struct MCU_PACK{
     in_addr_t ip;
     u8 modbus_id;
 }slave_table_item_t;
+
+typedef struct MCU_PACK{
+    task_handle_t task_id;
+    regs_description_t * first_regs_description;
+    u32 size_in_words;
+    u32 failed_requests;
+    u32 success_requests;
+}modbus_tcp_client_slave_connections_t;
+
 
 extern client_request_t client_requests[];
 extern area_node_t area_nodes[];

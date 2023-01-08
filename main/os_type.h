@@ -54,6 +54,7 @@
    extern "C" {
 #endif
 /*add functions and variable declarations below */
+#define main_debug ESP_LOGI
 #define main_printf ESP_LOGI
 #define main_error_message ESP_LOGE
 #define task_handle_t TaskHandle_t

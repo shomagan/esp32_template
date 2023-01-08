@@ -266,8 +266,8 @@ static int init_display(){
     u8g2_ClearBuffer(&u8g2);
     char address[64] = {0};
     sprintf(address,"mdb: %u, ip: %u.%u.%u.%u",regs_global.vars.mdb_addr,regs_global.vars.sta_ip[0],regs_global.vars.sta_ip[1],regs_global.vars.sta_ip[2],regs_global.vars.sta_ip[3]);
-    u8g2_SetFont(&u8g2, u8g2_font_u8glib_4_tf);
-    u8g2_DrawStr(&u8g2, 0,5, address);
+    u8g2_SetFont(&u8g2, u8g2_font_5x8_tf);
+    u8g2_DrawStr(&u8g2, 0,7, address);
     u8g2_SendBuffer(&u8g2);
     return res;
 }

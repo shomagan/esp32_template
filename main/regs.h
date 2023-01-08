@@ -243,6 +243,7 @@ typedef union{
         u32 modbus_master_error_transactions_number; //!< ""
         u16 i2c_display_address; //!< "address of display" &ro
         u8 sta_ip[4]; //!< "ip address of sta" &ro &save
+        u32 live_time; //!< "live time in seconds" &ro
     }vars;
     u8 bytes[GLOBAL_UNION_SIZE]; //for full bksram copy
 }main_vars_t;// #generator_use_description {"message":"end_struct"}

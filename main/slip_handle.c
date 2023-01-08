@@ -287,7 +287,7 @@ void slip_flow_control_task(void *args){
     for (uint8_t i=0; i < SLIP_FLOW_CONTROL_QUEUE_LENGTH; i++){
         flow_control_slip_memory[i].length = 0;
     }
-    ESP_LOGI(TAG, "slip_flow_control_task start");
+    main_printf(TAG, "slip_flow_control_task start");
     while (1) {
         if (queue_receive(slip_flow_control_queue, &msg, SLIP_FLOW_CONTROL_QUEUE_TIMEOUT_MS) == pdTRUE) {
             timeout = 0;

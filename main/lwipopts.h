@@ -211,6 +211,7 @@
    ---------- IP options ----------
    --------------------------------
 */
+#define LWIP_IPV4    1
 /**
  * IP_REASSEMBLY==1: Reassemble incoming fragmented IP4 packets. Note that
  * this option does not affect outgoing packet sizes, which can be controlled

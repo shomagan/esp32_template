@@ -40,6 +40,7 @@
  */
 #ifndef COMMON_C
 #define COMMON_C 1
+#include <string.h>
 #include "common.h"
 #include "pin_map.h"
 #include "driver/gpio.h"
@@ -56,11 +57,13 @@
 #include "udp_broadcast.h"
 #endif
 #include "wifi_slip_main.h"
-
+#include "modbus_tcp_client.h"
 #define DUTY_TASK_PERIOD_MS 100
+#define TEMP_BUFFER_SIZE 64
 task_handle_t common_duty_task_handle;
 task_handle_t modbus_master_id;
 static const char *TAG = "common";
+extern modbus_tcp_client_slave_connections_t modbus_tcp_client_slave_connections[];
 /**
  * @brief duty_task - do several common functions
  * @param pvParameters
@@ -191,10 +194,20 @@ static void common_duty_task(void *pvParameters ){
             if(((task_tick)%(1000/DUTY_TASK_PERIOD_MS))==0u){
                 /* rtc time update start */
                 led_blink_on(250);
-                char address[64] = {0};
-                sprintf(address,"mdb: %u, ip: %u.%u.%u.%u",regs_global.vars.mdb_addr,regs_global.vars.sta_ip[0],regs_global.vars.sta_ip[1],regs_global.vars.sta_ip[2],regs_global.vars.sta_ip[3]);
+                regs_global.vars.live_time++;
+                char temp_buff[TEMP_BUFFER_SIZE] = {0};
+                sprintf(temp_buff,"mdb: %u, ip: %u.%u.%u.%u",regs_global.vars.mdb_addr,regs_global.vars.sta_ip[0],regs_global.vars.sta_ip[1],regs_global.vars.sta_ip[2],regs_global.vars.sta_ip[3]);
                 u8g2_ClearBuffer(&u8g2);
-                u8g2_DrawStr(&u8g2, 0,5, address);
+                u8g2_DrawStr(&u8g2, 0,7, temp_buff);
+                memset(temp_buff,0,TEMP_BUFFER_SIZE);
+                sprintf(temp_buff,"live time: %lu",regs_global.vars.live_time);
+                u8g2_DrawStr(&u8g2, 0,14, temp_buff);
+                memset(temp_buff,0,TEMP_BUFFER_SIZE);
+                sprintf(temp_buff,"reset counter: %lu",regs_global.vars.reset_num);
+                u8g2_DrawStr(&u8g2, 0,21, temp_buff);
+                memset(temp_buff,0,TEMP_BUFFER_SIZE);
+                sprintf(temp_buff,"p%lu-e%lu",modbus_tcp_client_slave_connections[0].success_requests,modbus_tcp_client_slave_connections[0].failed_requests);
+                u8g2_DrawStr(&u8g2, 0,28, temp_buff);
                 u8g2_SendBuffer(&u8g2);
             }
             if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==0u){
@@ -222,6 +235,7 @@ static void common_duty_task(void *pvParameters ){
             }
             if (prepare_time){
                 if ((pdTICKS_TO_MS(task_get_tick_count()) - prepare_time ) > TIME_FOR_PREPARE_RESET_MS){
+                    main_printf(TAG, "reset trough common duty task");
                     esp_restart();
                 }
             }
