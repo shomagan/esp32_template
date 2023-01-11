@@ -343,6 +343,30 @@ typedef union{
     u8 bytes[32]; //for full bksram copy
 }client_part_0_t;// #generator_use_description {"message":"end_struct"}
 extern client_part_0_t client_part_0;
+/**
+ * @brief struct for reading modbus data from another device maximume bytes - 240
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * will be in struct regs_description_client
+ * additional space modbus_address, specific space read_holding_registers
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *                  regs_description \n
+ *
+ * @ingroup regs
+ */
+/** #generator_use_description {"space_name" :"client_part_1",  "address_space" :1, "modbus_type" :"client", "modbus_function" :"holding_registers", "modbus_address" :3,"register_start_address" :80}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        u16 num_of_vars;        //!<"number of vars self + config(user) &ro &save
+        u16 client_num_of_vars;        //!<"number of client vars self" &ro &save
+    }vars;
+    u8 bytes[8]; //for full bksram copy
+}client_part_1_t;// #generator_use_description {"message":"end_struct"}
+extern client_part_1_t client_part_1;
 
 /**
   * @brief registers for regs_event_handler

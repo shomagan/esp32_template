@@ -43,6 +43,7 @@
 #define MODBUS_AREA_COUNT   4
 #define MDB_REQTS_COUNT 1
 #define MODBUS_MAX_WORD_NUM 112
+#define MAX_NUMBER_OF_SLAVES_CONNECTIONS 20
 
 typedef enum {
    optimize_speed,
@@ -169,6 +170,11 @@ typedef struct MCU_PACK{
     u32 failed_requests;
     u32 success_requests;
 }modbus_tcp_client_slave_connections_t;
+typedef struct{
+    fd_set write_set;
+    fd_set read_set;
+    fd_set error_set;
+}file_desc_set_t;
 
 
 extern client_request_t client_requests[];
@@ -179,7 +185,7 @@ extern area_node_t area_nodes[];
  *
  */
 int modbus_tcp_master_packet_transaction(u16 channel,u8  *packet,u16 send_length,
-                              u16 recv_length,u32 timeout,int socket);
+                              u16 recv_length,u32 timeout,int socket,file_desc_set_t fds);
 /**
  * @brief clean_slave_table cleal full slave table
  * @return 0 if all was passed good

@@ -34,23 +34,23 @@ static const char *TAG = "modbus";
  */
 static int modbus_master_read_bits(u8  function,u8  slave,u16 start_addr,u16 count,
                                    u16 *dest,int dest_size,u16 channel,
-                                   u8  *error_code,u32 response_timeout,int socket_id);
+                                   u8  *error_code,u32 response_timeout,int socket_id,file_desc_set_t file_desc_set);
 
 /* Execute a transaction for functions that READ REGISTERS. */
 static int modbus_master_read_registers(u8  function,u8  slave,u16 start_addr,u16 count,
                                         u16 *dest,int dest_size,u16 channel,u8  *error_code,
-                                        u32 response_timeout,int socket_id);
+                                        u32 response_timeout,int socket_id,file_desc_set_t file_desc_set);
 /* Execute a transaction for functions that WRITE a sinlge BIT. */
 static int modbus_master_set_single(u8  function,u8  slave,u16 start_addr,u16 value,
-                                    u16 channel,u8  *error_code,u32 response_timeout,int socket_id);
+                                    u16 channel,u8  *error_code,u32 response_timeout,int socket_id,file_desc_set_t file_desc_set);
 
 /* FUNCTION 0x0F   - Force Multiple Coils */
 static int modbus_master_write_output_bits(u8  function,u8  slave,u16 start_addr,u16* data,u8 coil_count,
-                                    u16 channel,u8  *error_code,u32 response_timeout,int socket_id);
+                                    u16 channel,u8  *error_code,u32 response_timeout,int socket_id,file_desc_set_t file_desc_set);
 
 /* FUNCTION 0x10   - Force Multiple Registers */
 static int modbus_master_write_output_words(u8  function,u8  slave,u16 start_addr,u16* data,u8 reg_numm,
-                                     u16 channel,u8  *error_code,u32 response_timeout,int socket_id);
+                                     u16 channel,u8  *error_code,u32 response_timeout,int socket_id,file_desc_set_t file_desc_set);
 static int modbus_tcp_response_lenght(u8 function, u16 items_number);
 static int modbus_response_lenght(u8 function, u16 items_number);
 os_pool_def_t const pool_dinamic_addr_def= {.item_sz = sizeof(dinamic_address_space_t),
@@ -845,7 +845,7 @@ static int modbus_response_lenght(u8 function, u16 items_number){
 }
 
 /* Execute a modbus client transaction/request */
-int modbus_master_execute_request(client_request_t * client_requests,int socket_id){
+int modbus_master_execute_request(client_request_t * client_requests,int socket_id,file_desc_set_t file_desc_set){
     int result =-1;
     u32 timer = task_get_tick_count();
     switch (client_requests->mb_function){
@@ -854,48 +854,48 @@ int modbus_master_execute_request(client_request_t * client_requests,int socket_
                                        client_requests->address, client_requests->count,
                                        client_requests->coms_buffer, (int) client_requests->count,\
                                        client_requests->channel,&client_requests->error_code,
-                                       client_requests->resp_timeout,socket_id);
+                                       client_requests->resp_timeout,socket_id,file_desc_set);
         break;
     case  2: /* read discrete inputs */
         result = modbus_master_read_bits(2 ,client_requests->slave_id,\
                                        client_requests->address, client_requests->count,
                                        client_requests->coms_buffer, (int) client_requests->count,\
                                        client_requests->channel,&client_requests->error_code,
-                                       client_requests->resp_timeout,socket_id);
+                                       client_requests->resp_timeout,socket_id,file_desc_set);
         break;
     case  3: /* read holding registers */
         result = modbus_master_read_registers(3 ,client_requests->slave_id,\
                                             client_requests->address, client_requests->count,
                                             client_requests->coms_buffer, (int)client_requests->count,\
                                             client_requests->channel,&client_requests->error_code,
-                                            client_requests->resp_timeout,socket_id);
+                                            client_requests->resp_timeout,socket_id,file_desc_set);
         break;
     case  4: /* read input registers */
         result = modbus_master_read_registers(4 ,client_requests->slave_id,\
                                             client_requests->address, client_requests->count,
                                             client_requests->coms_buffer, (int)client_requests->count,\
                                             client_requests->channel,&client_requests->error_code,
-                                            client_requests->resp_timeout,socket_id);
+                                            client_requests->resp_timeout,socket_id,file_desc_set);
         break;
     case  5: /* write single coil */
         result = modbus_master_set_single(5,client_requests->slave_id,client_requests->address,
                                         client_requests->coms_buffer[0],client_requests->channel,\
-                                        &client_requests->error_code,client_requests->resp_timeout,socket_id);
+                                        &client_requests->error_code,client_requests->resp_timeout,socket_id,file_desc_set);
         break;
     case  6: /* write single register */
         result = modbus_master_set_single(6,client_requests->slave_id,client_requests->address,
                                         client_requests->coms_buffer[0],client_requests->channel,\
-                                        &client_requests->error_code,client_requests->resp_timeout,socket_id);
+                                        &client_requests->error_code,client_requests->resp_timeout,socket_id,file_desc_set);
         break;
     case 15: /* write multiple coils */
         result = modbus_master_write_output_bits(15,client_requests->slave_id,client_requests->address,client_requests->coms_buffer,\
                                                (u8)client_requests->count,client_requests->channel,&client_requests->error_code,\
-                                               client_requests->resp_timeout,socket_id) ;
+                                               client_requests->resp_timeout,socket_id,file_desc_set) ;
         break;
     case 16: /* write multiple registers */
         result = modbus_master_write_output_words(16,client_requests->slave_id,client_requests->address,client_requests->coms_buffer,\
                                                 (u8)client_requests->count,client_requests->channel,&(client_requests->error_code),\
-                                                client_requests->resp_timeout,socket_id);
+                                                client_requests->resp_timeout,socket_id,file_desc_set);
         break;
     default: break;  /* should never occur, if file generation is correct */
     }
@@ -926,7 +926,7 @@ int modbus_master_execute_request(client_request_t * client_requests,int socket_
  */
 static int modbus_master_read_bits(u8  function,u8  slave,u16 start_addr,u16 count,
                                    u16 *dest,int dest_size,u16 channel,
-                                   u8  *error_code,u32 response_timeout,int socket_id) {
+                                   u8  *error_code,u32 response_timeout,int socket_id,file_desc_set_t file_desc_set) {
     u8 packet[MODBUS_PACKET_LEN];  //use for sending and receiving data
     int response_length;
     int query_length;
@@ -949,7 +949,7 @@ static int modbus_master_read_bits(u8  function,u8  slave,u16 start_addr,u16 cou
         res = INTERNAL_ERROR;
     }else{
         response_length = modbus_tcp_master_packet_transaction(channel,packet,(u16)query_length,
-                                                    (u16)response_length,response_timeout,socket_id);
+                                                    (u16)response_length,response_timeout,socket_id,file_desc_set);
 
         if (response_length  < 6){
             res = INVALID_FRAME;
@@ -993,7 +993,7 @@ static int modbus_master_read_bits(u8  function,u8  slave,u16 start_addr,u16 cou
 /* Execute a transaction for functions that READ REGISTERS. */
 static int modbus_master_read_registers(u8  function,u8  slave,u16 start_addr,u16 count,
                                         u16 *dest,int dest_size,u16 channel,u8  *error_code,
-                                        u32 response_timeout,int socket_id) {
+                                        u32 response_timeout,int socket_id,file_desc_set_t file_desc_set) {
     u8 packet[MODBUS_PACKET_LEN*4];
     (void)error_code;
     int response_length;
@@ -1014,7 +1014,7 @@ static int modbus_master_read_registers(u8  function,u8  slave,u16 start_addr,u1
         res = INTERNAL_ERROR;
     }else{
         response_length = modbus_tcp_master_packet_transaction(channel,packet,(u16)query_length,(u16)response_length,
-                                                               response_timeout,socket_id);
+                                                               response_timeout,socket_id,file_desc_set);
         res = response_length;
 
         if(response_length < 6){
@@ -1048,7 +1048,7 @@ static int modbus_master_read_registers(u8  function,u8  slave,u16 start_addr,u1
 
 /* Execute a transaction for functions that WRITE a sinlge BIT. */
 static int modbus_master_set_single(u8  function,u8  slave,u16 start_addr,u16 value,
-                                    u16 channel,u8  *error_code,u32 response_timeout,int socket_id) {
+                                    u16 channel,u8  *error_code,u32 response_timeout,int socket_id,file_desc_set_t file_desc_set) {
     u8 packet[MODBUS_PACKET_LEN];
     int query_length, response_length,res;
     (void)error_code;
@@ -1066,7 +1066,7 @@ static int modbus_master_set_single(u8  function,u8  slave,u16 start_addr,u16 va
         res = INTERNAL_ERROR;
     }else{
         response_length = modbus_tcp_master_packet_transaction(channel,packet,(u16)query_length,
-                                                    (u16)response_length,response_timeout,socket_id);
+                                                    (u16)response_length,response_timeout,socket_id,file_desc_set);
 
         u16 calc_len = 8;//address + function + byte_num + crc + data
         if (response_length  < 6)  {
@@ -1093,7 +1093,7 @@ static int modbus_master_set_single(u8  function,u8  slave,u16 start_addr,u16 va
 
 /* FUNCTION 0x0F   - Force Multiple Coils */
 static int modbus_master_write_output_bits(u8  function,u8  slave,u16 start_addr,u16* data,u8 coil_count,
-                                    u16 channel,u8  *error_code,u32 response_timeout,int socket_id) {
+                                    u16 channel,u8  *error_code,u32 response_timeout,int socket_id,file_desc_set_t file_desc_set) {
     int query_length, response_length, res;
     u8 packet[MODBUS_PACKET_LEN];
     (void)error_code;
@@ -1115,7 +1115,7 @@ static int modbus_master_write_output_bits(u8  function,u8  slave,u16 start_addr
     }else{
         /* NOTE: Integer division. (count+7)/8 is equivalent to ceil(count/8) */
         response_length = modbus_tcp_master_packet_transaction(channel,packet,(u16)query_length,
-                                                    (u16)response_length,response_timeout,socket_id);
+                                                    (u16)response_length,response_timeout,socket_id,file_desc_set);
         if (response_length  < 6){
             res = INVALID_FRAME;
         }else{
@@ -1143,7 +1143,7 @@ static int modbus_master_write_output_bits(u8  function,u8  slave,u16 start_addr
 }
 /* FUNCTION 0x10   - Force Multiple Registers */
 static int modbus_master_write_output_words(u8  function,u8  slave,u16 start_addr,u16* data,u8 reg_numm,
-                                     u16 channel,u8  *error_code,u32 response_timeout,int socket_id) {
+                                     u16 channel,u8  *error_code,u32 response_timeout,int socket_id,file_desc_set_t file_desc_set) {
     int query_length, response_length, res ;
     u8 packet[MODBUS_PACKET_LEN];
     (void)error_code;
@@ -1165,7 +1165,7 @@ static int modbus_master_write_output_words(u8  function,u8  slave,u16 start_add
     }else{
         /* NOTE: Integer division. (count+7)/8 is equivalent to ceil(count/8) */
         response_length = modbus_tcp_master_packet_transaction(channel,packet,(u16)query_length,
-                                                    (u16)response_length,response_timeout,socket_id);
+                                                    (u16)response_length,response_timeout,socket_id,file_desc_set);
         if (response_length < 8){
             res = INVALID_FRAME;
         }else {

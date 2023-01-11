@@ -2,7 +2,6 @@
 import os
 import re
 import fileinput
-import msvcrt as m
 import regs_handl
 import argparse
 import base_object
@@ -48,8 +47,10 @@ def generate(type_module):
     fs_save_file.write(' ')
     fs_save_file.close()
     print('close index.html in project')
-    print('start makefsdata.exe')
-    os.system("make_fs.bat")
+    print('start makefsdata')
+    os.chdir("../main/http/")
+    os.system("./makefsdata_l")
+    os.chdir("../../generator/")
 
 
 def main():
@@ -108,9 +109,9 @@ def main():
         fs_save_file = open('../main/http/fs.c', 'a')
         fs_save_file.write(' ')
         fs_save_file.close()
-        print("regs.h file had not changed")
-    os.system("make_fs.bat")
-
+    os.chdir("../main/http/")
+    os.system("./makefsdata_l")
+    os.chdir("../../generator/")
 
 def change_version(git_base_path):
     repo = Repo(git_base_path)
@@ -230,14 +231,15 @@ def write_exist_file():
     if number:
         print('replace ' + str(number) + ' string in description file' + file_path)
     else:
-        print("don't find regs_description_t struct in file" + file_path)
+        print("warning!!! did't find regs_description struct in file" + file_path)
 
     template_file = open('regs_description_client.pat', 'r', encoding='UTF-8')
     replace = 0
     number = 0
     file_path = '../main/regs_description.c'
     for line in fileinput.input(file_path, inplace=1):
-        if re.search("\s*regs_description_t\s+const\s+regs_description_client\[\s*NUM_OF_CLIENT_VARS\s*\]\s*\=\s*\{",line):
+
+        if re.search("\s*regs_description_t\s+const\s+regs_description_user\[\s*NUM_OF_CLIENT_VARS\s*\]\s*\=\s*\{",line):
             replace = 1
             print(line, end='')
         elif replace:
@@ -256,7 +258,7 @@ def write_exist_file():
     if number:
         print('replace ' + str(number) + ' string in description file' + file_path)
     else:
-        print("don't find regs_description_t struct in file" + file_path)
+        print("warning!!! did't find regs_description_user struct in file" + file_path)
 
 
 if __name__ == "__main__":

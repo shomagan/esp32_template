@@ -110,7 +110,7 @@ int common_init_tasks(){
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create wifi to slip flow control task failed");
     }
-    res = task_create(common_duty_task, "common_duty_task", 2548, NULL, (tskIDLE_PRIORITY + 2), &common_duty_task_handle);
+    res = task_create(common_duty_task, "common_duty_task", 3048, NULL, (tskIDLE_PRIORITY + 2), &common_duty_task_handle);
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create slip to wifi flow control task failed");
     }
@@ -206,7 +206,13 @@ static void common_duty_task(void *pvParameters ){
                 sprintf(temp_buff,"reset counter: %lu",regs_global.vars.reset_num);
                 u8g2_DrawStr(&u8g2, 0,21, temp_buff);
                 memset(temp_buff,0,TEMP_BUFFER_SIZE);
-                sprintf(temp_buff,"p%lu-e%lu",modbus_tcp_client_slave_connections[0].success_requests,modbus_tcp_client_slave_connections[0].failed_requests);
+                u32 success_requests = 0;
+                u32 failed_requests = 0;
+                for (int i = 0;i < MAX_NUMBER_OF_SLAVES_CONNECTIONS;i++){
+                    success_requests += modbus_tcp_client_slave_connections[i].success_requests;
+                    failed_requests += modbus_tcp_client_slave_connections[i].failed_requests;
+                }
+                sprintf(temp_buff,"p%lu-e%lu",success_requests,failed_requests);
                 u8g2_DrawStr(&u8g2, 0,28, temp_buff);
                 u8g2_SendBuffer(&u8g2);
             }

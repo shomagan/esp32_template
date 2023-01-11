@@ -114,7 +114,7 @@ int modbus_dinamic_addr_check(u32 mdb_or_coil_addr,u8 command,u16 item_number);
  */
 void * modbus_dinamic_addr_get(int pool_id);
 /* Execute a modbus client transaction/request */
-int modbus_master_execute_request(client_request_t * client_requests,int socket_id);
+int modbus_master_execute_request(client_request_t * client_requests,int socket_id,file_desc_set_t file_desc_set);
 
 /*add functions and variable declarations before */
 #ifdef __cplusplus
