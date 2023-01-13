@@ -44,7 +44,6 @@ static struct udp_pcb * udp_broadcast_pcb;
 static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbuf *p,\
                                const ip_addr_t *addr, u16_t port);
 
-static struct pbuf * udp_broadcast_send_pbuff;
 static u32 add_string_from_regs(u8 * dest, u8 * from,u32 max_size){
     u32 size = strnlen((char*)from, max_size);
     memcpy(dest,from,size);
@@ -97,6 +96,7 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
         }
     }
     if (len){
+        struct pbuf * udp_broadcast_send_pbuff;
         udp_broadcast_send_pbuff = pbuf_alloc(PBUF_TRANSPORT, (u16)len, PBUF_RAM);
         if (udp_broadcast_send_pbuff != NULL) {
             pbuf_take(udp_broadcast_send_pbuff,answer_buff,(u16)len);
@@ -112,17 +112,14 @@ int udp_broadcast_advertisement(void){
     if(udp_broadcast_pcb!=NULL){
         int len = 0;
         len += sprintf(temp_buff,ADVERTISMENT_REQUEST);
-        res = udp_connect(udp_broadcast_pcb, IP_ADDR_ANY, UDP_BROADCAST_SELF_PORT);
-        if (res == ERR_OK){
-            udp_broadcast_send_pbuff = pbuf_alloc(PBUF_TRANSPORT, (u16)len, PBUF_RAM);
-            if (udp_broadcast_send_pbuff != NULL) {
-                pbuf_take(udp_broadcast_send_pbuff,temp_buff,(u16)len);
-                udp_sendto(udp_broadcast_pcb, udp_broadcast_send_pbuff, IP_ADDR_BROADCAST, UDP_BROADCAST_SELF_PORT);
-                pbuf_free(udp_broadcast_send_pbuff);
-            }else{
-                res = ERR_BUF;
-            }
-            udp_disconnect(udp_broadcast_pcb);
+        struct pbuf * udp_broadcast_send_pbuff;
+        udp_broadcast_send_pbuff = pbuf_alloc(PBUF_TRANSPORT, (u16)len, PBUF_RAM);
+        if (udp_broadcast_send_pbuff != NULL) {
+            pbuf_take(udp_broadcast_send_pbuff,temp_buff,(u16)len);
+            udp_sendto(udp_broadcast_pcb, udp_broadcast_send_pbuff, IP_ADDR_BROADCAST, UDP_BROADCAST_SELF_PORT);
+            pbuf_free(udp_broadcast_send_pbuff);
+        }else{
+            res = ERR_BUF;
         }
     }else{
         res = ERR_CONN;

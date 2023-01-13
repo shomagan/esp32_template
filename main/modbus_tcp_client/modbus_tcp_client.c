@@ -189,7 +189,7 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
     memset(server_ip,0,4);
     memset(&server_address,0,sizeof(struct sockaddr_in));
     while(1){
-        int event_is_signal = task_notify_wait(MODBUS_MASTER_CLOSE_CONNECTION_SIGNAL|STOP_CHILD_PROCCES,&signal_value,50);
+        int event_is_signal = task_notify_wait(MODBUS_MASTER_CLOSE_CONNECTION_SIGNAL|STOP_CHILD_PROCCES,&signal_value,40);
         if (slave_connection->first_regs_description==NULL){
             close_socket_connection(&client_socket_fd);
             slave_connection->task_id = NULL;
@@ -225,7 +225,7 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                 client_requests.prev_error = 0;
                 client_requests.coms_buffer = (u16*)regs_description_temp->p_value;
                 client_requests.mb_function = RD_MDB_FUNCTION(regs_description_temp->modbus_description);
-                client_requests.resp_timeout = 500;
+                client_requests.resp_timeout = 1000;
                 client_requests.plcv_buffer = NULL;
                 client_requests.count = slave_connection->size_in_words;
                 int res = modbus_master_execute_request(&client_requests,client_socket_fd,file_desc_set);
