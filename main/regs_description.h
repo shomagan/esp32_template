@@ -22,7 +22,7 @@
 #define  MAX_DESCRIPTION_SIZE 30
 #define  MAX_ARRAY_SIZE 256
 #define  MAX_DESCRIPTIONS_REGS  2048
-#define NUM_OF_SELF_VARS 76
+#define NUM_OF_SELF_VARS 77
 #define NUM_OF_CLIENT_VARS 9
 extern const u32 def_table_version;
 

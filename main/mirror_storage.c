@@ -179,6 +179,7 @@ int internal_flash_save_mirror_to_flash(void){
         semaphore_take(global_vars_mirror_mutex, portMAX_DELAY );
     }
     {
+        regs_global.vars.flash_write_number = (regs_global.vars.flash_write_number<0xffffffff)?(regs_global.vars.flash_write_number+1):regs_global.vars.flash_write_number;
         nvs_handle_t my_handle;
         res = nvs_open("storage", NVS_READWRITE, &my_handle);
         if (res == ESP_OK) {
