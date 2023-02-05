@@ -5,15 +5,12 @@
  * @ingroup regs
  * @version 0.1
  */
-
 #ifndef REGS_C
 #define REGS_C 1
-
 /**
   * @defgroup regs
   * @brief Work with main vars regs
   */
-
 #include "regs.h"
 #include "regs_description.h"
 #include "modbus.h"
@@ -48,8 +45,6 @@ queue_handle_t regs_event_queue = NULL;
  * @brief regs_global - global main struct in project
  * @ingroup regs
  */
-
-
 static void * end_of_reg_addr(void * regs_global);
 static void execute_main_command(u16 command);
 static int regs_write_access(void * reg_address);
@@ -57,9 +52,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering);
 static int regs_read_access(void * byte_address);
 static temp_data_buffering_t temp_data_buffering = {.data = {{0}},.byte_writed_flags = 0,.reg_address = NULL};
 static int regs_hadle_sets(void * reg_address,regs_access_t reg,u16 reg_index);
-
 static void execute_main_command(u16 command);
-
 /**
  * @brief regs_init
  * @return
@@ -348,7 +341,6 @@ int regs_get(void * reg_address,regs_access_t* reg){
     }else{
         result = -ILLEGAL_DATA_ADDRESS;
     }
-
     return result;
 }
 /**
@@ -366,7 +358,6 @@ static int regs_read_access(void * byte_address){
     }
     return res;
 }
-
 /**
  * @brief read vars in buffer
  * @param reg_address - in byte addressing
@@ -390,7 +381,6 @@ int regs_get_buffer(void * reg_address,u8* buffer_to,u16 byte_numm){
     }
     return result;
 }
-
 /**
  * @brief get register size in bytes
  * @param type - register type flag
@@ -423,7 +413,6 @@ u8 regs_size_in_byte(regs_flag_t type){
     }
     return result;
 }
-
 /**
  * @brief write new values in register array
  * @param reg_address - first register address in byte addressing
@@ -448,8 +437,6 @@ int regs_set_buffer(void * reg_address,u8* buffer_from,u16 byte_numm){
     }
     return result;
 }
-
-
 /**
  * @brief perform an action or send a message to the regs_event_handler queue
  * @param reg_address - in byte addressing
@@ -458,7 +445,6 @@ int regs_set_buffer(void * reg_address,u8* buffer_from,u16 byte_numm){
  * @ingroup regs
  * @example rewrite rtc time or ethernet settings drive to write in peripherial hardware or change external setting
  */
-
 static int regs_hadle_sets(void * reg_address,regs_access_t reg,u16 reg_index){
     int result;
     result = 0;
@@ -486,9 +472,6 @@ static int regs_hadle_sets(void * reg_address,regs_access_t reg,u16 reg_index){
     }
     return result;
 }
-
-
-
 /**
  * @brief write register to mirror
  * @param reg - pointer to register
@@ -520,8 +503,6 @@ int write_reg_to_mirror(void *reg){
     }
     return result;
 }
-
-
 /**
  * @brief restore register value from bkram
  * @param reg - pointer to register
@@ -571,7 +552,6 @@ static void * end_of_reg_addr(void * reg){
     }
     return addr;
 }
-
 /**
  * @brief regs_of_bkram_and_have_def_value
  * @param reg_address
@@ -592,7 +572,6 @@ int regs_saved_and_have_def_value(const void * reg_address){
     }
     return res;
 }
-
 /**
  * @brief execute command
  * @param command - command from command_list
@@ -622,7 +601,6 @@ static void execute_main_command(u16 command){
             regs_set(&regs_global.vars.command,reg);
         }
         break;
-
     case ENABLE_SPECIAL_HTTP_COMM:
         regs_global.vars.permission |= ENABLE_CREDENTIAL_FLAG;
         break;
@@ -640,7 +618,4 @@ static void execute_main_command(u16 command){
         break;
     }
 }
-
-
-
 #endif //REGS_C

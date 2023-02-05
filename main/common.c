@@ -8,8 +8,7 @@
  * @brief  TODO!!! write brief in 
  */
 /*
- * Copyright (c) 2018 Snema Service
- * All rights reserved.
+ *
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -33,13 +32,19 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
  *
- * This file is part of the sofi PLC.
+ * This file is part of the sofi.
  *
  * Author: Shoma Gane <shomagan@gmail.com>
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
  */
 #ifndef COMMON_C
 #define COMMON_C 1
+/**
+  * @defgroup common
+  * @brief maintanance thing
+  * 1 timer initialize
+  * 2 led control
+  */
 #include <string.h>
 #include "common.h"
 #include "pin_map.h"
@@ -51,31 +56,27 @@
 #include "esp_wifi.h"
 #include "pwm_test.h"
 #include "main_config.h"
-#include "touch_handle.h"
 #include "modbus_tcp_client.h"
 #if UDP_BROADCAST_ENABLE
 #include "udp_broadcast.h"
 #endif
 #include "wifi_slip_main.h"
 #include "modbus_tcp_client.h"
+#include "driver/timer.h"
 #define DUTY_TASK_PERIOD_MS 100
 #define TEMP_BUFFER_SIZE 64
+#define TIMER_INTERVAL_SECONDS    1u
+#define TIMER_DIVIDER         (8000)  //  Hardware timer clock divider
+#define TIMER_SCALE           (TIMER_BASE_CLK / TIMER_DIVIDER)  // convert counter value to seconds
 task_handle_t common_duty_task_handle;
 task_handle_t modbus_master_id;
 static const char *TAG = "common";
 extern modbus_tcp_client_slave_connections_t modbus_tcp_client_slave_connections[];
-/**
- * @brief duty_task - do several common functions
- * @param pvParameters
- */
-static void common_duty_task(void *pvParameters );
-/**
- * @brief common_init_gpio - init the common(system, like LED) use pins
- * @return
- */
-static int common_init_gpio(void);
-
 static u16 led_os_blink_on_time = 0;
+static void example_tg_timer_init(int group, int timer, bool auto_reload, int timer_interval_sec);
+static bool timer_group_isr_callback(void *args);
+static uint32_t second_counter;
+static portMUX_TYPE param_lock = portMUX_INITIALIZER_UNLOCKED;
 /**
  * @brief led_blink_on enable the led on ms
  * @param time_ms
@@ -89,62 +90,23 @@ void led_blink_on(u16 time_ms){
  * @brief led_blink_off disable the led if it was enableb
  */
 void led_blink_off(){
-    if(led_os_blink_on_time){led_os_blink_on_time = 0;}
+    if(led_os_blink_on_time){led_os_blink_on_time = 0u;}
     return;
 }
 /**
  * @brief common_init
  * @return
  */
-int common_init(){
-    common_init_gpio();
+int common_duty_init(){
+    example_tg_timer_init(TIMER_GROUP_0, TIMER_0, false, TIMER_INTERVAL_SECONDS);
     return 0;
-}
-/**
- * @brief common_init_tasks - all task must starting here
- * @return
- */
-int common_init_tasks(){
-    int res=0;
-    res = task_create(slip_flow_control_task, "wifi2slip_flow_ctl", 2048, NULL, (tskIDLE_PRIORITY + 2), &wifi_slip_config.slip_flow_control_handle);
-    if (res != pdTRUE) {
-        ESP_LOGE(TAG, "create wifi to slip flow control task failed");
-    }
-    res = task_create(common_duty_task, "common_duty_task", 3048, NULL, (tskIDLE_PRIORITY + 2), &common_duty_task_handle);
-    if (res != pdTRUE) {
-        ESP_LOGE(TAG, "create slip to wifi flow control task failed");
-    }
-    res = task_create(slip_handle_uart_rx_task, "slip_modem_uart_rx_task", SLIP_RX_TASK_STACK_SIZE, &wifi_slip_config, SLIP_RX_TASK_PRIORITY, &wifi_slip_config.uart_rx_task);
-    if (res != pdTRUE) {
-        ESP_LOGE(TAG, "create slip_modem_uart_rx_task failed");
-    }
-#if PWM_TEST_ENABLE
-    res = task_create(pwm_control_task, "pwm_control_task", 2048, &wifi_slip_config, (tskIDLE_PRIORITY + 2), &pwm_task_handle);
-    if (res != pdTRUE) {
-        ESP_LOGE(TAG, "create pwm_control_task failed");
-    }
-#endif
-#if TOUCH_HANDLE_ENABLE
-    res = task_create(touch_task, "touch_task", 4096, NULL, (tskIDLE_PRIORITY + 2), &touch_task_handle);
-    if (res != pdTRUE) {
-        ESP_LOGE(TAG, "create touch_handle_task failed");
-    }
-#endif
-#if MODBUS_MASTER_ENABLE
-    res = task_create(modbus_tcp_client_common_task, "modbus_tcp_client_common_task", 4096, NULL, (tskIDLE_PRIORITY + 2), &modbus_master_id);
-    if(res != pdTRUE){
-        main_printf(TAG,"modbus tcp task inited success\n");
-    }
-#endif
-
-
-    return res;
 }
 /**
  * @brief common_deinit
  * @return
  */
 int common_deinit(){
+    /*init timers*/
     return 0;
 }
 
@@ -152,7 +114,7 @@ int common_deinit(){
  * @brief common_init_gpio - init the common(system, like LED) use pins
  * @return
  */
-static int common_init_gpio(){
+int common_init_gpio(){
     gpio_config_t io_conf = {0};
     //disable interrupt
     io_conf.intr_type = GPIO_INTR_DISABLE;
@@ -172,39 +134,47 @@ static int common_init_gpio(){
  * @brief duty_task - do several common functions
  * @param pvParameters
  */
-static void common_duty_task(void *pvParameters ){
+void common_duty_task(void *pvParameters ){
     /* Remove compiler warning about unused parameter. */
     (void) pvParameters;
     /* Init internal ADC service channels */
     /* Initialise xNextWakeTime - this only needs to be done once. */
-    ui32 prepare_time = 0;
+    uint32_t prepare_time = 0;
     uint32_t task_tick = 0;
     uint32_t signal_value;
+    if(common_duty_init()<0){
+        led_blink_on(5000);
+    }
     while(1){
         /* Place this task in the blocked state until it is time to run again. */
         signal_value = 0;
         if(task_notify_wait(STOP_CHILD_PROCCES|PREPARE_TO_RESET, &signal_value, DUTY_TASK_PERIOD_MS)!=pdTRUE){
             /*by timeout*/
             if(led_os_blink_on_time ){
-                gpio_set_level(CONFIG_LED_BLINK_GPIO, 1);
+                gpio_set_level(CONFIG_LED_BLINK_GPIO, 1u);
                 led_os_blink_on_time = led_os_blink_on_time>DUTY_TASK_PERIOD_MS?led_os_blink_on_time-DUTY_TASK_PERIOD_MS:0;
             }else{
-                gpio_set_level(CONFIG_LED_BLINK_GPIO, 0);
+                gpio_set_level(CONFIG_LED_BLINK_GPIO, 0u);
             }
-            if(((task_tick)%(1000/DUTY_TASK_PERIOD_MS))==0u){
+            if(((task_tick)%(1000u/DUTY_TASK_PERIOD_MS))==0u){
                 /* rtc time update start */
-                led_blink_on(250);
-                regs_global.vars.live_time++;
-                char temp_buff[TEMP_BUFFER_SIZE] = {0};
+                led_blink_on(250u);
+                char temp_buff[TEMP_BUFFER_SIZE] = {0u};
+                semaphore_take(regs_access_mutex, portMAX_DELAY);{
                 sprintf(temp_buff,"mdb: %u, ip: %u.%u.%u.%u",regs_global.vars.mdb_addr,regs_global.vars.sta_ip[0],regs_global.vars.sta_ip[1],regs_global.vars.sta_ip[2],regs_global.vars.sta_ip[3]);
+                }semaphore_release(regs_access_mutex);
                 u8g2_ClearBuffer(&u8g2);
-                u8g2_DrawStr(&u8g2, 0,7, temp_buff);
+                u8g2_DrawStr(&u8g2, 0,7u, temp_buff);
                 memset(temp_buff,0,TEMP_BUFFER_SIZE);
+                semaphore_take(regs_access_mutex, portMAX_DELAY);{
                 sprintf(temp_buff,"live time: %lu",regs_global.vars.live_time);
-                u8g2_DrawStr(&u8g2, 0,14, temp_buff);
+                }semaphore_release(regs_access_mutex);
+                u8g2_DrawStr(&u8g2, 0,14u, temp_buff);
                 memset(temp_buff,0,TEMP_BUFFER_SIZE);
+                semaphore_take(regs_access_mutex, portMAX_DELAY);{
                 sprintf(temp_buff,"reset counter: %lu",regs_global.vars.reset_num);
-                u8g2_DrawStr(&u8g2, 0,21, temp_buff);
+                }semaphore_release(regs_access_mutex);
+                u8g2_DrawStr(&u8g2, 0,21u, temp_buff);
                 memset(temp_buff,0,TEMP_BUFFER_SIZE);
                 u32 success_requests = 0;
                 u32 failed_requests = 0;
@@ -212,8 +182,10 @@ static void common_duty_task(void *pvParameters ){
                     success_requests += modbus_tcp_client_slave_connections[i].success_requests;
                     failed_requests += modbus_tcp_client_slave_connections[i].failed_requests;
                 }
-                sprintf(temp_buff,"p%lu-e%lu",success_requests,failed_requests);
-                u8g2_DrawStr(&u8g2, 0,28, temp_buff);
+                semaphore_take(regs_access_mutex, portMAX_DELAY);{
+                sprintf(temp_buff,"p%lu-e%lu;c-%llu",success_requests,failed_requests,regs_global.vars.sys_tick_counter);
+                }semaphore_release(regs_access_mutex);
+                u8g2_DrawStr(&u8g2, 0,28u, temp_buff);
                 u8g2_SendBuffer(&u8g2);
             }
             if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==0u){
@@ -222,18 +194,22 @@ static void common_duty_task(void *pvParameters ){
                 udp_broadcast_advertisement();
 #endif
             }
-            if(((task_tick)%(5000/DUTY_TASK_PERIOD_MS))==0u){    // every 5 sec
+            if(((task_tick)%(5000u/DUTY_TASK_PERIOD_MS))==0u){    // every 5 sec
                 main_printf(TAG,"tick %u",task_tick);
             }
-            if(((task_tick)%(60000/DUTY_TASK_PERIOD_MS))==0u){    // every 60 sec
-                if(regs_global.vars.sta_connect==0){
-                    main_printf(TAG, "try connect to sta");
-                    esp_wifi_connect();
-                }
+            if(((task_tick)%(60000u/DUTY_TASK_PERIOD_MS))==0u){    // every 60 sec
+                semaphore_take(regs_access_mutex, portMAX_DELAY);{
+                    if(regs_global.vars.sta_connect==0){
+                        main_printf(TAG, "try connect to sta");
+                        esp_wifi_connect();
+                    }
+                }semaphore_release(regs_access_mutex);
             }
-            if (regs_global.vars.async_flags & ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH){
-                regs_global.vars.async_flags &= (u32)~ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
-                if (internal_flash_save_mirror_to_flash()!=0){
+            regs_access_t async_flags;
+            regs_get(&regs_global.vars.async_flags,&async_flags);
+            if (async_flags.value.op_u64 & ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH){
+                async_flags.value.op_u64 &= (u32)~ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
+                if (internal_flash_save_mirror_to_flash()!=0u){
                     main_printf(TAG, "Failed %d\n",__LINE__);
                 }else{
                     main_printf(TAG, "bkram file saved to flash succes");
@@ -253,7 +229,15 @@ static void common_duty_task(void *pvParameters ){
                 prepare_time = pdTICKS_TO_MS(task_get_tick_count());
             }
         }
-
+        semaphore_take(regs_access_mutex, portMAX_DELAY);{
+            os_enter_critical(&param_lock);
+            regs_global.vars.live_time = second_counter;
+            os_exit_critical(&param_lock);
+            u64_t sys_tick_counter;
+            timer_get_counter_value(TIMER_GROUP_0, TIMER_0, &sys_tick_counter);
+            sys_tick_counter /=10;
+            memcpy(&regs_global.vars.sys_tick_counter,&sys_tick_counter,sizeof(sys_tick_counter));
+        }semaphore_release(regs_access_mutex);
         task_tick++;
     }
 } 
@@ -316,5 +300,44 @@ u8 compare_float_value(float a,float b, float diff){
         res = 0;
     }
     return res;
+}
+/**
+ * @brief Initialize selected timer of timer group
+ *
+ * @param group Timer Group number, index from 0
+ * @param timer timer ID, index from 0
+ * @param auto_reload whether auto-reload on alarm event
+ * @param timer_interval_sec interval of alarm
+ */
+static void example_tg_timer_init(int group, int timer, bool auto_reload, int timer_interval_sec){
+    /* Select and initialize basic parameters of the timer */
+    static timer_config_t config = {
+        .divider = TIMER_DIVIDER,
+        .counter_dir = TIMER_COUNT_UP,
+        .counter_en = TIMER_PAUSE,
+        .alarm_en = TIMER_ALARM_EN,
+        .auto_reload = 0,
+    }; // default clock source is APB
+    config.auto_reload = auto_reload;
+    timer_init(group, timer, &config);
+    /* Timer's counter will initially start from value below.
+       Also, if auto_reload is set, this value will be automatically reload on alarm */
+    timer_set_counter_value(group, timer, 0);
+    /* Configure the alarm value and the interrupt on alarm. */
+    timer_set_alarm_value(group, timer, timer_interval_sec * TIMER_SCALE);
+    timer_enable_intr(group, timer);
+    timer_isr_callback_add(group, timer, timer_group_isr_callback, &config, 0);
+    timer_start(group, timer);
+}
+static bool IRAM_ATTR timer_group_isr_callback(void *args){
+    timer_config_t *info = (timer_config_t *) args;
+    second_counter++;
+    /* Prepare basic event data that will be then sent back to task */
+    if (!info->auto_reload) {
+        uint64_t timer_counter_value = timer_group_get_counter_value_in_isr(TIMER_GROUP_0, TIMER_0);
+        timer_counter_value += TIMER_INTERVAL_SECONDS * TIMER_SCALE;
+        timer_group_set_alarm_value_in_isr(TIMER_GROUP_0, TIMER_0, timer_counter_value);
+    }
+    return pdTRUE; // return whether we need to yield at the end of ISR
 }
 #endif //COMMON_C

@@ -34,6 +34,7 @@
 #include "modbus_tcp/modbus_tcp.h"
 #include <driver/spi_master.h>
 #include "udp_broadcast.h"
+#include "touch_handle.h"
 
 /* The examples use WiFi configuration that you can set via project configuration menu.
    If you'd rather not, just change the below entries to strings with
@@ -53,8 +54,13 @@ slip_handle_config_t wifi_slip_config;
 u8 sta_connected = 0;
 u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
 u8g2_t u8g2; // a structure which will contain all the data for one display
-
+/*ssd1306*/
 static int init_display(void);
+/**
+ * @brief common_init_tasks - all task must starting here
+ * @return
+ */
+int main_init_tasks(void);
 /**
  * @brief wifi_event_handler
  * @param arg
@@ -205,9 +211,9 @@ void app_main(void){
     dinamic_address = os_pool_create(&pool_dinamic_addr_def);
     preinit_global_vars();
     ESP_ERROR_CHECK(esp_slip_init(&wifi_slip_config));
-    common_init();/*init common things*/
+    common_init_gpio();
     init_display();
-    common_init_tasks();/*init all necessary tasks */
+    main_init_tasks();/*init all necessary tasks */
     wifi_common_init();
     main_printf(TAG, "wifi setting %d",regs_global.vars.wifi_setting);
     main_printf(TAG, "ap_name:%s ap_password:%s sta_name:%s sta_password:%s channel:%d",
@@ -269,6 +275,44 @@ static int init_display(){
     u8g2_SetFont(&u8g2, u8g2_font_5x8_tf);
     u8g2_DrawStr(&u8g2, 0,7, address);
     u8g2_SendBuffer(&u8g2);
+    return res;
+}
+/**
+ * @brief main_init_tasks - all task must starting here
+ * @return
+ */
+int main_init_tasks(){
+    int res=0;
+    res = task_create(slip_flow_control_task, "wifi2slip_flow_ctl", 2048, NULL, (tskIDLE_PRIORITY + 2), &wifi_slip_config.slip_flow_control_handle);
+    if (res != pdTRUE) {
+        ESP_LOGE(TAG, "create wifi to slip flow control task failed");
+    }
+    res = task_create(common_duty_task, "common_duty_task", 3048, NULL, (tskIDLE_PRIORITY + 2), &common_duty_task_handle);
+    if (res != pdTRUE) {
+        ESP_LOGE(TAG, "create slip to wifi flow control task failed");
+    }
+    res = task_create(slip_handle_uart_rx_task, "slip_modem_uart_rx_task", SLIP_RX_TASK_STACK_SIZE, &wifi_slip_config, SLIP_RX_TASK_PRIORITY, &wifi_slip_config.uart_rx_task);
+    if (res != pdTRUE) {
+        ESP_LOGE(TAG, "create slip_modem_uart_rx_task failed");
+    }
+#if PWM_TEST_ENABLE
+    res = task_create(pwm_control_task, "pwm_control_task", 2048, &wifi_slip_config, (tskIDLE_PRIORITY + 2), &pwm_task_handle);
+    if (res != pdTRUE) {
+        ESP_LOGE(TAG, "create pwm_control_task failed");
+    }
+#endif
+#if TOUCH_HANDLE_ENABLE
+    res = task_create(touch_task, "touch_task", 4096, NULL, (tskIDLE_PRIORITY + 2), &touch_task_handle);
+    if (res != pdTRUE) {
+        ESP_LOGE(TAG, "create touch_handle_task failed");
+    }
+#endif
+#if MODBUS_MASTER_ENABLE
+    res = task_create(modbus_tcp_client_common_task, "modbus_tcp_client_common_task", 4096, NULL, (tskIDLE_PRIORITY + 2), &modbus_master_id);
+    if(res != pdTRUE){
+        main_printf(TAG,"modbus tcp task inited success\n");
+    }
+#endif
     return res;
 }
 

@@ -82,6 +82,8 @@
 #define task_notify_wait(flags,signal,ms) xTaskNotifyWait(0,flags,signal,ms/portTICK_PERIOD_MS)
 
 #define task_notify_send(thread_id,signal,prev_value) xTaskGenericNotify( thread_id, 0, (uint32_t)signal, eSetBits, prev_value)
+#define os_enter_critical(mutex) portENTER_CRITICAL(mutex)
+#define os_exit_critical(mutex) portEXIT_CRITICAL(mutex)
 
 /*add functions and variable declarations before */
 #ifdef __cplusplus

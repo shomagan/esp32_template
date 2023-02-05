@@ -8,13 +8,12 @@ import base_object
 from git import Repo
 import hashlib
 # Define your own exception
-
-
 class Error(Exception):
     pass
 
 
 __description__ = 'generate regs description file'
+REGS_H_PATH = "../main/regs.h"
 
 
 def generate(type_module):
@@ -61,7 +60,7 @@ def main():
     args = parser.parse_args()
     print("module type - {}".format(args.type))
     regs_h_had_changed = 1
-    with open("../main/regs.h", "rb") as f:
+    with open(REGS_H_PATH, "rb") as f:
         sha_file_path = "../regs_sha256.txt"
         bytes_read = f.read()         # read entire file as bytes
         readable_hash = hashlib.sha256(bytes_read).hexdigest()
@@ -128,18 +127,18 @@ def change_version(git_base_path):
     str_before = "\#define\s+OS_VERSION\s+\{[\d\,]+\}"
     str_to = "#define OS_VERSION {"+version+"}"
     print(str_before, str_to)
-    substitute_reg_exp("../../inc/regs.h", str_before, str_to)
+    substitute_reg_exp(REGS_H_PATH, str_before, str_to)
     str_before = "\#define\s+OS_VERSION_STR\s+\"[\d\.\w\-]+\""
     str_to = "#define OS_VERSION_STR \"{}.{}.{}-beta.{}\"".format(version_array[0],
                                                                   version_array[1],
                                                                   version_array[2],
                                                                   version_array[3])
     print(str_before, str_to)
-    substitute_reg_exp("../../inc/regs.h", str_before, str_to)
+    substitute_reg_exp(REGS_H_PATH, str_before, str_to)
     str_before = "\#define\s+OS_FIRMWARE_HASH\s+\"[\d\-\w]+\""
     str_to = "#define OS_FIRMWARE_HASH \"{}-{}\"".format(count_commits, head_commit.hexsha[:30])
     print(str_before, str_to)
-    substitute_reg_exp("../../inc/regs.h", str_before, str_to)
+    substitute_reg_exp(REGS_H_PATH, str_before, str_to)
 
     # define OS_FIRMWARE_HASH "1-abcdef"
 
