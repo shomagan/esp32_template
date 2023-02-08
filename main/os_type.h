@@ -79,12 +79,23 @@
 #define task_delete(handler) vTaskDelete(handler)
 #define task_get_id   xTaskGetCurrentTaskHandle
 #define os_yield() taskYIELD()
+/* BaseType_t xTaskNotifyWait( uint32_t ulBitsToClearOnEntry,
+                                uint32_t ulBitsToClearOnExit,
+                                uint32_t * pulNotificationValue,
+                                TickType_t xTicksToWait )   */
 #define task_notify_wait(flags,signal,ms) xTaskNotifyWait(0,flags,signal,ms/portTICK_PERIOD_MS)
-
 #define task_notify_send(thread_id,signal,prev_value) xTaskGenericNotify( thread_id, 0, (uint32_t)signal, eSetBits, prev_value)
+/* BaseType_t xTaskGenericNotifyFromISR( TaskHandle_t xTaskToNotify,
+             UBaseType_t uxIndexToNotify,
+             uint32_t ulValue,
+             eNotifyAction eAction,
+             uint32_t * pulPreviousNotificationValue,
+             BaseType_t * pxHigherPriorityTaskWoken )*/
+#define task_notify_send_isr_bits(thread_id,index,signal,prev_value,higher_priority_task_woken) xTaskGenericNotifyFromISR( thread_id, index, (uint32_t)signal, eSetBits, prev_value,higher_priority_task_woken)
+#define task_notify_send_isr_overwrite(thread_id,index,signal,prev_value,higher_priority_task_woken) xTaskGenericNotifyFromISR( thread_id, index, (uint32_t)signal, eSetValueWithOverwrite, prev_value,higher_priority_task_woken)
 #define os_enter_critical(mutex) portENTER_CRITICAL(mutex)
 #define os_exit_critical(mutex) portEXIT_CRITICAL(mutex)
-
+#define WAIT_MAX_DELAY portMAX_DELAY
 /*add functions and variable declarations before */
 #ifdef __cplusplus
 }

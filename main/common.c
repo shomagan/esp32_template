@@ -66,17 +66,21 @@
 #define DUTY_TASK_PERIOD_MS 100
 #define TEMP_BUFFER_SIZE 64
 #define TIMER_INTERVAL_SECONDS    1u
-#define TIMER_DIVIDER         (8000)  //  Hardware timer clock divider
-#define TIMER_SCALE           (TIMER_BASE_CLK / TIMER_DIVIDER)  // convert counter value to seconds
+/*80.000.000 hz/800 = 100000 */
+#define TIMER_DIVIDER         800u  //  Hardware timer clock divider
+#define TIMER_SCALE           (TIMER_BASE_CLK / (TIMER_DIVIDER*1000))  // convert counter value to seconds
 task_handle_t common_duty_task_handle;
 task_handle_t modbus_master_id;
+static task_handle_t common_timer_task_handle = NULL;
 static const char *TAG = "common";
 extern modbus_tcp_client_slave_connections_t modbus_tcp_client_slave_connections[];
 static u16 led_os_blink_on_time = 0;
-static void example_tg_timer_init(int group, int timer, bool auto_reload, int timer_interval_sec);
-static bool timer_group_isr_callback(void *args);
-static uint32_t second_counter;
 static portMUX_TYPE param_lock = portMUX_INITIALIZER_UNLOCKED;
+static int example_tg_timer_init(int group, int timer, bool auto_reload);
+static bool timer_group_isr_callback(void *args);
+static void common_timer_task(void *pvParameters );
+static void example_tg_timer_deinit(int group, int timer);
+static int timer_init_state = 0;
 /**
  * @brief led_blink_on enable the led on ms
  * @param time_ms
@@ -95,18 +99,38 @@ void led_blink_off(){
 }
 /**
  * @brief common_init
+ * + creates task for timer
+ * + timer initialization
  * @return
  */
 int common_duty_init(){
-    example_tg_timer_init(TIMER_GROUP_0, TIMER_0, false, TIMER_INTERVAL_SECONDS);
-    return 0;
+    int res = task_create(common_timer_task, "common_timer_task", 512, NULL, (tskIDLE_PRIORITY + 2), &common_timer_task_handle);
+    if (res != pdTRUE) {
+        ESP_LOGE(TAG, "create slip to wifi flow control task failed");
+        res = -1;
+    }else{
+        /*init timers*/
+        timer_init_state = example_tg_timer_init(TIMER_GROUP_0, TIMER_0, false);
+        if (timer_init_state <=0){
+            res = -1;
+        }else{
+            res = 0;
+        }
+    }
+    return res;
 }
 /**
  * @brief common_deinit
  * @return
  */
 int common_deinit(){
-    /*init timers*/
+    /*deinit timers*/
+    if (timer_init_state >0){
+        example_tg_timer_deinit(TIMER_GROUP_0, TIMER_0);
+    }
+    if (common_timer_task_handle!=NULL){
+        task_delete(common_timer_task_handle);
+    }
     return 0;
 }
 
@@ -158,6 +182,10 @@ void common_duty_task(void *pvParameters ){
             }
             if(((task_tick)%(1000u/DUTY_TASK_PERIOD_MS))==0u){
                 /* rtc time update start */
+                semaphore_take(regs_access_mutex, portMAX_DELAY);{
+                    regs_global.vars.live_time++;
+                }semaphore_release(regs_access_mutex);
+
                 led_blink_on(250u);
                 char temp_buff[TEMP_BUFFER_SIZE] = {0u};
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
@@ -183,7 +211,7 @@ void common_duty_task(void *pvParameters ){
                     failed_requests += modbus_tcp_client_slave_connections[i].failed_requests;
                 }
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
-                sprintf(temp_buff,"p%lu-e%lu;c-%llu",success_requests,failed_requests,regs_global.vars.sys_tick_counter);
+                sprintf(temp_buff,"p%lu-e%lu;C-%llu",success_requests,failed_requests,regs_global.vars.sys_tick_counter);
                 }semaphore_release(regs_access_mutex);
                 u8g2_DrawStr(&u8g2, 0,28u, temp_buff);
                 u8g2_SendBuffer(&u8g2);
@@ -224,20 +252,11 @@ void common_duty_task(void *pvParameters ){
         }else{
             /*by signal*/
             if (signal_value & STOP_CHILD_PROCCES){
-
+                common_deinit();
             }else if(signal_value & PREPARE_TO_RESET){
                 prepare_time = pdTICKS_TO_MS(task_get_tick_count());
             }
         }
-        semaphore_take(regs_access_mutex, portMAX_DELAY);{
-            os_enter_critical(&param_lock);
-            regs_global.vars.live_time = second_counter;
-            os_exit_critical(&param_lock);
-            u64_t sys_tick_counter;
-            timer_get_counter_value(TIMER_GROUP_0, TIMER_0, &sys_tick_counter);
-            sys_tick_counter /=10;
-            memcpy(&regs_global.vars.sys_tick_counter,&sys_tick_counter,sizeof(sys_tick_counter));
-        }semaphore_release(regs_access_mutex);
         task_tick++;
     }
 } 
@@ -309,8 +328,9 @@ u8 compare_float_value(float a,float b, float diff){
  * @param auto_reload whether auto-reload on alarm event
  * @param timer_interval_sec interval of alarm
  */
-static void example_tg_timer_init(int group, int timer, bool auto_reload, int timer_interval_sec){
+static int example_tg_timer_init(int group, int timer, bool auto_reload){
     /* Select and initialize basic parameters of the timer */
+    int result = 0;
     static timer_config_t config = {
         .divider = TIMER_DIVIDER,
         .counter_dir = TIMER_COUNT_UP,
@@ -321,23 +341,69 @@ static void example_tg_timer_init(int group, int timer, bool auto_reload, int ti
     config.auto_reload = auto_reload;
     timer_init(group, timer, &config);
     /* Timer's counter will initially start from value below.
-       Also, if auto_reload is set, this value will be automatically reload on alarm */
+v       Also, if auto_reload is set, this value will be automatically reload on alarm */
     timer_set_counter_value(group, timer, 0);
     /* Configure the alarm value and the interrupt on alarm. */
-    timer_set_alarm_value(group, timer, timer_interval_sec * TIMER_SCALE);
+    timer_set_alarm_value(group, timer, (uint32_t)(TIMER_SCALE));
     timer_enable_intr(group, timer);
     timer_isr_callback_add(group, timer, timer_group_isr_callback, &config, 0);
-    timer_start(group, timer);
+    if ( ESP_OK == timer_start(group, timer)){
+        result = 1;
+    }else{
+        result = -1;
+    }
+    return result;
 }
+/**
+ * @brief DeInitialize selected timer of timer group
+ *      stop and deinit
+ * @param group Timer Group number, index from 0
+ * @param timer timer ID, index from 0
+ */
+static void example_tg_timer_deinit(int group, int timer){
+    timer_pause(group, timer);
+    timer_deinit(group,timer);
+}
+
+
+
 static bool IRAM_ATTR timer_group_isr_callback(void *args){
     timer_config_t *info = (timer_config_t *) args;
-    second_counter++;
     /* Prepare basic event data that will be then sent back to task */
+    uint64_t timer_counter_value = timer_group_get_counter_value_in_isr(TIMER_GROUP_0, TIMER_0);
     if (!info->auto_reload) {
-        uint64_t timer_counter_value = timer_group_get_counter_value_in_isr(TIMER_GROUP_0, TIMER_0);
-        timer_counter_value += TIMER_INTERVAL_SECONDS * TIMER_SCALE;
-        timer_group_set_alarm_value_in_isr(TIMER_GROUP_0, TIMER_0, timer_counter_value);
+        timer_group_set_alarm_value_in_isr(TIMER_GROUP_0, TIMER_0, timer_counter_value + (uint32_t)(TIMER_SCALE));
     }
+    if (common_timer_task_handle!=NULL){
+        ui32 prev_signal=0;
+        int  higher_priority_task_woken;
+        task_notify_send_isr_overwrite(common_timer_task_handle,0,(uint32_t)timer_counter_value,&prev_signal,&higher_priority_task_woken);
+    }
+
     return pdTRUE; // return whether we need to yield at the end of ISR
+}
+/**
+ * @brief timer task - small task to controll timer - fast
+ * @param pvParameters
+ */
+void common_timer_task(void *pvParameters ){
+    /* Remove compiler warning about unused parameter. */
+    (void) pvParameters;
+    /* Init internal ADC service channels */
+    /* Initialise xNextWakeTime - this only needs to be done once. */
+    uint32_t task_tick = 0;
+    uint32_t signal_value;
+    while(1){
+        /* Place this task in the blocked state until it is time to run again. */
+        signal_value = 0;
+        task_notify_wait(0, &signal_value, WAIT_MAX_DELAY);
+        semaphore_take(regs_access_mutex, portMAX_DELAY);{
+            u64_t sys_tick_counter;
+            timer_get_counter_value(TIMER_GROUP_0, TIMER_0, &sys_tick_counter);
+            sys_tick_counter /=100;
+            memcpy(&regs_global.vars.sys_tick_counter,&sys_tick_counter,sizeof(sys_tick_counter));
+        }semaphore_release(regs_access_mutex);
+        task_tick++;
+    }
 }
 #endif //COMMON_C
