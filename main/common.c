@@ -68,7 +68,7 @@
 #define TIMER_INTERVAL_SECONDS    1u
 /*80.000.000 hz/800 = 100000 */
 #define TIMER_DIVIDER         800u  //  Hardware timer clock divider
-#define TIMER_SCALE           (TIMER_BASE_CLK / (TIMER_DIVIDER*1000))  // convert counter value to seconds
+#define TIMER_SCALE           (TIMER_BASE_CLK / (TIMER_DIVIDER*200))  // convert counter value to seconds
 task_handle_t common_duty_task_handle;
 task_handle_t modbus_master_id;
 static task_handle_t common_timer_task_handle = NULL;
@@ -104,7 +104,7 @@ void led_blink_off(){
  * @return
  */
 int common_duty_init(){
-    int res = task_create(common_timer_task, "common_timer_task", 512, NULL, (tskIDLE_PRIORITY + 2), &common_timer_task_handle);
+    int res = task_create(common_timer_task, "common_timer_task", 1500, NULL, (tskIDLE_PRIORITY + 2), &common_timer_task_handle);
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create slip to wifi flow control task failed");
         res = -1;
@@ -234,9 +234,11 @@ void common_duty_task(void *pvParameters ){
                 }semaphore_release(regs_access_mutex);
             }
             regs_access_t async_flags;
+            async_flags.flag = U64_REGS_FLAG;
             regs_get(&regs_global.vars.async_flags,&async_flags);
             if (async_flags.value.op_u64 & ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH){
-                async_flags.value.op_u64 &= (u32)~ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
+                async_flags.value.op_u64 &= ~ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
+                int result = regs_write_internal(&regs_global.vars.async_flags, async_flags);
                 if (internal_flash_save_mirror_to_flash()!=0u){
                     main_printf(TAG, "Failed %d\n",__LINE__);
                 }else{

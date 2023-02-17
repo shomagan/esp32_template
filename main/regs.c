@@ -102,6 +102,21 @@ int regs_set(void * reg_address,regs_access_t reg){
     return result;
 }
 /**
+ * @brief regs_write_internal only for safety write 
+ * @param reg_address - in byte addressing
+ * @param reg - struct for register access
+ * @return  0 - OK, \n
+ *          -1 - reg.flag error
+ * @ingroup regs
+ */
+int regs_write_internal(void * reg_address,regs_access_t reg){
+    int result = 0;
+    semaphore_take(regs_access_mutex, portMAX_DELAY);{
+        memcpy(reg_address, &reg.value.op_u64, regs_size_in_byte(reg.flag));
+    }semaphore_release(regs_access_mutex);
+    return result;
+}
+/**
  * @brief regs_write_access
  * @param byte_address - byte address
  * @return more than 0 if enabled access, <0 if not 

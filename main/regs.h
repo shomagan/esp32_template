@@ -244,7 +244,7 @@ typedef union{
         u16 i2c_display_address; //!< "address of display" &ro
         u8 sta_ip[4]; //!< "ip address of sta" &ro &save
         u32 live_time; //!< "live time in seconds" &ro
-        u32 flash_write_number; //!< "increments every flash write by an app" &ro
+        u32 flash_write_number; //!< "increments every flash write by an app" &ro &save
     }vars;
     u8 bytes[GLOBAL_UNION_SIZE]; //for full bksram copy
 }main_vars_t;// #generator_use_description {"message":"end_struct"}
@@ -531,7 +531,7 @@ int regs_set_buffer(void * reg_address,u8* buffer_from,u16 byte_numm);
 int regs_get(void * reg_address,regs_access_t* reg);
 int regs_get_buffer(void * reg_address,u8* buffer_to,u16 byte_numm);
 u8  regs_size_in_byte(regs_flag_t type);
-
+int regs_write_internal(void * reg_address,regs_access_t reg);
 
 #ifdef __cplusplus
 }

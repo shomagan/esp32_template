@@ -108,10 +108,12 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
 }
 int udp_broadcast_advertisement(void){
     static char temp_buff[UDP_BROADCAST_MAX_PACKET_SIZE];
+    //static u32_t incrementer = 0;
     int res = 0;
     if(udp_broadcast_pcb!=NULL){
         int len = 0;
         len += sprintf(temp_buff,ADVERTISMENT_REQUEST);
+        //len += sprintf(&temp_buff[len],"%u",incrementer);
         struct pbuf * udp_broadcast_send_pbuff;
         udp_broadcast_send_pbuff = pbuf_alloc(PBUF_TRANSPORT, (u16)len, PBUF_RAM);
         if (udp_broadcast_send_pbuff != NULL) {
@@ -121,6 +123,7 @@ int udp_broadcast_advertisement(void){
         }else{
             res = ERR_BUF;
         }
+        //incrementer++;
     }else{
         res = ERR_CONN;
     }
