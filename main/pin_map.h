@@ -67,6 +67,15 @@
 #define GPIO_WATER_COUNTER_INPUT     23
 #define GPIO_WATER_COUNTER_INPUT_MASK  (1ULL<<GPIO_WATER_COUNTER_INPUT)
 
+/*PWM part*/
+#define GPIO_PWM0A_OUT 13   //Set GPIO 13 as PWM0A
+#define GPIO_PWM0B_OUT 15   //Set GPIO 15 as PWM0A
+
+#define GPIO_STEP0_OUT 13   //Set GPIO 13 as STEP0
+#define GPIO_STEP1_OUT 15   //Set GPIO 15 as STEP1
+#define GPIO_STEP2_OUT 14   //Set GPIO 14 as STEP2
+#define GPIO_STEP3_OUT 12   //Set GPIO 12 as STEP3
+
 
 
 /*add functions and variable declarations before */

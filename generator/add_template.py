@@ -71,7 +71,7 @@ def main():
     if type_source == "H":
         file_template.write("/*add includes below */\n")
         file_template.write("#include \"type_def.h\"\n")
-        file_template.write("#include \"main_debug.h\"\n")
+        file_template.write("#include \"os_type.h\"\n")
         file_template.write("#include \"main_config.h\"\n")
         file_template.write("\n")
         file_template.write("/*add includes before */\n")

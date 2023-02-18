@@ -81,13 +81,17 @@ static void touch_gpio_initialize(void){
     gpio_isr_handler_add(GPIO_WATER_COUNTER_INPUT, gpio_isr_handler, (void*) GPIO_WATER_COUNTER_INPUT);
 }
 
-int touch_handle_init(void){
+static int touch_handle_init(void){
     ESP_ERROR_CHECK(touch_pad_init());
     touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
     touch_gpio_initialize();
     if (regs_global_part1.vars.filter_use){
         touch_pad_filter_start(TOUCHPAD_FILTER_TOUCH_PERIOD);
     }
+    return 0;
+}
+/*@brief deinit touch pins*/
+static int touch_handle_deinit(void){
     return 0;
 }
 void touch_task(void *arg){
@@ -131,6 +135,8 @@ void touch_task(void *arg){
         if(task_notify_wait(STOP_CHILD_PROCCES|PACKET_RECEIVED, &signal_value, 10)==pdTRUE){
             /*by signal*/
             if (signal_value & STOP_CHILD_PROCCES){
+                touch_handle_deinit();
+                task_delete(task_get_id());
             }else if(signal_value & PACKET_RECEIVED){
             }
         }

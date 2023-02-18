@@ -35,7 +35,7 @@
 #include <driver/spi_master.h>
 #include "udp_broadcast.h"
 #include "touch_handle.h"
-
+#include "di_handle.h"
 /* The examples use WiFi configuration that you can set via project configuration menu.
    If you'd rather not, just change the below entries to strings with
    the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
@@ -312,6 +312,13 @@ int main_init_tasks(){
     if(res != pdTRUE){
         main_printf(TAG,"modbus tcp task inited success\n");
     }
+#endif
+#if DI_HANDLING_ENABLE
+    res = task_create(di_handle_task, "di_handle_task", 2048, NULL, (tskIDLE_PRIORITY + 2), &di_handle_id);
+    if(res != pdTRUE){
+        main_printf(TAG,"di_handle_task inited success\n");
+    }
+
 #endif
     return res;
 }

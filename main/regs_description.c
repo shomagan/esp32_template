@@ -14,6 +14,7 @@
 #include "regs_description.h"
 #include "os_type.h"
 #include "mirror_storage.h"
+#include "credentials.h"
 #include <string.h> /* memset */
 #include <stdlib.h> /* atoi */
 #include <stdio.h>
@@ -33,11 +34,11 @@ static const u8 def_board_ver = (u8)BOARD_VERSION;
 static const u16 def_permission = ENABLE_HTTP_FLAG;
 static const u8 def_wifi_name[WIFI_NAME_LEN] = "sofi_plc_net";               //!<"must be strong full filled", &save &def
 static const u8 def_wifi_password[WIFI_PASSWORD_LEN] = "bricsofi";            //!<"must be strong more then 8 byte", &save &def
-static const u8 def_wifi_router_name[WIFI_ROUTER_NAME_LEN] = "VillaZeze";
-static const u8 def_wifi_router_password[WIFI_ROUTER_PASSWORD_LEN] = "1203798122";
+static const u8 def_wifi_router_name[WIFI_ROUTER_NAME_LEN] = WIFE_STATION_SECURE_NAME;
+static const u8 def_wifi_router_password[WIFI_ROUTER_PASSWORD_LEN] = WIFE_STATION_SECURE_PASSWORD;
 static const u16 def_wifi_setting = WIFI_AP_STA;               //!<"type of wifi and settings" &save &def
 static const float def_test_pwm_value = 50.0f;
-const u32 def_table_version = 0x128b;
+const u32 def_table_version = 0x0002;
 static const float def_servo_0 = 10.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
 static const float def_min_servo_0 = 0.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
 static const float def_max_servo_0 = 100.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
@@ -145,17 +146,18 @@ regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { &def_servo_1, &def_min_servo_1, &def_max_servo_1, (u8*)&servo_control_part.vars.servo_1, 0,"servo pwm value [0;100]","servo_1", FLOAT_REGS_FLAG, 74, 414, 0x307d2, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
 { &def_servo_2, &def_min_servo_2, &def_max_servo_2, (u8*)&servo_control_part.vars.servo_2, 0,"servo pwm value [0;100]","servo_2", FLOAT_REGS_FLAG, 75, 418, 0x307d4, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
 { &def_servo_3, &def_min_servo_3, &def_max_servo_3, (u8*)&servo_control_part.vars.servo_3, 0,"servo pwm value [0;100]","servo_3", FLOAT_REGS_FLAG, 76, 422, 0x307d6, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ NULL, NULL, NULL, (u8*)&di_control.vars.pin_state, 0,"current states of digital inputs","pin_state", U32_REGS_FLAG, 77, 426, 0x30bb8, 1, 1, 3 },//!<"current states of digital inputs"
 };
 regs_description_t const regs_description_user[NUM_OF_CLIENT_VARS]={
-{ &def_mdb_addr, NULL, NULL, (u8*)&client_part_0.vars.mdb_addr, 222,"modbus address","mdb_addr", U16_REGS_FLAG, 77, 426, 0x30000, 1, 5, 0x303 },//!<"modbus address" &save &def
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.ip[0], 224,"device ip address, warning!!! ","ip", U8_REGS_FLAG, 78, 428, 0x30001, 4, 5, 0x303 },//!<"device ip address, warning!!! " &save
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.netmask[0], 228,"netmask address for main wifi net","netmask", U8_REGS_FLAG, 79, 432, 0x30003, 4, 5, 0x303 },//!<"netmask address for main wifi net", &save
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.gate[0], 232,"gateaway address, warning!!! ","gate", U8_REGS_FLAG, 80, 436, 0x30005, 4, 5, 0x303 },//!<"gateaway address, warning!!! " &save
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.slip_ip[0], 236,"ip address for local net","slip_ip", U8_REGS_FLAG, 81, 440, 0x30007, 4, 5, 0x303 },//!<"ip address for local net",&save ,
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.slip_netmask[0], 240,"netmask address for local net","slip_netmask", U8_REGS_FLAG, 82, 444, 0x30009, 4, 5, 0x303 },//!<"netmask address for local net", &save ,
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.slip_gate[0], 244,"gateaway address for local net","slip_gate", U8_REGS_FLAG, 83, 448, 0x3000b, 4, 5, 0x303 },//!<"gateaway address for local net", &save,
-{ NULL, NULL, NULL, (u8*)&client_part_1.vars.num_of_vars, 248,"num_of_vars","num_of_vars", U16_REGS_FLAG, 84, 452, 0x30050, 1, 7, 0x403 },//!<"number of vars self + config(user) &ro &save
-{ NULL, NULL, NULL, (u8*)&client_part_1.vars.client_num_of_vars, 250,"number of client vars self","client_num_of_vars", U16_REGS_FLAG, 85, 454, 0x30051, 1, 7, 0x403 },//!<"number of client vars self" &ro &save
+{ &def_mdb_addr, NULL, NULL, (u8*)&client_part_0.vars.mdb_addr, 222,"modbus address","mdb_addr", U16_REGS_FLAG, 78, 430, 0x30000, 1, 5, 0x403 },//!<"modbus address" &save &def
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.ip[0], 224,"device ip address, warning!!! ","ip", U8_REGS_FLAG, 79, 432, 0x30001, 4, 5, 0x403 },//!<"device ip address, warning!!! " &save
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.netmask[0], 228,"netmask address for main wifi net","netmask", U8_REGS_FLAG, 80, 436, 0x30003, 4, 5, 0x403 },//!<"netmask address for main wifi net", &save
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.gate[0], 232,"gateaway address, warning!!! ","gate", U8_REGS_FLAG, 81, 440, 0x30005, 4, 5, 0x403 },//!<"gateaway address, warning!!! " &save
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.slip_ip[0], 236,"ip address for local net","slip_ip", U8_REGS_FLAG, 82, 444, 0x30007, 4, 5, 0x403 },//!<"ip address for local net",&save ,
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.slip_netmask[0], 240,"netmask address for local net","slip_netmask", U8_REGS_FLAG, 83, 448, 0x30009, 4, 5, 0x403 },//!<"netmask address for local net", &save ,
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.slip_gate[0], 244,"gateaway address for local net","slip_gate", U8_REGS_FLAG, 84, 452, 0x3000b, 4, 5, 0x403 },//!<"gateaway address for local net", &save,
+{ NULL, NULL, NULL, (u8*)&client_part_1.vars.num_of_vars, 248,"num_of_vars","num_of_vars", U16_REGS_FLAG, 85, 456, 0x30050, 1, 7, 0x503 },//!<"number of vars self + config(user) &ro &save
+{ NULL, NULL, NULL, (u8*)&client_part_1.vars.client_num_of_vars, 250,"number of client vars self","client_num_of_vars", U16_REGS_FLAG, 86, 458, 0x30051, 1, 7, 0x503 },//!<"number of client vars self" &ro &save
 };
 const regs_description_t * regs_description_client = regs_description_user;
 /**

@@ -106,14 +106,34 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
     }
     pbuf_free(p);
 }
-int udp_broadcast_advertisement(void){
+int udp_broadcast_advertisement(udp_broadcast_option_t option){
     static char temp_buff[UDP_BROADCAST_MAX_PACKET_SIZE];
-    //static u32_t incrementer = 0;
     int res = 0;
+#define     DI_COUNT 16
     if(udp_broadcast_pcb!=NULL){
         int len = 0;
-        len += sprintf(temp_buff,ADVERTISMENT_REQUEST);
-        //len += sprintf(&temp_buff[len],"%u",incrementer);
+        if(option == UDP_BROADCAST_OPTION_INFORMAYION){
+            static u32 pin_states = 0;
+            semaphore_take(regs_access_mutex, portMAX_DELAY);{
+            //pin_states = di_control.vars.pin_state;
+            pin_states++;
+            }semaphore_release(regs_access_mutex);
+            len += sprintf(&temp_buff[len],"{\"name\": \"digital_input_states\",");
+            for (u8 i =0;i<DI_COUNT;i++){
+                len += sprintf(&temp_buff[len],"\"di_state_%u\": ",i);
+                if (pin_states & (1<<i)){
+                    len += sprintf(&temp_buff[len],"1");
+                }else{
+                    len += sprintf(&temp_buff[len],"0");
+                }
+                if(i<(DI_COUNT-1)){
+                    len += sprintf(&temp_buff[len],",");
+                }
+            }
+            len += sprintf(&temp_buff[len],"}");
+        }else{
+            len += sprintf(temp_buff,ADVERTISMENT_REQUEST);
+        }
         struct pbuf * udp_broadcast_send_pbuff;
         udp_broadcast_send_pbuff = pbuf_alloc(PBUF_TRANSPORT, (u16)len, PBUF_RAM);
         if (udp_broadcast_send_pbuff != NULL) {
@@ -123,7 +143,6 @@ int udp_broadcast_advertisement(void){
         }else{
             res = ERR_BUF;
         }
-        //incrementer++;
     }else{
         res = ERR_CONN;
     }

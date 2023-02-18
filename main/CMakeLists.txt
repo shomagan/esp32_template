@@ -22,6 +22,7 @@ idf_component_register(
     SRCS "touch_handle.c"
     SRCS "u8g2_esp32_hal.c"
     SRCS "iirls_handler.c"
+    SRCS "di_handle.c"
     INCLUDE_DIRS "."
     INCLUDE_DIRS "http/."
     INCLUDE_DIRS "udp_broadcast/."

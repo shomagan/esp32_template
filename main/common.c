@@ -216,12 +216,18 @@ void common_duty_task(void *pvParameters ){
                 u8g2_DrawStr(&u8g2, 0,28u, temp_buff);
                 u8g2_SendBuffer(&u8g2);
             }
-            if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==0u){
 #if UDP_BROADCAST_ENABLE && UDP_ADVERTISMENT_PERIOD
-                main_printf(TAG,"send advrtsmnt");
-                udp_broadcast_advertisement();
+            if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==0u){
+#if  UDP_BROADCAST_UDP_REQUEST_ENABLE 
+                    udp_broadcast_advertisement(UDP_BROADCAST_OPTION_UDP_REQUEST);
 #endif
             }
+            if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==100u){
+#if UDP_BROADCAST_INFORMATION_ENABLE 
+                    udp_broadcast_advertisement(UDP_BROADCAST_OPTION_INFORMAYION);
+#endif
+            }
+#endif
             if(((task_tick)%(5000u/DUTY_TASK_PERIOD_MS))==0u){    // every 5 sec
                 main_printf(TAG,"tick %u",task_tick);
             }

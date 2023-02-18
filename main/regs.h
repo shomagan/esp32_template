@@ -314,6 +314,27 @@ typedef union{
     u8 bytes[32]; //for full bksram copy
 }servo_control_part_t;// #generator_use_description {"message":"end_struct"}
 extern servo_control_part_t servo_control_part;
+/**
+ * @brief main struct
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *                  &crtcl- restart after change value, \n
+ *
+ * @ingroup regs
+ */
+/** #generator_use_description {"space_name" :"di_control_t",  "address_space" :3, "modbus_type" :"server", "modbus_function" :"holding_registers", "register_start_address" :3000}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        u32 pin_state;                 //!<"current states of digital inputs"
+    }vars;
+    u8 bytes[4]; //for full bksram copy
+}di_control_t;// #generator_use_description {"message":"end_struct"}
+extern di_control_t di_control;
 
 /**
  * @brief struct for reading modbus data from another device maximume bytes - 240

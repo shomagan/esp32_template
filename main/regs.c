@@ -30,6 +30,7 @@ main_vars_part_1_t regs_global_part1;
 servo_control_part_t servo_control_part;
 client_part_0_t client_part_0;
 client_part_1_t client_part_1;
+di_control_t di_control;
 /**
  * @brief mutex for access to global regs
  * @ingroup regs

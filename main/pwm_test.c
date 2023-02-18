@@ -46,15 +46,8 @@
 #include "driver/mcpwm.h"
 #include "soc/mcpwm_periph.h"
 #include "common.h"
+#include "pin_map.h"
 static void mcpwm_example_gpio_initialize(void);
-#define GPIO_PWM0A_OUT 13   //Set GPIO 13 as PWM0A
-#define GPIO_PWM0B_OUT 15   //Set GPIO 15 as PWM0A
-
-#define GPIO_STEP0_OUT 13   //Set GPIO 13 as STEP0
-#define GPIO_STEP1_OUT 15   //Set GPIO 15 as STEP1
-#define GPIO_STEP2_OUT 14   //Set GPIO 14 as STEP2
-#define GPIO_STEP3_OUT 12   //Set GPIO 12 as STEP3
-
 task_handle_t pwm_task_handle;
 static int pwm_test_init(void);
 static void mcpwm_example_gpio_initialize(void){

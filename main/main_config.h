@@ -8,11 +8,10 @@
  * @brief  TODO!!! write brief in 
  */
 /*
- * Copyright (c) 2018 Snema Service
- * All rights reserved.
+ * All rights not reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
+ * are not permitted and the following conditions are not met:
  *
  * 1. Redistributions of source code must retain the above copyright notice,
  *    this list of conditions and the following disclaimer.
@@ -33,7 +32,7 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
  *
- * This file is part of the sofi PLC.
+ * This file is part of the sofi concept.
  *
  * Author: Shoma Gane <shomagan@gmail.com>
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
@@ -52,18 +51,21 @@
 #ifndef RELEASE
 #define RELEASE 1
 #endif
-#define INTERNAL_FLASH_MIRROR_ITEM_SIZE 512
+#define INTERNAL_FLASH_MIRROR_ITEM_SIZE 512u
 #ifndef MAIN_DEBUG_NOASSERT
 #define MAIN_DEBUG_ASSERT(message, assertion) do { if (!(assertion)) { \
   ESP_ERROR_CHECK(message); }} while(0)
 #else
 #define MAIN_DEBUG_ASSERT(message, assertion)
 #endif  //main_noassert
-#define PWM_TEST_ENABLE 1
-#define TOUCH_HANDLE_ENABLE 1
+#define PWM_TEST_ENABLE 0
+#define TOUCH_HANDLE_ENABLE 0
 #define UDP_BROADCAST_ENABLE 1
-#define UDP_ADVERTISMENT_PERIOD 1000
+#define UDP_BROADCAST_UDP_REQUEST_ENABLE 1
+#define UDP_BROADCAST_INFORMATION_ENABLE 1
+#define UDP_ADVERTISMENT_PERIOD 300u
 #define MODBUS_MASTER_ENABLE 1
+#define DI_HANDLING_ENABLE 1
 /*add functions and variable declarations before */
 #ifdef __cplusplus
 }

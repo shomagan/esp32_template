@@ -49,8 +49,6 @@
    extern "C" {
 #endif
 #define TIME_FOR_PREPARE_RESET_MS 2000
-#define PWM_STEP_CONTROL_ENABLE 0
-#define PWM_AIR_ENABLE 1
 
 /*add functions and variable declarations below */
 
