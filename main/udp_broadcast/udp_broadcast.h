@@ -8,7 +8,7 @@
 #define UDP_BROADCAST_ADV_TIME_MS     60000
 typedef enum{
     UDP_BROADCAST_OPTION_UDP_REQUEST,
-    UDP_BROADCAST_OPTION_INFORMAYION
+    UDP_BROADCAST_OPTION_INFORMATION
 }udp_broadcast_option_t;
 /**
  * @brief udp_broadcast_init

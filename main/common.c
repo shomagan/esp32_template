@@ -211,7 +211,7 @@ void common_duty_task(void *pvParameters ){
                     failed_requests += modbus_tcp_client_slave_connections[i].failed_requests;
                 }
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
-                sprintf(temp_buff,"p%lu-e%lu;C-%llu",success_requests,failed_requests,regs_global.vars.sys_tick_counter);
+                sprintf(temp_buff,"p%lu-e%lu;C-%lu",success_requests,failed_requests,di_control.vars.pin_state);
                 }semaphore_release(regs_access_mutex);
                 u8g2_DrawStr(&u8g2, 0,28u, temp_buff);
                 u8g2_SendBuffer(&u8g2);
@@ -222,9 +222,9 @@ void common_duty_task(void *pvParameters ){
                     udp_broadcast_advertisement(UDP_BROADCAST_OPTION_UDP_REQUEST);
 #endif
             }
-            if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==100u){
+            if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==1u){
 #if UDP_BROADCAST_INFORMATION_ENABLE 
-                    udp_broadcast_advertisement(UDP_BROADCAST_OPTION_INFORMAYION);
+                    udp_broadcast_advertisement(UDP_BROADCAST_OPTION_INFORMATION);
 #endif
             }
 #endif

@@ -112,11 +112,10 @@ int udp_broadcast_advertisement(udp_broadcast_option_t option){
 #define     DI_COUNT 16
     if(udp_broadcast_pcb!=NULL){
         int len = 0;
-        if(option == UDP_BROADCAST_OPTION_INFORMAYION){
-            static u32 pin_states = 0;
+        if(option == UDP_BROADCAST_OPTION_INFORMATION){
+            u32 pin_states = 0;
             semaphore_take(regs_access_mutex, portMAX_DELAY);{
-            //pin_states = di_control.vars.pin_state;
-            pin_states++;
+            pin_states = di_control.vars.pin_state;
             }semaphore_release(regs_access_mutex);
             len += sprintf(&temp_buff[len],"{\"name\": \"digital_input_states\",");
             for (u8 i =0;i<DI_COUNT;i++){
