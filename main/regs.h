@@ -335,6 +335,32 @@ typedef union{
     u8 bytes[4]; //for full bksram copy
 }di_control_t;// #generator_use_description {"message":"end_struct"}
 extern di_control_t di_control;
+/**
+ * @brief time sync struct for read time from another device
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *                  &crtcl- restart after change value, \n
+ *
+ * @ingroup regs
+ */
+/** #generator_use_description {"space_name" :"sync_time_t",  "address_space" :4, "modbus_type" :"server", "modbus_function" :"holding_registers", "register_start_address" :4000}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        s32 sys_tick_dev;         //!< "deviation between master and slave" &ro
+        u64 sys_tick_slave;        //!< "time read from slave" &ro
+        u64 sys_tick_master;       //!< "time read from master" &ro 
+        u16 average_time_ms;    //!< "average send receive time " &ro
+        u16 last_req_time_ms;       //!< "last send receive time " &ro
+        u16 active;                      //!< "activated measurement" &ro
+    }vars;
+    u8 bytes[32]; //for full bksram copy
+}sync_time_regs_t;// #generator_use_description {"message":"end_struct"}
+extern sync_time_regs_t sync_time_regs;
 
 /**
  * @brief struct for reading modbus data from another device maximume bytes - 240
@@ -354,13 +380,13 @@ extern di_control_t di_control;
 typedef union{
     struct MCU_PACK{
         // start regs struct
-        u16 mdb_addr;                   //!<"modbus address" &save &def
-        u8 ip[4];                       //!<"device ip address, warning!!! " &save
-        u8 netmask[4];                  //!<"netmask address for main wifi net", &save
-        u8 gate[4];                     //!<"gateaway address, warning!!! " &save
-        u8 slip_ip[4];                  //!<"ip address for local net",&save ,
-        u8 slip_netmask[4];             //!<"netmask address for local net", &save ,
-        u8 slip_gate[4];                //!<"gateaway address for local net", &save,
+        u16 mdb_addr;                   //!<"modbus address" 
+        u8 ip[4];                       //!<"device ip address, warning!!! " 
+        u8 netmask[4];                  //!<"netmask address for main wifi net",
+        u8 gate[4];                     //!<"gateaway address, warning!!! " 
+        u8 slip_ip[4];                  //!<"ip address for local net",
+        u8 slip_netmask[4];             //!<"netmask address for local net", 
+        u8 slip_gate[4];                //!<"gateaway address for local net", 
     }vars;
     u8 bytes[32]; //for full bksram copy
 }client_part_0_t;// #generator_use_description {"message":"end_struct"}
@@ -383,13 +409,37 @@ extern client_part_0_t client_part_0;
 typedef union{
     struct MCU_PACK{
         // start regs struct
-        u16 num_of_vars;        //!<"number of vars self + config(user) &ro &save
-        u16 client_num_of_vars;        //!<"number of client vars self" &ro &save
+        u16 num_of_vars;        //!<"number of vars self + config(user) &ro 
+        u16 client_num_of_vars;        //!<"number of client vars self" &ro 
     }vars;
     u8 bytes[8]; //for full bksram copy
 }client_part_1_t;// #generator_use_description {"message":"end_struct"}
 extern client_part_1_t client_part_1;
 
+/**
+ * @brief client part2 to read sys_tick_counter from salve
+ * struct for reading modbus data from another device maximume bytes - 240
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * will be in struct regs_description_client
+ * additional space modbus_address, specific space read_holding_registers
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *                  regs_description \n
+ *
+ * @ingroup regs
+ */
+/** #generator_use_description {"space_name" :"sync_time_client_t",  "address_space" :2, "modbus_type" :"client", "modbus_function" :"holding_registers", "modbus_address" :3,"register_start_address" :63}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        u64 sys_tick_slave;        //!< "time read from slave" &ro
+    }vars;
+    u8 bytes[8]; //for full bksram copy
+}sync_time_client_t;// #generator_use_description {"message":"end_struct"}
+extern sync_time_client_t sync_time_client;
 /**
   * @brief registers for regs_event_handler
   * @ingroup regs
@@ -553,6 +603,14 @@ int regs_get(void * reg_address,regs_access_t* reg);
 int regs_get_buffer(void * reg_address,u8* buffer_to,u16 byte_numm);
 u8  regs_size_in_byte(regs_flag_t type);
 int regs_write_internal(void * reg_address,regs_access_t reg);
+/* @brief   copy data from global regs to local regs and vice versa
+ * @param   reg_to - pointer to global or local regs
+ * @param   reg_from - pointer to global or local regs
+ * @param   size - size of regs for memcpy
+ * @ingroup regs
+ *
+*/
+void regs_copy_safe(void * reg_to,void * reg_from,u8 size);
 
 #ifdef __cplusplus
 }

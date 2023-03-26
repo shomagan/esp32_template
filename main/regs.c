@@ -31,6 +31,8 @@ servo_control_part_t servo_control_part;
 client_part_0_t client_part_0;
 client_part_1_t client_part_1;
 di_control_t di_control;
+sync_time_client_t sync_time_client;
+sync_time_regs_t sync_time_regs;
 /**
  * @brief mutex for access to global regs
  * @ingroup regs
@@ -337,6 +339,23 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
     }
     return result;
 }
+/* @brief   copy data from global regs to local regs and vice versa
+ * @param   reg_to - pointer to global or local regs
+ * @param   reg_from - pointer to global or local regs
+ * @param   size - size of regs for memcpy
+ * @ingroup regs
+ *
+*/
+void regs_copy_safe(void * reg_to,void * reg_from,u8 size){
+    if (regs_access_mutex!=NULL){
+        semaphore_take(regs_access_mutex, portMAX_DELAY);{
+            memcpy(reg_to,reg_from,size);
+        }semaphore_release(regs_access_mutex);
+    }else{
+        memcpy(reg_to,reg_from,size);
+    }
+}
+
 /**
  * @brief pull data from main vars to template reg
  * @param reg_address - in byte addressing

@@ -84,6 +84,7 @@ static inline int connect_to_address(u8 dest_ip[4],struct sockaddr_in * server_a
 task_handle_t modbus_master_id = NULL;
 static semaphore_handle_t modbus_tcp_client_access_mutex;
 static u16 number_separate_client_spaces = 0;
+
 static int modbus_master_init(void){
     int res =0;
     u16 space_number_prev = 0;
@@ -101,32 +102,49 @@ static int modbus_master_init(void){
             }else{
                 if (regs_description_client[i].space_number != space_number_prev){
                     modbus_tcp_client_slave_connections[number_separate_client_spaces+1].first_regs_description = &regs_description_client[i];
-                } 
-                if(i==(NUM_OF_CLIENT_VARS-1)){
-                    modbus_last = RD_MDB_ADDRESS(regs_description_client[i].modbus_description);
-                    last_item_size = (regs_description_client[i].size*regs_size_in_byte(regs_description_client[i].type))/2;
-                }else {
                     modbus_last = RD_MDB_ADDRESS(regs_description_client[i-1].modbus_description);
                     last_item_size = (regs_description_client[i-1].size*regs_size_in_byte(regs_description_client[i-1].type))/2;
-                }
-                //goes after an increment
-                modbus_first = RD_MDB_ADDRESS(modbus_tcp_client_slave_connections[number_separate_client_spaces].first_regs_description->modbus_description);
-                if ((modbus_first >= 0) && (modbus_last >= 0) &&  
-                    (modbus_first <= modbus_last) && (modbus_last< 65535) && ((last_item_size+(modbus_last - modbus_first)) <= 65535) ){
-                    modbus_tcp_client_slave_connections[number_separate_client_spaces].size_in_words = (modbus_last - modbus_first) + last_item_size;
-                    name[11] = '0';
-                    name[12] = '0';
-                    name[13] = '0';
-                    sprintf(name,"mdb_client_%i",number_separate_client_spaces);
-                    res = task_create(modbus_tcp_client_connection_task, name, 4096, &modbus_tcp_client_slave_connections[number_separate_client_spaces], (tskIDLE_PRIORITY + 2), &modbus_tcp_client_slave_connections[number_separate_client_spaces].task_id);
-                    if(res != pdTRUE){
-                        main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+                    //goes after an increment
+                    modbus_first = RD_MDB_ADDRESS(modbus_tcp_client_slave_connections[number_separate_client_spaces].first_regs_description->modbus_description);
+                    if ((modbus_first >= 0) && (modbus_last >= 0) &&  
+                        (modbus_first <= modbus_last) && (modbus_last< 65535) && ((last_item_size+(modbus_last - modbus_first)) <= 65535) ){
+                        modbus_tcp_client_slave_connections[number_separate_client_spaces].size_in_words = (modbus_last - modbus_first) + last_item_size;
+                        name[11] = '0';
+                        name[12] = '0';
+                        name[13] = '0';
+                        sprintf(name,"mdb_client_%i",number_separate_client_spaces);
+                        res = task_create(modbus_tcp_client_connection_task, name, 4096, &modbus_tcp_client_slave_connections[number_separate_client_spaces], (tskIDLE_PRIORITY + 2), &modbus_tcp_client_slave_connections[number_separate_client_spaces].task_id);
+                        if(res != pdTRUE){
+                            main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+                        }
+                        main_debug(TAG,"create task %s",name);
+                    }else{
+                        main_error_message(TAG,"Failed %s:%d\n %u %u %u %lu",__FILE__,__LINE__,modbus_first,modbus_last,last_item_size,modbus_tcp_client_slave_connections[number_separate_client_spaces-1].size_in_words);
                     }
-                    main_debug(TAG,"create task %s",name);
-                }else{
-                    main_error_message(TAG,"Failed %s:%d\n %u %u %u %lu",__FILE__,__LINE__,modbus_first,modbus_last,last_item_size,modbus_tcp_client_slave_connections[number_separate_client_spaces-1].size_in_words);
+                    number_separate_client_spaces++;
+                } 
+                if((i==(NUM_OF_CLIENT_VARS-1)) && (regs_description_client[i].space_number != space_number_prev)){
+                    modbus_last = RD_MDB_ADDRESS(regs_description_client[i].modbus_description);
+                    last_item_size = (regs_description_client[i].size*regs_size_in_byte(regs_description_client[i].type))/2;
+                    //goes after an increment
+                    modbus_first = RD_MDB_ADDRESS(modbus_tcp_client_slave_connections[number_separate_client_spaces].first_regs_description->modbus_description);
+                    if ((modbus_first >= 0) && (modbus_last >= 0) &&  
+                        (modbus_first <= modbus_last) && (modbus_last< 65535) && ((last_item_size+(modbus_last - modbus_first)) <= 65535) ){
+                        modbus_tcp_client_slave_connections[number_separate_client_spaces].size_in_words = (modbus_last - modbus_first) + last_item_size;
+                        name[11] = '0';
+                        name[12] = '0';
+                        name[13] = '0';
+                        sprintf(name,"mdb_client_%i",number_separate_client_spaces);
+                        res = task_create(modbus_tcp_client_connection_task, name, 4096, &modbus_tcp_client_slave_connections[number_separate_client_spaces], (tskIDLE_PRIORITY + 2), &modbus_tcp_client_slave_connections[number_separate_client_spaces].task_id);
+                        if(res != pdTRUE){
+                            main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+                        }
+                        main_debug(TAG,"create task %s",name);
+                    }else{
+                        main_error_message(TAG,"Failed %s:%d\n %u %u %u %lu",__FILE__,__LINE__,modbus_first,modbus_last,last_item_size,modbus_tcp_client_slave_connections[number_separate_client_spaces-1].size_in_words);
+                    }
+                    number_separate_client_spaces++;
                 }
-                number_separate_client_spaces++;
             }
         }
         space_number_prev = regs_description_client[i].space_number;
@@ -166,16 +184,22 @@ FNCT_NO_RETURN void modbus_tcp_client_common_task( void  * argument ){
         }
     }
 }
+#if TIME_SYNC_MEASUREMENT_ENABLE    
+    s32 time_sync_buffer[TIME_SYNC_BUFFER_SIZE] = {0};
+    u16 time_sync_buffer_index = 0;
+#endif
+
 /**
- * @brief
+ * @brief this task is responsible for one slave connection
+ * for each slave connection is created one task
  * @param argument unused
+ *
  */
 FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
     uint32_t signal_value;
     uint32_t counter = 0;
     int client_socket_fd =-1;
     modbus_tcp_client_slave_connections_t * slave_connection;
-    u16 master_slave_state = 0;
     u8 server_ip[4] = {0};
     struct sockaddr_in server_address;
     u8 own_ip[4] = {0};
@@ -183,11 +207,26 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
     int success_packet_transaction_number=0;
     file_desc_set_t file_desc_set;
     client_socket_fd =-1;
-    master_slave_state = 0;
     slave_connection = argument;
+    const regs_description_t * regs_description_temp = slave_connection->first_regs_description;
     memset(own_ip,0,4);
     memset(server_ip,0,4);
     memset(&server_address,0,sizeof(struct sockaddr_in));
+#if TIME_SYNC_MEASUREMENT_ENABLE    
+    u8 time_sync_active = 0;
+    u64 start_transsmition_time = 0;
+    u64 end_transsmition_time = 0;
+    regs_template_t  regs_template;
+    regs_template.name = "sys_tick_counter";
+    main_debug(TAG,"!!!! mdb address slave %lu",RD_MDB_ADDRESS(regs_description_temp->modbus_description));
+    if(regs_description_get_by_name(&regs_template)==0){
+        main_debug(TAG,"mdb address slave %lu mdb addr master%lu",RD_MDB_ADDRESS(regs_description_temp->modbus_description),RD_MDB_ADDRESS(regs_template.modbus_description));
+        if(RD_MDB_ADDRESS(regs_description_temp->modbus_description) == RD_MDB_ADDRESS(regs_template.modbus_description)){
+            time_sync_active = 1;
+            regs_copy_safe(&sync_time_regs.vars.active,&time_sync_active,sizeof(time_sync_active));
+        }
+    }
+#endif
     while(1){
         int event_is_signal = task_notify_wait(MODBUS_MASTER_CLOSE_CONNECTION_SIGNAL|STOP_CHILD_PROCCES,&signal_value,40);
         if (slave_connection->first_regs_description==NULL){
@@ -210,12 +249,7 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
         }
         if(event_is_signal!=pdTRUE){
             if (client_socket_fd>=0){
-                const regs_description_t * regs_description_temp = slave_connection->first_regs_description;
-                u16 space_number_prev ;
-                //u16 reg_index ;
                 client_request_t client_requests;
-                space_number_prev = regs_description_temp->space_number;
-                //reg_index = regs_description_temp->ind;
                 client_requests.address = RD_MDB_ADDRESS(regs_description_temp->modbus_description);
                 client_requests.slave_id = RD_MDB_CLIENT_MDB_ADDRESS(regs_description_temp->space_number);
                 client_requests.channel = PACKET_CHANNEL_TCP;
@@ -228,11 +262,67 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                 client_requests.resp_timeout = 1000;
                 client_requests.plcv_buffer = NULL;
                 client_requests.count = slave_connection->size_in_words;
+#if TIME_SYNC_MEASUREMENT_ENABLE                
+                if (time_sync_active){
+                    regs_copy_safe(&start_transsmition_time,&regs_global.vars.sys_tick_counter,sizeof(start_transsmition_time));
+                }
+#endif
                 int res = modbus_master_execute_request(&client_requests,client_socket_fd,file_desc_set);
                 if (res<0){
                     errors_in_the_row++;
                     slave_connection->failed_requests++;
                 }else{
+#if TIME_SYNC_MEASUREMENT_ENABLE                
+                    if (time_sync_active){
+                        regs_copy_safe(&end_transsmition_time,&regs_global.vars.sys_tick_counter,sizeof(end_transsmition_time));
+                        if ((end_transsmition_time - start_transsmition_time) < MAX_TRANSMISSION_TIME){
+                            u16 transmition_time = end_transsmition_time - start_transsmition_time;
+                            u64 sync_time_from_client;
+                            u64 sync_time_own = end_transsmition_time;
+                            s32 sync_deviation;
+                            s32 sync_deviation_last;
+                            regs_copy_safe(&sync_time_from_client,&sync_time_client.vars.sys_tick_slave,sizeof(sync_time_from_client));
+                            sync_deviation = (s32)(sync_time_own - sync_time_from_client)-transmition_time/2;
+                            regs_copy_safe(&sync_time_regs.vars.last_req_time_ms,&transmition_time,sizeof(transmition_time));
+                            regs_copy_safe(&sync_time_regs.vars.sys_tick_slave,&sync_time_client.vars.sys_tick_slave,sizeof(sync_time_client.vars.sys_tick_slave));
+                            time_sync_buffer[time_sync_buffer_index] = sync_deviation;
+                            time_sync_buffer_index++;
+                            if (time_sync_buffer_index>=TIME_SYNC_BUFFER_SIZE){
+                                /*first calculation*/
+                                s64 time_sync_sum = 0;
+                                s32 maximum_values_in_buffer[TIME_SYNC_EXPEL_BUFFER_SIZE] = {0};
+                                s32 abs_maximum_values_in_buffer[TIME_SYNC_EXPEL_BUFFER_SIZE] = {0};
+                                for (int i = 0; i < TIME_SYNC_BUFFER_SIZE; i++)
+                                {
+                                    
+                                    u32 abs_deviation_value;
+                                    if (time_sync_buffer[i]<0){
+                                        abs_deviation_value = -time_sync_buffer[i];
+                                    }else{
+                                        abs_deviation_value = time_sync_buffer[i];
+                                    }
+                                    /*store the largest values from time_sync_buffer into a buffer maximum_values_in_buffer*/
+                                    for (int j = 0; j < TIME_SYNC_EXPEL_BUFFER_SIZE; j++)                                    {
+                                        if (abs_deviation_value > abs_maximum_values_in_buffer[j]){
+                                            memcpy(&abs_maximum_values_in_buffer[j+1],&abs_maximum_values_in_buffer[j],sizeof(s32)*(TIME_SYNC_EXPEL_BUFFER_SIZE-j-1));
+                                            memcpy(&maximum_values_in_buffer[j+1],&maximum_values_in_buffer[j],sizeof(s32)*(TIME_SYNC_EXPEL_BUFFER_SIZE-j-1));
+                                            abs_maximum_values_in_buffer[j] = abs_deviation_value;
+                                            maximum_values_in_buffer[j] = time_sync_buffer[i];
+                                            break;
+                                        }
+                                    }
+                                    time_sync_sum+=time_sync_buffer[i];
+                                }
+                                for (int j = 0; j < TIME_SYNC_EXPEL_BUFFER_SIZE; j++){
+                                    time_sync_sum-=maximum_values_in_buffer[j];
+                                }
+                                s32 time_sync_average = time_sync_sum/(TIME_SYNC_BUFFER_SIZE-TIME_SYNC_EXPEL_BUFFER_SIZE);
+                                regs_copy_safe(&sync_time_regs.vars.sys_tick_dev,&time_sync_average,sizeof(time_sync_average));
+                                time_sync_buffer_index = 0;
+                            }
+                        }
+                    }
+#endif
                     errors_in_the_row=0;
                     success_packet_transaction_number++;
                     slave_connection->success_requests++;

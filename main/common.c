@@ -181,12 +181,18 @@ void common_duty_task(void *pvParameters ){
                 gpio_set_level(CONFIG_LED_BLINK_GPIO, 0u);
             }
             if(((task_tick)%(1000u/DUTY_TASK_PERIOD_MS))==0u){
+                u8g2_SetFont(&u8g2, u8g2_font_5x8_tf);
                 /* rtc time update start */
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
                     regs_global.vars.live_time++;
                 }semaphore_release(regs_access_mutex);
-
                 led_blink_on(250u);
+                s32 deviation;
+                u64 slave_tick_calculated;
+                u64 sys_tick_own;
+                regs_copy_safe(&sys_tick_own,&regs_global.vars.sys_tick_counter,sizeof(deviation));
+                regs_copy_safe(&deviation,&sync_time_regs.vars.sys_tick_dev,sizeof(deviation));
+                slave_tick_calculated = sys_tick_own - deviation;
                 char temp_buff[TEMP_BUFFER_SIZE] = {0u};
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
                 sprintf(temp_buff,"mdb: %u, ip: %u.%u.%u.%u",regs_global.vars.mdb_addr,regs_global.vars.sta_ip[0],regs_global.vars.sta_ip[1],regs_global.vars.sta_ip[2],regs_global.vars.sta_ip[3]);
@@ -194,15 +200,8 @@ void common_duty_task(void *pvParameters ){
                 u8g2_ClearBuffer(&u8g2);
                 u8g2_DrawStr(&u8g2, 0,7u, temp_buff);
                 memset(temp_buff,0,TEMP_BUFFER_SIZE);
-                semaphore_take(regs_access_mutex, portMAX_DELAY);{
-                sprintf(temp_buff,"live time: %lu",regs_global.vars.live_time);
-                }semaphore_release(regs_access_mutex);
-                u8g2_DrawStr(&u8g2, 0,14u, temp_buff);
-                memset(temp_buff,0,TEMP_BUFFER_SIZE);
-                semaphore_take(regs_access_mutex, portMAX_DELAY);{
-                sprintf(temp_buff,"reset counter: %lu",regs_global.vars.reset_num);
-                }semaphore_release(regs_access_mutex);
-                u8g2_DrawStr(&u8g2, 0,21u, temp_buff);
+                sprintf(temp_buff,"OT%llu;SC%llu",sys_tick_own,slave_tick_calculated);
+                u8g2_DrawStr(&u8g2, 0,16u, temp_buff);
                 memset(temp_buff,0,TEMP_BUFFER_SIZE);
                 u32 success_requests = 0;
                 u32 failed_requests = 0;
@@ -211,9 +210,9 @@ void common_duty_task(void *pvParameters ){
                     failed_requests += modbus_tcp_client_slave_connections[i].failed_requests;
                 }
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
-                sprintf(temp_buff,"p%lu-e%lu;C-%lu",success_requests,failed_requests,di_control.vars.pin_state);
+                sprintf(temp_buff,"RC:%lu;P%lu;E%lu",regs_global.vars.reset_num,success_requests,failed_requests);
                 }semaphore_release(regs_access_mutex);
-                u8g2_DrawStr(&u8g2, 0,28u, temp_buff);
+                u8g2_DrawStr(&u8g2, 0,25u, temp_buff);
                 u8g2_SendBuffer(&u8g2);
             }
 #if UDP_BROADCAST_ENABLE && UDP_ADVERTISMENT_PERIOD

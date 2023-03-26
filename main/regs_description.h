@@ -22,8 +22,8 @@
 #define  MAX_DESCRIPTION_SIZE 30
 #define  MAX_ARRAY_SIZE 256
 #define  MAX_DESCRIPTIONS_REGS  2048
-#define NUM_OF_SELF_VARS 78
-#define NUM_OF_CLIENT_VARS 9
+#define NUM_OF_SELF_VARS 84
+#define NUM_OF_CLIENT_VARS 10
 extern const u32 def_table_version;
 
 enum property{

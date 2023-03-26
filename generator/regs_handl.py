@@ -403,9 +403,12 @@ class RegsHand(base_object.Base):
                self.modbus_areas[reg_description["space_name"]]["modbus_last"] >= \
                     (reg_description["register_start_address"] & 0xffff + (reg_description["size_value"] *
                                                                    REGS_SIZE[reg_description["type"]])//2):
-                self.print_error("area error mdb_base - {}, modbus_function - {}, size"
-                                 "".format(mdb_base, modbus_function,
-                                           (reg_description["register_start_address"] +
+                self.print_error("{} {} {}area error mdb_base - {}, modbus_function - {}, size -{}"
+                                 "".format(self.modbus_areas[reg_description["space_name"]]["mdb_base"],
+                                           self.modbus_areas[reg_description["space_name"]]["modbus_function"],
+                                           self.modbus_areas[reg_description["space_name"]]["modbus_last"],
+                                            mdb_base, modbus_function,
+                                           (reg_description["register_start_address"]&0xffff +
                                             (reg_description["size_value"] * REGS_SIZE[reg_description["type"]])//2)))
         start_address = reg_description["register_start_address"] & 0xffff
         last_address = reg_description["register_start_address"] & 0xffff +\
