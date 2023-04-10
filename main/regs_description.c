@@ -153,18 +153,22 @@ regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { NULL, NULL, NULL, (u8*)&sync_time_regs.vars.average_time_ms, 0,"average send receive time ","average_time_ms", U16_REGS_FLAG, 81, 450, 0x30faa, 1, 3, 4 },//!< "average send receive time " &ro
 { NULL, NULL, NULL, (u8*)&sync_time_regs.vars.last_req_time_ms, 0,"last send receive time ","last_req_time_ms", U16_REGS_FLAG, 82, 452, 0x30fab, 1, 3, 4 },//!< "last send receive time " &ro
 { NULL, NULL, NULL, (u8*)&sync_time_regs.vars.active, 0,"activated measurement","active", U16_REGS_FLAG, 83, 454, 0x30fac, 1, 3, 4 },//!< "activated measurement" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.state, 0,"state sr04, bit0 - activated, bit1 - echo signal received","state", U16_REGS_FLAG, 84, 456, 0x31004, 1, 3, 5 },//!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.distance, 0,"current distance","distance", FLOAT_REGS_FLAG, 85, 458, 0x31005, 1, 3, 5 },//!< "current distance" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap, 0,"when we have sharp change of a distance, save it ","lap", U64_REGS_FLAG, 86, 462, 0x31007, 1, 3, 5 },//!< "when we have sharp change of a distance, save it " &ro 
+{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap_paired_dev, 0,"lap from paired device","lap_paired_dev", U64_REGS_FLAG, 87, 470, 0x3100b, 1, 3, 5 },//!< "lap from paired device" &ro
 };
 regs_description_t const regs_description_user[NUM_OF_CLIENT_VARS]={
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.mdb_addr, 0,"modbus address","mdb_addr", U16_REGS_FLAG, 84, 456, 0x30000, 1, 1, 0x503 },//!<"modbus address" 
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.ip[0], 0,"device ip address, warning!!! ","ip", U8_REGS_FLAG, 85, 458, 0x30001, 4, 1, 0x503 },//!<"device ip address, warning!!! " 
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.netmask[0], 0,"netmask address for main wifi net","netmask", U8_REGS_FLAG, 86, 462, 0x30003, 4, 1, 0x503 },//!<"netmask address for main wifi net",
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.gate[0], 0,"gateaway address, warning!!! ","gate", U8_REGS_FLAG, 87, 466, 0x30005, 4, 1, 0x503 },//!<"gateaway address, warning!!! " 
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.slip_ip[0], 0,"ip address for local net","slip_ip", U8_REGS_FLAG, 88, 470, 0x30007, 4, 1, 0x503 },//!<"ip address for local net",
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.slip_netmask[0], 0,"netmask address for local net","slip_netmask", U8_REGS_FLAG, 89, 474, 0x30009, 4, 1, 0x503 },//!<"netmask address for local net", 
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.slip_gate[0], 0,"gateaway address for local net","slip_gate", U8_REGS_FLAG, 90, 478, 0x3000b, 4, 1, 0x503 },//!<"gateaway address for local net", 
-{ NULL, NULL, NULL, (u8*)&client_part_1.vars.num_of_vars, 0,"num_of_vars","num_of_vars", U16_REGS_FLAG, 91, 482, 0x30050, 1, 3, 0x603 },//!<"number of vars self + config(user) &ro 
-{ NULL, NULL, NULL, (u8*)&client_part_1.vars.client_num_of_vars, 0,"number of client vars self","client_num_of_vars", U16_REGS_FLAG, 92, 484, 0x30051, 1, 3, 0x603 },//!<"number of client vars self" &ro 
-{ NULL, NULL, NULL, (u8*)&sync_time_client.vars.sys_tick_slave, 0,"time read from slave","sys_tick_slave", U64_REGS_FLAG, 93, 486, 0x3003f, 1, 3, 0x703 },//!< "time read from slave" &ro
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.mdb_addr, 0,"modbus address","mdb_addr", U16_REGS_FLAG, 88, 478, 0x30000, 1, 1, 0x603 },//!<"modbus address" 
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.ip[0], 0,"device ip address, warning!!! ","ip", U8_REGS_FLAG, 89, 480, 0x30001, 4, 1, 0x603 },//!<"device ip address, warning!!! " 
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.netmask[0], 0,"netmask address for main wifi net","netmask", U8_REGS_FLAG, 90, 484, 0x30003, 4, 1, 0x603 },//!<"netmask address for main wifi net",
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.gate[0], 0,"gateaway address, warning!!! ","gate", U8_REGS_FLAG, 91, 488, 0x30005, 4, 1, 0x603 },//!<"gateaway address, warning!!! " 
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.slip_ip[0], 0,"ip address for local net","slip_ip", U8_REGS_FLAG, 92, 492, 0x30007, 4, 1, 0x603 },//!<"ip address for local net",
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.slip_netmask[0], 0,"netmask address for local net","slip_netmask", U8_REGS_FLAG, 93, 496, 0x30009, 4, 1, 0x603 },//!<"netmask address for local net", 
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.slip_gate[0], 0,"gateaway address for local net","slip_gate", U8_REGS_FLAG, 94, 500, 0x3000b, 4, 1, 0x603 },//!<"gateaway address for local net", 
+{ NULL, NULL, NULL, (u8*)&client_part_1.vars.num_of_vars, 0,"num_of_vars","num_of_vars", U16_REGS_FLAG, 95, 504, 0x30050, 1, 3, 0x703 },//!<"number of vars self + config(user) &ro 
+{ NULL, NULL, NULL, (u8*)&client_part_1.vars.client_num_of_vars, 0,"number of client vars self","client_num_of_vars", U16_REGS_FLAG, 96, 506, 0x30051, 1, 3, 0x703 },//!<"number of client vars self" &ro 
+{ NULL, NULL, NULL, (u8*)&sync_time_client.vars.sys_tick_slave, 0,"time read from slave","sys_tick_slave", U64_REGS_FLAG, 97, 508, 0x3003f, 1, 3, 0x803 },//!< "time read from slave" &ro
 };
 const regs_description_t * regs_description_client = regs_description_user;
 /**

@@ -200,7 +200,9 @@ void common_duty_task(void *pvParameters ){
                 u8g2_ClearBuffer(&u8g2);
                 u8g2_DrawStr(&u8g2, 0,7u, temp_buff);
                 memset(temp_buff,0,TEMP_BUFFER_SIZE);
-                sprintf(temp_buff,"OT%llu;SC%llu",sys_tick_own,slave_tick_calculated);
+                //sprintf(temp_buff,"OT%llu;SC%llu",sys_tick_own,slave_tick_calculated);
+                sprintf(temp_buff,"D:%f",sr04_reg.vars.distance);
+                
                 u8g2_DrawStr(&u8g2, 0,16u, temp_buff);
                 memset(temp_buff,0,TEMP_BUFFER_SIZE);
                 u32 success_requests = 0;

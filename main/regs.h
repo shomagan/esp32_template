@@ -361,7 +361,34 @@ typedef union{
     u8 bytes[32]; //for full bksram copy
 }sync_time_regs_t;// #generator_use_description {"message":"end_struct"}
 extern sync_time_regs_t sync_time_regs;
-
+typedef enum{
+    SR04_STATE_ACTIVE = BIT(0),
+    SR04_STATE_ECHO = BIT(1),
+} sr04_state_t;
+/**
+ * @brief sr04 measurements struct for distance control and time laps
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *                  &crtcl- restart after change value, \n
+ *
+ * @ingroup regs
+ */
+/** #generator_use_description {"space_name" :"sr04_reg_t",  "address_space" :5, "modbus_type" :"server", "modbus_function" :"holding_registers", "register_start_address" :4100}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        u16 state;         //!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
+        float distance;        //!< "current distance" &ro
+        u64 lap;       //!< "when we have sharp change of a distance, save it " &ro 
+        u64 lap_paired_dev;    //!< "lap from paired device" &ro
+    }vars;
+    u8 bytes[32]; //for full bksram copy
+}sr04_reg_t;// #generator_use_description {"message":"end_struct"}
+extern sr04_reg_t sr04_reg;
 /**
  * @brief struct for reading modbus data from another device maximume bytes - 240
  * name variables uses for generate name in description file and then in get value by name

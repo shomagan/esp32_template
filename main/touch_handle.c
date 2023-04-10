@@ -18,6 +18,7 @@
 #include "mirror_storage.h"
 #include "math.h"
 #include "pin_map.h"
+#include "interrupt.h"
 static const char *TAG = "touch_handle";
 static void touch_gpio_initialize(void);
 static int touch_handle_init(void);
@@ -39,12 +40,6 @@ typedef enum{
 
 }touch_states_t;
 
-static void IRAM_ATTR gpio_isr_handler(void* arg){
-    uint32_t gpio_num = (uint32_t) arg;
-    if (gpio_num == GPIO_WATER_COUNTER_INPUT){
-        regs_global_part1.vars.water_counter++;
-    }
-}
 
 static touch_states_t touch_states = IDLE_STATE;
 task_handle_t touch_task_handle;
