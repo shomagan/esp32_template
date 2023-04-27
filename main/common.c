@@ -191,19 +191,17 @@ void common_duty_task(void *pvParameters ){
                 u64 slave_tick_calculated;
                 u64 sys_tick_own;
                 regs_copy_safe(&sys_tick_own,&regs_global.vars.sys_tick_counter,sizeof(deviation));
-                regs_copy_safe(&deviation,&sync_time_regs.vars.sys_tick_dev,sizeof(deviation));
+                regs_copy_safe(&deviation,&sync_time_regs.vars.sync_sys_tick_dev,sizeof(deviation));
                 slave_tick_calculated = sys_tick_own - deviation;
                 char temp_buff[TEMP_BUFFER_SIZE] = {0u};
+                u16 sync_active_temp;
+                regs_copy_safe(&sync_active_temp,&sync_time_regs.vars.sync_active,sizeof(sync_active_temp));
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
-                sprintf(temp_buff,"mdb: %u, ip: %u.%u.%u.%u",regs_global.vars.mdb_addr,regs_global.vars.sta_ip[0],regs_global.vars.sta_ip[1],regs_global.vars.sta_ip[2],regs_global.vars.sta_ip[3]);
+                sprintf(temp_buff,"m %u;%u.%u.%u.%u;S-%u",regs_global.vars.mdb_addr,regs_global.vars.sta_ip[0],regs_global.vars.sta_ip[1],regs_global.vars.sta_ip[2],regs_global.vars.sta_ip[3],sync_active_temp & SYNC_STATE_SYNCRONIZED);
                 }semaphore_release(regs_access_mutex);
                 u8g2_ClearBuffer(&u8g2);
-                u8g2_DrawStr(&u8g2, 0,7u, temp_buff);
+                u8g2_DrawStr(&u8g2, 0,6u, temp_buff);
                 memset(temp_buff,0,TEMP_BUFFER_SIZE);
-                //sprintf(temp_buff,"OT%llu;SC%llu",sys_tick_own,slave_tick_calculated);
-                sprintf(temp_buff,"D:%f",sr04_reg.vars.distance);
-                
-                u8g2_DrawStr(&u8g2, 0,16u, temp_buff);
                 memset(temp_buff,0,TEMP_BUFFER_SIZE);
                 u32 success_requests = 0;
                 u32 failed_requests = 0;
@@ -211,10 +209,19 @@ void common_duty_task(void *pvParameters ){
                     success_requests += modbus_tcp_client_slave_connections[i].success_requests;
                     failed_requests += modbus_tcp_client_slave_connections[i].failed_requests;
                 }
+                //sprintf(temp_buff,"OT%llu;SC%llu",sys_tick_own,slave_tick_calculated);
+                sprintf(temp_buff,"%f %llu",sr04_reg.vars.lap_distance,sr04_reg.vars.lap);
+                u8g2_DrawStr(&u8g2, 0,14u, temp_buff);
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
                 sprintf(temp_buff,"RC:%lu;P%lu;E%lu",regs_global.vars.reset_num,success_requests,failed_requests);
                 }semaphore_release(regs_access_mutex);
-                u8g2_DrawStr(&u8g2, 0,25u, temp_buff);
+                u8g2_DrawStr(&u8g2, 0,22u, temp_buff);
+                s32 sync_sys_tick_dev_own;         //deviation between master and slave on our side
+                s32 sync_sys_tick_dev_client;      //deviation between master and slave on client side
+                regs_copy_safe(&sync_sys_tick_dev_own,&sync_time_regs.vars.sync_sys_tick_dev,sizeof(sync_sys_tick_dev_own));
+                regs_copy_safe(&sync_sys_tick_dev_client,&sync_time_regs_from_client.vars.cli_sys_tick_dev,sizeof(sync_sys_tick_dev_client));
+                sprintf(temp_buff,"dev %li %li",sync_sys_tick_dev_own,sync_sys_tick_dev_client);
+                u8g2_DrawStr(&u8g2, 0,30u, temp_buff);
                 u8g2_SendBuffer(&u8g2);
             }
 #if UDP_BROADCAST_ENABLE && UDP_ADVERTISMENT_PERIOD

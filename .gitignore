@@ -1,3 +1,4 @@
+credentials.h
 build/
 generator/.idea/
 generator/__pycache__/

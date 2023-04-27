@@ -17,4 +17,11 @@ typedef enum{
     ECHO_RISING_EDGE = (1<<7),
     ECHO_FALING_EDGE = (1<<8),
 }sr04_edges_t;
+typedef enum{
+    SR04_STEP_TRIGGER = 1,
+    SR04_STEP_RISING = 2,
+    SR04_STEP_FALING = 3,
+}sr04_step_t;
+
+
 #endif //SR04_HPP

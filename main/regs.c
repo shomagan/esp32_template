@@ -25,14 +25,22 @@
 #define DEBUG           0   /** @warning DEBUG must be defined in CMake */
 #endif
 static const char *TAG = "regs_c";
+/*global objects mapped in modbus and http memory*/
 main_vars_t regs_global;
 main_vars_part_1_t regs_global_part1;
 servo_control_part_t servo_control_part;
-client_part_0_t client_part_0;
-client_part_1_t client_part_1;
 di_control_t di_control;
-sync_time_client_t sync_time_client;
 sync_time_regs_t sync_time_regs;
+/*client part 0*/
+client_part_0_t client_part_0;
+/*client part 1*/
+client_part_1_t client_part_1;
+/*client part 2*/
+sync_time_client_t sync_time_client;
+/*client part 3*/
+sr04_reg_client_t sr04_reg_client;/*where we got last lap/snap from paired device?*/
+/*client part 4*/
+sync_data_client_t sync_time_regs_from_client;/*do we have the same deviation?*/
 /**
  * @brief mutex for access to global regs
  * @ingroup regs

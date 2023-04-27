@@ -66,6 +66,34 @@ typedef enum{
     TASK_CREATED_DS18                = BIT(9),/*!< ds18 task must be work on*/
 } task_created_t;
 /**
+  * @brief structures for u32 current_state[4]; //!< "current state of proccess" &ro description above contain flags
+  * @ingroup regs
+  */
+typedef enum{
+    CS0_TASK_ACTIVE_INIT                = BIT(0),/*!< init task must be work on*/
+    CS0_TASK_ACTIVE_ETHERNET_INPUT      = BIT(1),/*!< ethernet_input task must be work on*/
+    CS0_TASK_ACTIVE_PACKET              = BIT(2),/*!< packet task must be work on*/
+    CS0_TASK_ACTIVE_TCP_IP              = BIT(3),/*!< tcp_ip task inited */
+    CS0_TASK_ACTIVE_ISIMFW400           = BIT(4),/*!< main control task*/
+    CS0_TASK_ACTIVE_DUTY                = BIT(5),/*!< main manager - LED RTC*/
+    CS0_TASK_ACTIVE_MONITOR             = BIT(6),/*!< debug monitor task*/
+    CS0_TASK_ACTIVE_REGS_EVENT          = BIT(7),/*!< regs event task*/
+    CS0_TASK_ACTIVE_ETHERNET_COTROL     = BIT(8),/*!< ethernet control task must be work on*/
+    CS0_TASK_ACTIVE_DS18                = BIT(9),/*!< ds18 task must be work on*/
+    CS0_TASK_ACTIVE_SR04                = BIT(10),/*!< SR04 task must be work on*/
+} current_state_0;
+/**
+  * @brief structures for u32 current_state[4]; //!< "current state of proccess" &ro description above contain flags
+  * @ingroup regs
+  */
+typedef enum{
+  CS1_SR04_FALINGEDGE_BEFORE_RISINGEDGE = BIT(0),/*!< SR04 consequnce problem*/
+  CS1_SR04_FULL_SUBSEQUNCE_PROBLEM = BIT(1),/*!< SR04 consequnce problem*/
+  CS1_SR04_RISINGEDGE_AFTER_FALINGEDGE = BIT(2),/*!< SR04 consequnce problem*/
+} current_state_1;
+
+
+/**
   * @brief struct contain flags of initialized  modules
   * @ingroup regs
   */
@@ -245,6 +273,7 @@ typedef union{
         u8 sta_ip[4]; //!< "ip address of sta" &ro &save
         u32 live_time; //!< "live time in seconds" &ro
         u32 flash_write_number; //!< "increments every flash write by an app" &ro &save
+        u32 current_state[4]; //!< "current state of proccess" &ro description above
     }vars;
     u8 bytes[GLOBAL_UNION_SIZE]; //for full bksram copy
 }main_vars_t;// #generator_use_description {"message":"end_struct"}
@@ -335,6 +364,10 @@ typedef union{
     u8 bytes[4]; //for full bksram copy
 }di_control_t;// #generator_use_description {"message":"end_struct"}
 extern di_control_t di_control;
+typedef enum{
+  SYNC_STATE_ACTIVE = BIT(0),
+  SYNC_STATE_SYNCRONIZED = BIT(1),
+}sync_state_t;
 /**
  * @brief time sync struct for read time from another device
  * name variables uses for generate name in description file and then in get value by name
@@ -351,12 +384,12 @@ extern di_control_t di_control;
 typedef union{
     struct MCU_PACK{
         // start regs struct
-        s32 sys_tick_dev;         //!< "deviation between master and slave" &ro
-        u64 sys_tick_slave;        //!< "time read from slave" &ro
-        u64 sys_tick_master;       //!< "time read from master" &ro 
-        u16 average_time_ms;    //!< "average send receive time " &ro
-        u16 last_req_time_ms;       //!< "last send receive time " &ro
-        u16 active;                      //!< "activated measurement" &ro
+        s32 sync_sys_tick_dev;         //!< "deviation between master and slave" &ro
+        u64 sync_sys_tick_slave;        //!< "time read from slave" &ro
+        u64 sync_sys_tick_master;       //!< "time read from master" &ro 
+        u16 sync_average_time_ms;    //!< "average send receive time " &ro
+        u16 sync_last_req_time_ms;       //!< "last send receive time " &ro
+        u16 sync_active;                      //!< "activated measurement" &ro
     }vars;
     u8 bytes[32]; //for full bksram copy
 }sync_time_regs_t;// #generator_use_description {"message":"end_struct"}
@@ -381,8 +414,8 @@ typedef enum{
 typedef union{
     struct MCU_PACK{
         // start regs struct
-        u16 state;         //!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
-        float distance;        //!< "current distance" &ro
+        u16 lap_state;         //!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
+        float lap_distance;        //!< "current distance" &ro
         u64 lap;       //!< "when we have sharp change of a distance, save it " &ro 
         u64 lap_paired_dev;    //!< "lap from paired device" &ro
     }vars;
@@ -407,13 +440,13 @@ extern sr04_reg_t sr04_reg;
 typedef union{
     struct MCU_PACK{
         // start regs struct
-        u16 mdb_addr;                   //!<"modbus address" 
-        u8 ip[4];                       //!<"device ip address, warning!!! " 
-        u8 netmask[4];                  //!<"netmask address for main wifi net",
-        u8 gate[4];                     //!<"gateaway address, warning!!! " 
-        u8 slip_ip[4];                  //!<"ip address for local net",
-        u8 slip_netmask[4];             //!<"netmask address for local net", 
-        u8 slip_gate[4];                //!<"gateaway address for local net", 
+        u16 cli_mdb_addr;                   //!<"modbus address" 
+        u8 cli_ip[4];                       //!<"device ip address, warning!!! " 
+        u8 cli_netmask[4];                  //!<"netmask address for main wifi net",
+        u8 cli_gate[4];                     //!<"gateaway address, warning!!! " 
+        u8 cli_slip_ip[4];                  //!<"ip address for local net",
+        u8 cli_slip_netmask[4];             //!<"netmask address for local net", 
+        u8 cli_slip_gate[4];                //!<"gateaway address for local net", 
     }vars;
     u8 bytes[32]; //for full bksram copy
 }client_part_0_t;// #generator_use_description {"message":"end_struct"}
@@ -436,8 +469,8 @@ extern client_part_0_t client_part_0;
 typedef union{
     struct MCU_PACK{
         // start regs struct
-        u16 num_of_vars;        //!<"number of vars self + config(user) &ro 
-        u16 client_num_of_vars;        //!<"number of client vars self" &ro 
+        u16 cli_num_of_vars;        //!<"number of vars self + config(user) &ro 
+        u16 cli_client_num_of_vars;        //!<"number of client vars self" &ro 
     }vars;
     u8 bytes[8]; //for full bksram copy
 }client_part_1_t;// #generator_use_description {"message":"end_struct"}
@@ -467,6 +500,58 @@ typedef union{
     u8 bytes[8]; //for full bksram copy
 }sync_time_client_t;// #generator_use_description {"message":"end_struct"}
 extern sync_time_client_t sync_time_client;
+
+/**
+ * @brief sr04 measurements struct for distance control and time laps
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *                  &crtcl- restart after change value, \n
+ *
+ * @ingroup regs
+ */
+/** #generator_use_description {"space_name" :"sr04_reg_client_t",  "address_space" :3, "modbus_type" :"client", "modbus_function" :"holding_registers", "modbus_address" :3, "register_start_address" :4100}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        u16 cli_state;         //!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
+        float cli_distance;        //!< "current distance" &ro
+        u64 cli_lap;       //!< "when we have sharp change of a distance, save it " &ro 
+        u64 cli_lap_paired_dev;    //!< "lap from paired device" &ro
+    }vars;
+    u8 bytes[32]; //for full bksram copy
+}sr04_reg_client_t;// #generator_use_description {"message":"end_struct"}
+extern sr04_reg_client_t sr04_reg_client;
+/**
+ * @brief time sync struct for read time from another device
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *                  &crtcl- restart after change value, \n
+ *
+ * @ingroup regs
+ */
+/** inside struct modbus_type shows us that this struct is for client(read data from client) or not 
+ * #generator_use_description {"space_name" :"sync_data_client_t",  "address_space" :4, "modbus_type" :"client", "modbus_function" :"holding_registers", "modbus_address" :3, "register_start_address" :4000}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        s32 cli_sys_tick_dev;         //!< "deviation between master and slave" &ro
+        u64 cli_sys_tick_slave;        //!< "time read from slave" &ro
+        u64 cli_sys_tick_master;       //!< "time read from master" &ro 
+        u16 cli_average_time_ms;    //!< "average send receive time " &ro
+        u16 cli_last_req_time_ms;       //!< "last send receive time " &ro
+        u16 cli_sync_state;                      //!< "activated measurement" &ro
+    }vars;
+    u8 bytes[32]; //for full bksram copy
+}sync_data_client_t;// #generator_use_description {"message":"end_struct"}
+extern sync_data_client_t sync_time_regs_from_client;
 /**
   * @brief registers for regs_event_handler
   * @ingroup regs

@@ -28,6 +28,7 @@
 #include <sys/socket.h>
 #include <u8g2.h>
 #include "u8g2_esp32_hal.h"
+#include <math.h>
 #ifndef DEBUG_SOCKET
 #define DEBUG_SOCKET 1
 #endif
@@ -123,7 +124,7 @@ static int modbus_master_init(void){
                     }
                     number_separate_client_spaces++;
                 } 
-                if((i==(NUM_OF_CLIENT_VARS-1)) && (regs_description_client[i].space_number != space_number_prev)){
+                if(i==(NUM_OF_CLIENT_VARS-1)){
                     modbus_last = RD_MDB_ADDRESS(regs_description_client[i].modbus_description);
                     last_item_size = (regs_description_client[i].size*regs_size_in_byte(regs_description_client[i].type))/2;
                     //goes after an increment
@@ -188,7 +189,11 @@ FNCT_NO_RETURN void modbus_tcp_client_common_task( void  * argument ){
     s32 time_sync_buffer[TIME_SYNC_BUFFER_SIZE] = {0};
     u16 time_sync_buffer_index = 0;
 #endif
-
+typedef enum{
+    MDB_CLIENT_GROUP_SYS_TICK_COUNTER,
+    MDB_CLIENT_GROUP_TIME_SYNC,
+    MDB_CLIENT_GROUP_LAP,
+}modbus_client_group_t;
 /**
  * @brief this task is responsible for one slave connection
  * for each slave connection is created one task
@@ -212,18 +217,25 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
     memset(own_ip,0,4);
     memset(server_ip,0,4);
     memset(&server_address,0,sizeof(struct sockaddr_in));
-#if TIME_SYNC_MEASUREMENT_ENABLE    
-    u8 time_sync_active = 0;
+    main_debug(TAG,"!!!! mdb address slave %lu",RD_MDB_ADDRESS(regs_description_temp->modbus_description));
+#if TIME_SYNC_MEASUREMENT_ENABLE
+    modbus_client_group_t time_sync_active = 0;
     u64 start_transsmition_time = 0;
     u64 end_transsmition_time = 0;
     regs_template_t  regs_template;
     regs_template.name = "sys_tick_counter";
-    main_debug(TAG,"!!!! mdb address slave %lu",RD_MDB_ADDRESS(regs_description_temp->modbus_description));
     if(regs_description_get_by_name(&regs_template)==0){
         main_debug(TAG,"mdb address slave %lu mdb addr master%lu",RD_MDB_ADDRESS(regs_description_temp->modbus_description),RD_MDB_ADDRESS(regs_template.modbus_description));
         if(RD_MDB_ADDRESS(regs_description_temp->modbus_description) == RD_MDB_ADDRESS(regs_template.modbus_description)){
-            time_sync_active = 1;
-            regs_copy_safe(&sync_time_regs.vars.active,&time_sync_active,sizeof(time_sync_active));
+            time_sync_active = MDB_CLIENT_GROUP_SYS_TICK_COUNTER;
+        }
+    }else {
+        regs_template.name = "sync_sys_tick_dev";
+        if(regs_description_get_by_name(&regs_template)==0){
+            main_debug(TAG,"mdb address slave %lu mdb addr master%lu",RD_MDB_ADDRESS(regs_description_temp->modbus_description),RD_MDB_ADDRESS(regs_template.modbus_description));
+            if(RD_MDB_ADDRESS(regs_description_temp->modbus_description) == RD_MDB_ADDRESS(regs_template.modbus_description)){
+                time_sync_active = MDB_CLIENT_GROUP_TIME_SYNC;
+            }
         }
     }
 #endif
@@ -263,7 +275,7 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                 client_requests.plcv_buffer = NULL;
                 client_requests.count = slave_connection->size_in_words;
 #if TIME_SYNC_MEASUREMENT_ENABLE                
-                if (time_sync_active){
+                if (time_sync_active == MDB_CLIENT_GROUP_SYS_TICK_COUNTER){
                     regs_copy_safe(&start_transsmition_time,&regs_global.vars.sys_tick_counter,sizeof(start_transsmition_time));
                 }
 #endif
@@ -273,7 +285,7 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                     slave_connection->failed_requests++;
                 }else{
 #if TIME_SYNC_MEASUREMENT_ENABLE                
-                    if (time_sync_active){
+                    if (time_sync_active == MDB_CLIENT_GROUP_SYS_TICK_COUNTER){
                         regs_copy_safe(&end_transsmition_time,&regs_global.vars.sys_tick_counter,sizeof(end_transsmition_time));
                         if ((end_transsmition_time - start_transsmition_time) < MAX_TRANSMISSION_TIME){
                             u16 transmition_time = end_transsmition_time - start_transsmition_time;
@@ -283,8 +295,8 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                             s32 sync_deviation_last;
                             regs_copy_safe(&sync_time_from_client,&sync_time_client.vars.sys_tick_slave,sizeof(sync_time_from_client));
                             sync_deviation = (s32)(sync_time_own - sync_time_from_client)-transmition_time/2;
-                            regs_copy_safe(&sync_time_regs.vars.last_req_time_ms,&transmition_time,sizeof(transmition_time));
-                            regs_copy_safe(&sync_time_regs.vars.sys_tick_slave,&sync_time_client.vars.sys_tick_slave,sizeof(sync_time_client.vars.sys_tick_slave));
+                            regs_copy_safe(&sync_time_regs.vars.sync_last_req_time_ms,&transmition_time,sizeof(transmition_time));
+                            regs_copy_safe(&sync_time_regs.vars.sync_sys_tick_slave,&sync_time_client.vars.sys_tick_slave,sizeof(sync_time_client.vars.sys_tick_slave));
                             time_sync_buffer[time_sync_buffer_index] = sync_deviation;
                             time_sync_buffer_index++;
                             if (time_sync_buffer_index>=TIME_SYNC_BUFFER_SIZE){
@@ -317,8 +329,25 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                                     time_sync_sum-=maximum_values_in_buffer[j];
                                 }
                                 s32 time_sync_average = time_sync_sum/(TIME_SYNC_BUFFER_SIZE-TIME_SYNC_EXPEL_BUFFER_SIZE);
-                                regs_copy_safe(&sync_time_regs.vars.sys_tick_dev,&time_sync_average,sizeof(time_sync_average));
+                                regs_copy_safe(&sync_time_regs.vars.sync_sys_tick_dev,&time_sync_average,sizeof(time_sync_average));
+                                u16 sync_active_temp;
+                                regs_copy_safe(&sync_active_temp,&sync_time_regs.vars.sync_active,sizeof(sync_active_temp));
+                                sync_active_temp |= SYNC_STATE_ACTIVE;
+                                regs_copy_safe(&sync_time_regs.vars.sync_active,&sync_active_temp,sizeof(sync_active_temp));
                                 time_sync_buffer_index = 0;
+                            }
+                        }
+                    }else if(time_sync_active == MDB_CLIENT_GROUP_TIME_SYNC){
+                        u16 sync_active_temp;
+                        regs_copy_safe(&sync_active_temp,&sync_time_regs.vars.sync_active,sizeof(sync_active_temp));
+                        if (sync_active_temp & SYNC_STATE_ACTIVE){
+                            s32 sync_sys_tick_dev_own;         //deviation between master and slave on our side
+                            s32 sync_sys_tick_dev_client;      //deviation between master and slave on client side
+                            regs_copy_safe(&sync_sys_tick_dev_own,&sync_time_regs.vars.sync_sys_tick_dev,sizeof(sync_sys_tick_dev_own));
+                            regs_copy_safe(&sync_sys_tick_dev_client,&sync_time_regs_from_client.vars.cli_sys_tick_dev,sizeof(sync_sys_tick_dev_client));
+                            if((sync_sys_tick_dev_own + sync_sys_tick_dev_client)< TIME_SYNC_DEVIATION_THRESHOLD){
+                                sync_active_temp |= SYNC_STATE_SYNCRONIZED;
+                                regs_copy_safe(&sync_time_regs.vars.sync_active,&sync_active_temp,sizeof(sync_active_temp));
                             }
                         }
                     }

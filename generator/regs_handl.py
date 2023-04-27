@@ -385,8 +385,8 @@ class RegsHand(base_object.Base):
         for reg in self.dict:
             if reg["internal_name"] == reg_description["internal_name"] and\
                reg["modbus_type"] == reg_description["modbus_type"]:
-                self.print_error("reg with name - {} already exist, current struct -{}"
-                                 "preview struct - {}"
+                self.print_error("reg with name - {} already exist, current struct - {} "
+                                 "preview struct - {} "
                                  "".format(reg_description["internal_name"],
                                            reg_description["space_name"],
                                            reg["space_name"]))
@@ -403,8 +403,8 @@ class RegsHand(base_object.Base):
                self.modbus_areas[reg_description["space_name"]]["modbus_last"] >= \
                     (reg_description["register_start_address"] & 0xffff + (reg_description["size_value"] *
                                                                    REGS_SIZE[reg_description["type"]])//2):
-                self.print_error("{} {} {}area error mdb_base - {}, modbus_function - {}, size -{}"
-                                 "".format(self.modbus_areas[reg_description["space_name"]]["mdb_base"],
+                self.print_error("{} {} {} {}area error mdb_base - {}, modbus_function - {}, last -{}"
+                                 "".format(reg_description['space_name'], self.modbus_areas[reg_description["space_name"]]["mdb_base"],
                                            self.modbus_areas[reg_description["space_name"]]["modbus_function"],
                                            self.modbus_areas[reg_description["space_name"]]["modbus_last"],
                                             mdb_base, modbus_function,
