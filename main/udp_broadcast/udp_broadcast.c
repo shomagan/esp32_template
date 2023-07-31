@@ -59,7 +59,6 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
     int receive_len = p->tot_len;
     receive_len = receive_len>UDP_BROADCAST_MAX_PACKET_SIZE?UDP_BROADCAST_MAX_PACKET_SIZE:receive_len;
     pbuf_copy_partial(p, receive_buff, receive_len, 0);
-    main_debug(TAG, "new udp packet\n %s - %u",receive_buff,addr->u_addr.ip4.addr);
     if (strncmp(ADVERTISMENT_REQUEST, &receive_buff[0], sizeof(ADVERTISMENT_REQUEST))==0){
         len += sprintf(answer_buff,"{\"modbus_address\": %u,",regs_global.vars.mdb_addr);
         len += sprintf(&answer_buff[len],"\"name\": \"chili\",");
@@ -83,16 +82,13 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
         }
         if (position_modbus_id>=0){
             u8 modbus_id = (u8)atoi(&receive_buff[position_modbus_id+MODBUS_FIELD_SIZE  +3]);
-            main_printf(TAG, "receive adv from: %u\n",modbus_id);
 #if MODBUS_MASTER_ENABLE            
             if(add_ip_to_slave_table((uc8*)addr,modbus_id)){
-                main_printf(TAG, "new modbus device was found\n");
+                main_printf(TAG, "new modbus device found\n");
             }
 #endif            
             u8 ip_address_temp[4];
             memcpy(ip_address_temp,addr,4);
-            main_printf(TAG, "we received advertisment from slave %u.%u.%u.%u id %u",ip_address_temp[0],ip_address_temp[1],
-                    ip_address_temp[2],ip_address_temp[3],modbus_id);
         }
     }
     if (len){

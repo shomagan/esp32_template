@@ -193,6 +193,7 @@ typedef enum{
     MDB_CLIENT_GROUP_SYS_TICK_COUNTER,
     MDB_CLIENT_GROUP_TIME_SYNC,
     MDB_CLIENT_GROUP_LAP,
+    MDB_CLIENT_GROUP_NONE,
 }modbus_client_group_t;
 /**
  * @brief this task is responsible for one slave connection
@@ -219,7 +220,7 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
     memset(&server_address,0,sizeof(struct sockaddr_in));
     main_debug(TAG,"!!!! mdb address slave %lu",RD_MDB_ADDRESS(regs_description_temp->modbus_description));
 #if TIME_SYNC_MEASUREMENT_ENABLE
-    modbus_client_group_t time_sync_active = 0;
+    modbus_client_group_t time_sync_active = MDB_CLIENT_GROUP_NONE;
     u64 start_transsmition_time = 0;
     u64 end_transsmition_time = 0;
     regs_template_t  regs_template;
@@ -271,7 +272,7 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                 client_requests.prev_error = 0;
                 client_requests.coms_buffer = (u16*)regs_description_temp->p_value;
                 client_requests.mb_function = RD_MDB_FUNCTION(regs_description_temp->modbus_description);
-                client_requests.resp_timeout = 1000;
+                client_requests.resp_timeout = 2000;
                 client_requests.plcv_buffer = NULL;
                 client_requests.count = slave_connection->size_in_words;
 #if TIME_SYNC_MEASUREMENT_ENABLE                
@@ -284,7 +285,6 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                     errors_in_the_row++;
                     slave_connection->failed_requests++;
                 }else{
-#if TIME_SYNC_MEASUREMENT_ENABLE                
                     if (time_sync_active == MDB_CLIENT_GROUP_SYS_TICK_COUNTER){
                         regs_copy_safe(&end_transsmition_time,&regs_global.vars.sys_tick_counter,sizeof(end_transsmition_time));
                         if ((end_transsmition_time - start_transsmition_time) < MAX_TRANSMISSION_TIME){
@@ -306,7 +306,6 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                                 s32 abs_maximum_values_in_buffer[TIME_SYNC_EXPEL_BUFFER_SIZE] = {0};
                                 for (int i = 0; i < TIME_SYNC_BUFFER_SIZE; i++)
                                 {
-                                    
                                     u32 abs_deviation_value;
                                     if (time_sync_buffer[i]<0){
                                         abs_deviation_value = -time_sync_buffer[i];
@@ -351,7 +350,6 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                             }
                         }
                     }
-#endif
                     errors_in_the_row=0;
                     success_packet_transaction_number++;
                     slave_connection->success_requests++;
@@ -360,14 +358,15 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
             counter++;
             if(counter%10==0){
                 const regs_description_t * regs_description_temp = slave_connection->first_regs_description;
-                main_debug(TAG,"TCP_CLIENT 0x%08x server_ip - %u.%u.%u.%u \n modbus_address - %lu %i %i \n address in memmory 0x%08x size in words %lu",\
+                /*main_debug(TAG,"TCP_CLIENT 0x%08x server_ip - %u.%u.%u.%u \n modbus_address - %lu %i %i \n address in memmory 0x%08x size in words %lu",\
                     regs_description_temp->space_number,server_ip[0],server_ip[1],server_ip[2],server_ip[3],\
                     RD_MDB_ADDRESS(regs_description_temp->modbus_description),errors_in_the_row,success_packet_transaction_number,\
-                    (uint32_t)slave_connection->first_regs_description,slave_connection->size_in_words);
+                    (uint32_t)slave_connection->first_regs_description,slave_connection->size_in_words);*/
             }
         }
         if(errors_in_the_row>10){
             errors_in_the_row=0;
+            main_debug(TAG,"close connection because of accummulated errors");
             if (client_socket_fd>=0){
                 close_socket_connection(&client_socket_fd);
             }
