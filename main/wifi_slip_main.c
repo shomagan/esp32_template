@@ -321,7 +321,7 @@ int main_init_tasks(){
     }
 #endif
 #if SR04_HANDLING_ENABLE
-    res = task_create(sr04_task, "sr04_task", 2048, NULL, (tskIDLE_PRIORITY + 2), &sr04_handle_id);
+    res = task_create(sr04_task, "sr04_task", 2464, NULL, (tskIDLE_PRIORITY + 2), &sr04_handle_id);
     if(res != pdTRUE){
         main_printf(TAG,"sr04_task inited success\n");
     }

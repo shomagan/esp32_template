@@ -47,7 +47,7 @@ modbus_tcp_client_slave_connections_t modbus_tcp_client_slave_connections[MAX_NU
  * @param sockaddr
  * @return
  */
-static u8 prepare_server_address(const u8 * address, int port, struct sockaddr_in* sockaddr);
+static u8 prepare_server_address(const u8 * address, int port, struct sockaddr_in* sockaddr,ip_addr_t * s_hostent_addr,ip_addr_t **s_phostent_addr);
 /**
  * @brief get_ip_slaves_by_number
  * @param slave_table_item functuion will it fill if exist
@@ -80,8 +80,9 @@ static FNCT_NO_RETURN void modbus_tcp_client_connection_task(void * argument);
  *
  * @return less then 0 if error occured
  */
-static inline int connection_proccess(u8 dest_ip[4],int * socket_id,struct sockaddr_in * server_address,file_desc_set_t file_desc_set);
-static inline int connect_to_address(u8 dest_ip[4],struct sockaddr_in * server_address,file_desc_set_t file_desc_set);
+static inline int connection_proccess(u8 dest_ip[4],int * socket_id,struct sockaddr_in * server_address,file_desc_set_t file_desc_set,
+ip_addr_t * s_hostent_addr,ip_addr_t **s_phostent_addr);
+static inline int connect_to_address(u8 dest_ip[4],struct sockaddr_in * server_address,file_desc_set_t file_desc_set,ip_addr_t * s_hostent_addr,ip_addr_t **s_phostent_addr);
 task_handle_t modbus_master_id = NULL;
 static semaphore_handle_t modbus_tcp_client_access_mutex;
 static u16 number_separate_client_spaces = 0;
@@ -160,7 +161,6 @@ static int modbus_master_deinit(void){
 }
 
 static uc8 zero_array[4] = {0,0,0,0};
-static u32 lap_time = 0;
 /**
  * @brief
  * @param argument unused
@@ -215,6 +215,9 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
     client_socket_fd =-1;
     slave_connection = argument;
     const regs_description_t * regs_description_temp = slave_connection->first_regs_description;
+    ip_addr_t s_hostent_addr;
+    ip_addr_t *s_phostent_addr[2];
+
     memset(own_ip,0,4);
     memset(server_ip,0,4);
     memset(&server_address,0,sizeof(struct sockaddr_in));
@@ -241,7 +244,7 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
     }
 #endif
     while(1){
-        int event_is_signal = task_notify_wait(MODBUS_MASTER_CLOSE_CONNECTION_SIGNAL|STOP_CHILD_PROCCES,&signal_value,40);
+        int event_is_signal = task_notify_wait(MODBUS_MASTER_CLOSE_CONNECTION_SIGNAL|STOP_CHILD_PROCCES,&signal_value,100);
         if (slave_connection->first_regs_description==NULL){
             close_socket_connection(&client_socket_fd);
             slave_connection->task_id = NULL;
@@ -253,7 +256,7 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
         if (memcmp(zero_array,server_ip,sizeof(server_ip))!=0){
             if (client_socket_fd<0){
                 main_debug(TAG,"TCP_CLIENT trying to connnect to - %u.%u.%u.%u\n",server_ip[0],server_ip[1],server_ip[2],server_ip[3]);
-                connection_proccess(server_ip,&client_socket_fd,&server_address,file_desc_set);
+                connection_proccess(server_ip,&client_socket_fd,&server_address,file_desc_set,&s_hostent_addr,s_phostent_addr);
             }
         }else{
             if (client_socket_fd>=0){
@@ -292,7 +295,6 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                             u64 sync_time_from_client;
                             u64 sync_time_own = end_transsmition_time;
                             s32 sync_deviation;
-                            s32 sync_deviation_last;
                             regs_copy_safe(&sync_time_from_client,&sync_time_client.vars.sys_tick_slave,sizeof(sync_time_from_client));
                             sync_deviation = (s32)(sync_time_own - sync_time_from_client)-transmition_time/2;
                             regs_copy_safe(&sync_time_regs.vars.sync_last_req_time_ms,&transmition_time,sizeof(transmition_time));
@@ -418,12 +420,11 @@ static void activate_keep_alive(int sd){
 #endif /* SO_KEEPALIVE */
 }
 
-static u8 prepare_server_address(const u8 * address, int port, struct sockaddr_in* sockaddr){
+static u8 prepare_server_address(const u8 * address, int port, struct sockaddr_in* sockaddr,ip_addr_t * s_hostent_addr,
+    ip_addr_t *s_phostent_addr[]){
     memset((char *) sockaddr , 0, sizeof(struct sockaddr_in));
-    static ip_addr_t s_hostent_addr;
-    static  ip_addr_t *s_phostent_addr[2];
-    memcpy(&s_hostent_addr,address,sizeof(in_addr_t));
-    s_phostent_addr[0] = &s_hostent_addr;
+    memcpy(s_hostent_addr,address,sizeof(in_addr_t));
+    s_phostent_addr[0] = s_hostent_addr;
     s_phostent_addr[1] = NULL;
     sockaddr->sin_family = AF_INET;
     sockaddr->sin_port = htons((u16_t)port);
@@ -609,9 +610,10 @@ static inline int ip_addresses_were_changed(u8 * server_ip_arg,u8 * own_ip_arg,u
  *
  * @return less then 0 if error occured
  */
-static inline int connect_to_address(u8 dest_ip[4],struct sockaddr_in * server_address,file_desc_set_t file_desc_set){
+static inline int connect_to_address(u8 dest_ip[4],struct sockaddr_in * server_address,file_desc_set_t file_desc_set,
+ip_addr_t * s_hostent_addr,ip_addr_t **s_phostent_addr){
     int socket_id=-1;
-    if (!prepare_server_address(dest_ip, 502, server_address)){
+    if (!prepare_server_address(dest_ip, 502, server_address,s_hostent_addr,s_phostent_addr)){
         main_printf(TAG,"error prepare server address");
     }else{
         socket_id = socket(AF_INET, SOCK_STREAM, 0);
@@ -677,9 +679,9 @@ static inline int connect_to_address(u8 dest_ip[4],struct sockaddr_in * server_a
  *
  * @return less then 0 if error occured
  */
-static inline int connection_proccess(u8 dest_ip[4],int * socket_id,struct sockaddr_in * server_address,file_desc_set_t file_desc_set){
-    static u8 connection_error_in_the_row = 0;
-    if (!prepare_server_address(dest_ip, 502, server_address)){
+static inline int connection_proccess(u8 dest_ip[4],int * socket_id,struct sockaddr_in * server_address,file_desc_set_t file_desc_set,
+    ip_addr_t * s_hostent_addr,ip_addr_t **s_phostent_addr){
+    if (!prepare_server_address(dest_ip, 502, server_address,s_hostent_addr,s_phostent_addr)){
         main_printf(TAG,"error prepare server address");
     }
     *socket_id = socket(AF_INET, SOCK_STREAM, 0);
@@ -710,24 +712,13 @@ static inline int connection_proccess(u8 dest_ip[4],int * socket_id,struct socka
                     main_error_message(TAG,"connection time out \n");
                     close_socket_connection(socket_id);
                 }else{
-                    connection_error_in_the_row=0;
                     main_printf(TAG,"connected to server");
                 }
             }else{
                 main_printf(TAG,"connection error");
-                if ((connection_error_in_the_row++)>5){
-                    connection_error_in_the_row=0;
-                    semaphore_take(regs_access_mutex, portMAX_DELAY );{
-                        memset(regs_global.vars.iirls_paired_ip,0,sizeof(in_addr_t));
-                        regs_global.vars.iirls_pairing_status = IIRLS_NEVER_PAIRED;
-                    }semaphore_release(regs_access_mutex);
-                    lap_time = task_get_tick_count();
-                    memset(dest_ip,0,sizeof(in_addr_t));
-                }
                 close_socket_connection(socket_id);
             }
         }else{
-            connection_error_in_the_row=0;
             main_printf(TAG,"connected to server without select");
         }
     }else{
