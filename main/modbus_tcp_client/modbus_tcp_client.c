@@ -26,8 +26,6 @@
 #include "common.h"
 #include "modbus.h"
 #include <sys/socket.h>
-#include <u8g2.h>
-#include "u8g2_esp32_hal.h"
 #include <math.h>
 #ifndef DEBUG_SOCKET
 #define DEBUG_SOCKET 1

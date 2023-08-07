@@ -166,6 +166,8 @@ void common_duty_task(void *pvParameters ){
     uint32_t prepare_time = 0;
     uint32_t task_tick = 0;
     uint32_t signal_value;
+    u8 position = 0;
+    u8 const box_side = 10;
     if(common_duty_init()<0){
         led_blink_on(5000);
     }
@@ -181,7 +183,6 @@ void common_duty_task(void *pvParameters ){
                 gpio_set_level(CONFIG_LED_BLINK_GPIO, 0u);
             }
             if(((task_tick)%(1000u/DUTY_TASK_PERIOD_MS))==0u){
-                u8g2_SetFont(&u8g2, u8g2_font_5x8_tf);
                 /* rtc time update start */
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
                     regs_global.vars.live_time++;
@@ -196,10 +197,53 @@ void common_duty_task(void *pvParameters ){
                 char temp_buff[TEMP_BUFFER_SIZE] = {0u};
                 u16 sync_active_temp;
                 regs_copy_safe(&sync_active_temp,&sync_time_regs.vars.sync_active,sizeof(sync_active_temp));
-                semaphore_take(regs_access_mutex, portMAX_DELAY);{
-                sprintf(temp_buff,"m %u;%u.%u.%u.%u;S-%u",regs_global.vars.mdb_addr,regs_global.vars.sta_ip[0],regs_global.vars.sta_ip[1],regs_global.vars.sta_ip[2],regs_global.vars.sta_ip[3],sync_active_temp & SYNC_STATE_SYNCRONIZED);
-                }semaphore_release(regs_access_mutex);
                 u8g2_ClearBuffer(&u8g2);
+#if DISPLAY_TIME_DIFF
+                s32 time_div_slave = 0;
+                s32 time_div_own = 0;
+                u8 synchronized = 0;
+
+                semaphore_take(regs_access_mutex, portMAX_DELAY);{
+                    time_div_slave = sync_time_regs_from_client.vars.cli_sys_tick_dev;
+                    time_div_own = sync_time_regs.vars.sync_sys_tick_dev;
+                }semaphore_release(regs_access_mutex);    
+                if (time_div_slave!=0 && time_div_own != 0 ){
+                    if (time_div_slave + time_div_own < 10){
+                        synchronized = 1;
+                        u8g2_DrawBox(&u8g2, 0, 0, box_side, box_side/2);
+                    }else{
+                        u8g2_DrawFrame(&u8g2, position, 0, box_side, box_side/2);
+                    }
+                }else{
+                    u8g2_DrawFrame(&u8g2, position, 0, box_side, box_side/2);
+                }
+                if (position){
+                    position = 0;
+                }else{
+                    position = box_side * 2;
+                }
+                u8g2_SetFont(&u8g2, u8g2_font_10x20_mf);
+                u64 lap_own;
+                u64 lap_slave;
+                semaphore_take(regs_access_mutex, portMAX_DELAY);{
+                    lap_own = sr04_reg.vars.lap;
+                    lap_slave = sr04_reg_client.vars.cli_lap;
+                }semaphore_release(regs_access_mutex);
+                lap_own = lap_own - time_div_own;
+                u64 div;
+                if (lap_own > lap_slave){
+                    div = lap_own - lap_slave;
+                }else{
+                    div = lap_slave - lap_own;
+                }
+                sprintf(temp_buff,"%llu ms",div);
+                u8g2_DrawStr(&u8g2, 0,22u, temp_buff);
+                u8g2_SendBuffer(&u8g2);
+#elif   // DISPLAY_TIME_DIFF
+                semaphore_take(regs_access_mutex, portMAX_DELAY);{
+                    sprintf(temp_buff,"m %u;%u.%u.%u.%u;S-%u",regs_global.vars.mdb_addr,regs_global.vars.sta_ip[0],regs_global.vars.sta_ip[1],regs_global.vars.sta_ip[2],regs_global.vars.sta_ip[3],sync_active_temp & SYNC_STATE_SYNCRONIZED);
+                }semaphore_release(regs_access_mutex);
+                u8g2_SetFont(&u8g2, u8g2_font_5x8_tf);
                 u8g2_DrawStr(&u8g2, 0,6u, temp_buff);
                 memset(temp_buff,0,TEMP_BUFFER_SIZE);
                 memset(temp_buff,0,TEMP_BUFFER_SIZE);
@@ -223,6 +267,7 @@ void common_duty_task(void *pvParameters ){
                 sprintf(temp_buff,"dev %li %li",sync_sys_tick_dev_own,sync_sys_tick_dev_client);
                 u8g2_DrawStr(&u8g2, 0,30u, temp_buff);
                 u8g2_SendBuffer(&u8g2);
+#endif  // DISPLAY_TIME_DIFF              
             }
 #if UDP_BROADCAST_ENABLE && UDP_ADVERTISMENT_PERIOD
             if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==0u){

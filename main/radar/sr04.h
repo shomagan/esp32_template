@@ -13,6 +13,9 @@
 #include "regs.h"
 void sr04_task(void *arg);
 extern task_handle_t sr04_handle_id;
+extern u64 time_rising_edge;
+extern u64 time_faling_edge;
+
 typedef enum{
     ECHO_RISING_EDGE = (1<<7),
     ECHO_FALING_EDGE = (1<<8),

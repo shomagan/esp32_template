@@ -16,9 +16,15 @@
 #include "driver/gpio.h"
 #include "interrupt.h"
 #include "driver/timer.h"
+#include "os_type.h"
 #define ESP_INTR_FLAG_DEFAULT 0
 task_handle_t sr04_handle_id = NULL;
 sr04_reg_t sr04_reg;
+static portMUX_TYPE sr04_mux = portMUX_INITIALIZER_UNLOCKED;
+/*regs used in interrupts start*/
+u64 time_rising_edge = 0;
+u64 time_faling_edge = 0;
+/*regs used in interrupts end*/
 static void copy_regs(void);
 static int sr04_init(void);
 static int sr04_deinit();
@@ -78,53 +84,49 @@ void sr04_task(void *arg){
     float distance = 0.0f;        //!< "current distance" &ro
     u64 lap;       //!< "when we have sharp change of a distance, save it " &ro 
     u64 lap_paired_dev;    //!< "lap from paired device" &ro
-    u64 start_measurement;
-    u64 stop_measurement;
     sr04_init();
     u64 task_counter = 0;
     state |= BIT(SR04_STATE_ACTIVE);
     sr04_step_t sr04_step = 0;
     regs_global.vars.current_state[0] |= CS0_TASK_ACTIVE_SR04;
     while(1){
-        if(task_notify_wait(STOP_CHILD_PROCCES|ECHO_RISING_EDGE|ECHO_FALING_EDGE, &signal_value, 4)==pdTRUE){
+        if(task_notify_wait(STOP_CHILD_PROCCES|ECHO_FALING_EDGE, &signal_value, 8)==pdTRUE){
             /*by signal*/
             if (signal_value & STOP_CHILD_PROCCES){
                 regs_global.vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_SR04);
                 sr04_deinit();
                 task_delete(task_get_id());
-            }else if(signal_value & ECHO_RISING_EDGE){
-                timer_get_counter_value(TIMER_GROUP_0, TIMER_0, &start_measurement);
-                if (sr04_step == SR04_STEP_FALING){
-                    regs_global.vars.current_state[1] |= CS1_SR04_RISINGEDGE_AFTER_FALINGEDGE;
-                }
-                sr04_step = SR04_STEP_RISING;
             }else if (signal_value & ECHO_FALING_EDGE){
-                if (sr04_step == SR04_STEP_RISING){
-                    sr04_step = SR04_STEP_FALING;
-                    timer_get_counter_value(TIMER_GROUP_0, TIMER_0, &stop_measurement);
-                    distance = (float)(stop_measurement*10 - start_measurement*10) / 58.0f;
-                    if (distance>0.0f && distance<400.0f){
-                        state |= SR04_STATE_ECHO;
-                        if (distance < 10.0f){
-                            lap = regs_global.vars.sys_tick_counter;
-                            regs_copy_safe(&lap,&regs_global.vars.sys_tick_counter,sizeof(regs_global.vars.sys_tick_counter));
-                            regs_copy_safe(&sr04_reg.vars.lap,&lap,sizeof(sr04_reg.vars.lap));
-                        }
-                        regs_copy_safe(&sr04_reg.vars.lap_distance,&distance,sizeof(sr04_reg.vars.lap_distance));
+                sr04_step = SR04_STEP_FALING;
+                os_enter_critical(&sr04_mux);
+                distance = (float)(time_faling_edge*10 - time_rising_edge*10) / 58.0f;
+                os_exit_critical(&sr04_mux);
+                if (distance>0.0f && distance<400.0f){
+                    state |= SR04_STATE_ECHO;
+                    if (distance < 10.0f){
+                        lap = regs_global.vars.sys_tick_counter;
+                        regs_copy_safe(&lap,&regs_global.vars.sys_tick_counter,sizeof(regs_global.vars.sys_tick_counter));
+                        regs_copy_safe(&sr04_reg.vars.lap,&lap,sizeof(sr04_reg.vars.lap));
                     }
-                }else{
-                    regs_global.vars.current_state[1] |= CS1_SR04_FALINGEDGE_BEFORE_RISINGEDGE;
+                    regs_copy_safe(&sr04_reg.vars.lap_distance,&distance,sizeof(sr04_reg.vars.lap_distance));
                 }
             }
         }else{
-            if(sr04_step == SR04_STEP_TRIGGER || sr04_step == SR04_STEP_RISING){
-                sr04_step = 0;/*skip one trigger in case of consistancy problem*/
-                regs_global.vars.current_state[1] |= CS1_SR04_FULL_SUBSEQUNCE_PROBLEM;
-            }else{
-                regs_copy_safe(&sr04_reg.vars.lap_state,&state,sizeof(sr04_reg.vars.lap_state));
-                sr04_step = SR04_STEP_TRIGGER;
-                sr04_trigger();
-            }
+            os_enter_critical(&sr04_mux);
+            distance = (float)(time_faling_edge*10 - time_rising_edge*10) / 58.0f;
+            os_exit_critical(&sr04_mux);
+            if (distance>0.0f && distance<400.0f){
+                state |= SR04_STATE_ECHO;
+                if (distance < 10.0f){
+                    lap = regs_global.vars.sys_tick_counter;
+                    regs_copy_safe(&lap,&regs_global.vars.sys_tick_counter,sizeof(regs_global.vars.sys_tick_counter));
+                    regs_copy_safe(&sr04_reg.vars.lap,&lap,sizeof(sr04_reg.vars.lap));
+                }
+                regs_copy_safe(&sr04_reg.vars.lap_distance,&distance,sizeof(sr04_reg.vars.lap_distance));
+            }            
+            regs_copy_safe(&sr04_reg.vars.lap_state,&state,sizeof(sr04_reg.vars.lap_state));
+            sr04_step = SR04_STEP_TRIGGER;
+            sr04_trigger();
         }
         task_counter++;
     }
