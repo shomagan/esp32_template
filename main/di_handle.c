@@ -34,8 +34,6 @@ int di_handle_init(){
     gpio_config(&io_conf);
     io_conf.pin_bit_mask = 1ULL<<DI_HANDLER_PIN26_INPUT;
     gpio_config(&io_conf);
-    io_conf.pin_bit_mask = 1ULL<<DI_HANDLER_PIN25_INPUT;
-    gpio_config(&io_conf);
     io_conf.pin_bit_mask = 1ULL<<DI_HANDLER_PIN23_INPUT;
     gpio_config(&io_conf);
     io_conf.pin_bit_mask = 1ULL<<DI_HANDLER_PIN32_INPUT;
@@ -67,8 +65,6 @@ int di_handle_deinit(){
     io_conf.pin_bit_mask = 1ULL<<DI_HANDLER_PIN27_INPUT;
     gpio_config(&io_conf);
     io_conf.pin_bit_mask = 1ULL<<DI_HANDLER_PIN26_INPUT;
-    gpio_config(&io_conf);
-    io_conf.pin_bit_mask = 1ULL<<DI_HANDLER_PIN25_INPUT;
     gpio_config(&io_conf);
     io_conf.pin_bit_mask = 1ULL<<DI_HANDLER_PIN23_INPUT;
     gpio_config(&io_conf);
@@ -107,13 +103,12 @@ void di_handle_task(void *arg){
                 (gpio_get_level(DI_HANDLER_PIN14_INPUT)<<2u)|
                 (gpio_get_level(DI_HANDLER_PIN27_INPUT)<<3u)|
                 (gpio_get_level(DI_HANDLER_PIN26_INPUT)<<4u)|
-                (gpio_get_level(DI_HANDLER_PIN25_INPUT)<<5u)|
-                (gpio_get_level(DI_HANDLER_PIN23_INPUT)<<6u)|
-                (gpio_get_level(DI_HANDLER_PIN32_INPUT)<<7u)|
-                (gpio_get_level(DI_HANDLER_PIN15_INPUT)<<8u)|
-                (gpio_get_level(DI_HANDLER_PIN18_INPUT)<<9u)|
-                (gpio_get_level(DI_HANDLER_PIN4_INPUT_RESERV)<<10u)|
-                (gpio_get_level(DI_HANDLER_PIN5_INPUT_RESERV)<<11u);
+                (gpio_get_level(DI_HANDLER_PIN23_INPUT)<<5u)|
+                (gpio_get_level(DI_HANDLER_PIN32_INPUT)<<6u)|
+                (gpio_get_level(DI_HANDLER_PIN15_INPUT)<<7u)|
+                (gpio_get_level(DI_HANDLER_PIN18_INPUT)<<8u)|
+                (gpio_get_level(DI_HANDLER_PIN4_INPUT_RESERV)<<9u)|
+                (gpio_get_level(DI_HANDLER_PIN5_INPUT_RESERV)<<10u);
         pin_states = (~pin_states) & 0xFFF;
         semaphore_take(regs_access_mutex, portMAX_DELAY);{
 #if PIN_STATE_DEBUG            

@@ -21,6 +21,7 @@
 #include "lwip/sys.h"
 #include "esp_wifi_types.h"
 #include "esp_netif.h"
+#include "esp_sleep.h"
 #include "lwip/sockets.h"
 #include "slip_handle.h"
 #include "regs.h"
@@ -62,6 +63,7 @@ static int init_display(void);
  * @return
  */
 int main_init_tasks(void);
+static void setup_deep_sleep_pin(void);
 /**
  * @brief wifi_event_handler
  * @param arg
@@ -195,6 +197,7 @@ void app_main(void){
       ESP_ERROR_CHECK(nvs_flash_erase());
       ret = nvs_flash_init();
     }
+    vTaskDelay(2500 / portTICK_PERIOD_MS);
     ESP_ERROR_CHECK(ret);
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -213,6 +216,13 @@ void app_main(void){
     preinit_global_vars();
     ESP_ERROR_CHECK(esp_slip_init(&wifi_slip_config));
     common_init_gpio();
+    setup_deep_sleep_pin();/*set up pin to enter deep sleep mode - 25*/
+    u32 deep_sleep_pin = 0;
+    deep_sleep_pin = gpio_get_level(EXT_WAKEUP_PIN);
+    if (0u==deep_sleep_pin){/*dont wake up if pressed less than 2.5 sec*/
+        rtc_setup_wakeup_pin();
+        esp_deep_sleep_start();
+    }
     init_display();
     main_init_tasks();/*init all necessary tasks */
     wifi_common_init();
@@ -329,5 +339,17 @@ int main_init_tasks(){
 #endif
     return res;
 }
+static void setup_deep_sleep_pin(void){
+    // Configure GPIOs as outputs, before going to sleep
+    gpio_config_t io_conf = {0};
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pin_bit_mask = (1ULL<<EXT_WAKEUP_PIN);
+    io_conf.pull_down_en = 1;
+    io_conf.pull_up_en = 0;
+    gpio_config(&io_conf);
+    gpio_get_level(EXT_WAKEUP_PIN);
+}
+
 
 #endif //WIFI_SLIP_MAIN_C

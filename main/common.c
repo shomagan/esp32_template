@@ -54,6 +54,7 @@
 #include "regs.h"
 #include "mirror_storage.h"
 #include "esp_wifi.h"
+#include "esp_sleep.h"
 #include "pwm_test.h"
 #include "main_config.h"
 #include "modbus_tcp_client.h"
@@ -63,6 +64,7 @@
 #include "wifi_slip_main.h"
 #include "modbus_tcp_client.h"
 #include "driver/timer.h"
+#include "driver/rtc_io.h"
 #define DUTY_TASK_PERIOD_MS 100
 #define TEMP_BUFFER_SIZE 64
 #define TIMER_INTERVAL_SECONDS    1u
@@ -80,6 +82,7 @@ static int example_tg_timer_init(int group, int timer, bool auto_reload);
 static bool timer_group_isr_callback(void *args);
 static void common_timer_task(void *pvParameters );
 static void example_tg_timer_deinit(int group, int timer);
+
 static int timer_init_state = 0;
 /**
  * @brief led_blink_on enable the led on ms
@@ -166,6 +169,7 @@ void common_duty_task(void *pvParameters ){
     uint32_t prepare_time = 0;
     uint32_t task_tick = 0;
     uint32_t signal_value;
+    uint32_t deep_sleep_counter = 0;
     u8 position = 0;
     u8 const box_side = 10;
     if(common_duty_init()<0){
@@ -202,7 +206,6 @@ void common_duty_task(void *pvParameters ){
                 s32 time_div_slave = 0;
                 s32 time_div_own = 0;
                 u8 synchronized = 0;
-
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
                     time_div_slave = sync_time_regs_from_client.vars.cli_sys_tick_dev;
                     time_div_own = sync_time_regs.vars.sync_sys_tick_dev;
@@ -309,6 +312,25 @@ void common_duty_task(void *pvParameters ){
                     main_printf(TAG, "reset trough common duty task");
                     esp_restart();
                 }
+            }
+            u32 deep_sleep_pin = 0;
+            deep_sleep_pin = gpio_get_level(EXT_WAKEUP_PIN);
+            if (deep_sleep_pin){
+                deep_sleep_counter++;
+            }else{
+                deep_sleep_counter=0;
+            }
+            if (deep_sleep_counter>((5u/*sec*/*1000u)/DUTY_TASK_PERIOD_MS)){
+                main_printf(TAG, "deep sleep trough common duty task");
+                u8g2_ClearBuffer(&u8g2);
+                u8g2_SetFont(&u8g2, u8g2_font_9x15B_mf);
+                char temp_buff[TEMP_BUFFER_SIZE] = {0u};
+                sprintf(temp_buff,"going to sleep");
+                u8g2_DrawStr(&u8g2, 0,22u, temp_buff);
+                u8g2_SendBuffer(&u8g2);
+                vTaskDelay(2500 / portTICK_PERIOD_MS);
+                rtc_setup_wakeup_pin();
+                esp_deep_sleep_start();
             }
         }else{
             /*by signal*/
@@ -467,4 +489,16 @@ void common_timer_task(void *pvParameters ){
         task_tick++;
     }
 }
+/*set up wakeup source*/
+ void rtc_setup_wakeup_pin(void){
+    main_printf(TAG,"Enabling EXT0 wakeup on pin GPIO%d\n", EXT_WAKEUP_PIN);
+    ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(EXT_WAKEUP_PIN, 1));
+    // Configure pullup/downs via RTCIO to tie wakeup pins to inactive level during deepsleep.
+    // EXT0 resides in the same power domain (RTC_PERIPH) as the RTC IO pullup/downs.
+    // No need to keep that power domain explicitly, unlike EXT1.
+    ESP_ERROR_CHECK(rtc_gpio_pullup_dis(EXT_WAKEUP_PIN));
+    ESP_ERROR_CHECK(rtc_gpio_pulldown_en(EXT_WAKEUP_PIN));
+    rtc_gpio_isolate(GPIO_NUM_12);
+}
+
 #endif //COMMON_C

@@ -105,6 +105,8 @@ int memcmp_not_equal(const u8 * buff_0,const u8 * buff_1,u32 len);
  * @return
  */
 int common_init_gpio(void);
+/*set wake up pin*/
+void rtc_setup_wakeup_pin(void);
 
 /*add functions and variable declarations before */
 #ifdef __cplusplus
