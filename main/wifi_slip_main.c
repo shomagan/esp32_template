@@ -177,12 +177,15 @@ void wifi_init_softap(void){
              regs_global.vars.wifi_name, regs_global.vars.wifi_password, ESP_WIFI_CHANNEL);
 }
 static bool wifi_init_sta(){
-    wifi_config_t wifi_config;
-    memset(&wifi_config, 0,sizeof(wifi_config_t));
-    strcpy((char *)wifi_config.sta.ssid, (char*)regs_global.vars.wifi_router_name);
-    strcpy((char *)wifi_config.sta.password, (char*)regs_global.vars.wifi_password);
+    wifi_config_t sta_config;
+    memset(&sta_config, 0,sizeof(wifi_config_t));
+    strcpy((char *)sta_config.sta.ssid, (char*)regs_global.vars.wifi_router_name);
+    strcpy((char *)sta_config.sta.password, (char*)regs_global.vars.wifi_router_password);
+    main_printf(TAG, "ap_name:%s ap_password:%s ",
+             sta_config.sta.ssid, sta_config.sta.password);
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK( esp_wifi_connect() );
     return 0;
 }
@@ -197,7 +200,7 @@ void app_main(void){
       ESP_ERROR_CHECK(nvs_flash_erase());
       ret = nvs_flash_init();
     }
-    vTaskDelay(2500 / portTICK_PERIOD_MS);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
     ESP_ERROR_CHECK(ret);
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -220,8 +223,10 @@ void app_main(void){
     u32 deep_sleep_pin = 0;
     deep_sleep_pin = gpio_get_level(EXT_WAKEUP_PIN);
     if (0u==deep_sleep_pin){/*dont wake up if pressed less than 2.5 sec*/
-        rtc_setup_wakeup_pin();
-        esp_deep_sleep_start();
+        if(ESP_SLEEP_WAKEUP_EXT0 == esp_sleep_get_wakeup_cause()){
+            rtc_setup_wakeup_pin();
+            esp_deep_sleep_start();
+        }
     }
     init_display();
     main_init_tasks();/*init all necessary tasks */
@@ -230,7 +235,11 @@ void app_main(void){
     main_printf(TAG, "ap_name:%s ap_password:%s sta_name:%s sta_password:%s channel:%d",
              regs_global.vars.wifi_name, regs_global.vars.wifi_password,
              regs_global.vars.wifi_router_name, regs_global.vars.wifi_router_password,ESP_WIFI_CHANNEL);
-
+#if MAIN_CONFIG_WIFI_AP
+    regs_global.vars.wifi_setting = WIFI_ACCESS_POINT;
+#elif MAIN_CONFIG_WIFI_NODE
+    regs_global.vars.wifi_setting = WIFI_CLIENT;
+#endif
     if (regs_global.vars.wifi_setting == WIFI_ACCESS_POINT ||
         regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_ACCESS_POINT){
         main_printf(TAG, "ESP_WIFI_MODE_AP");

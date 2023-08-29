@@ -90,7 +90,7 @@ void sr04_task(void *arg){
     sr04_step_t sr04_step = 0;
     regs_global.vars.current_state[0] |= CS0_TASK_ACTIVE_SR04;
     while(1){
-        if(task_notify_wait(STOP_CHILD_PROCCES|ECHO_FALING_EDGE, &signal_value, 8)==pdTRUE){
+        if(task_notify_wait(STOP_CHILD_PROCCES|ECHO_FALING_EDGE, &signal_value, 5u)==pdTRUE){
             /*by signal*/
             if (signal_value & STOP_CHILD_PROCCES){
                 regs_global.vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_SR04);
@@ -103,7 +103,7 @@ void sr04_task(void *arg){
                 os_exit_critical(&sr04_mux);
                 if (distance>0.0f && distance<400.0f){
                     state |= SR04_STATE_ECHO;
-                    if (distance < 10.0f){
+                    if (distance < 2.0f){
                         lap = regs_global.vars.sys_tick_counter;
                         regs_copy_safe(&lap,&regs_global.vars.sys_tick_counter,sizeof(regs_global.vars.sys_tick_counter));
                         regs_copy_safe(&sr04_reg.vars.lap,&lap,sizeof(sr04_reg.vars.lap));

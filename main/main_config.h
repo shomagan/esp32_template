@@ -78,6 +78,9 @@
 #if DI_HANDLING_ENABLE && PMW_TEST_ENABLE
 #error "DI_HANDLING_ENABLE and PMW_TEST_ENABLE can't be enabled at the same time"
 #endif
+#define MAIN_CONFIG_WIFI_AP 1
+#define MAIN_CONFIG_WIFI_NODE 0
+
 /*add functions and variable declarations before */
 #ifdef __cplusplus
 }

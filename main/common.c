@@ -82,6 +82,7 @@ static int example_tg_timer_init(int group, int timer, bool auto_reload);
 static bool timer_group_isr_callback(void *args);
 static void common_timer_task(void *pvParameters );
 static void example_tg_timer_deinit(int group, int timer);
+#define BOX_SHIFT 40u
 
 static int timer_init_state = 0;
 /**
@@ -166,11 +167,11 @@ void common_duty_task(void *pvParameters ){
     (void) pvParameters;
     /* Init internal ADC service channels */
     /* Initialise xNextWakeTime - this only needs to be done once. */
-    uint32_t prepare_time = 0;
-    uint32_t task_tick = 0;
+    uint32_t prepare_time = 0u;
+    uint32_t task_tick = 0u;
     uint32_t signal_value;
-    uint32_t deep_sleep_counter = 0;
-    u8 position = 0;
+    uint32_t deep_sleep_counter = 0u;
+    u8 position = BOX_SHIFT;
     u8 const box_side = 10;
     if(common_duty_init()<0){
         led_blink_on(5000);
@@ -213,19 +214,34 @@ void common_duty_task(void *pvParameters ){
                 if (time_div_slave!=0 && time_div_own != 0 ){
                     if (time_div_slave + time_div_own < 10){
                         synchronized = 1;
-                        u8g2_DrawBox(&u8g2, 0, 0, box_side, box_side/2);
+                        u8g2_DrawBox(&u8g2, BOX_SHIFT, 0, box_side, box_side/2);
                     }else{
                         u8g2_DrawFrame(&u8g2, position, 0, box_side, box_side/2);
                     }
                 }else{
                     u8g2_DrawFrame(&u8g2, position, 0, box_side, box_side/2);
                 }
-                if (position){
-                    position = 0;
+                if (position != BOX_SHIFT){
+                    position = BOX_SHIFT;
                 }else{
-                    position = box_side * 2;
+                    position = BOX_SHIFT + box_side * 2;
                 }
                 u8g2_SetFont(&u8g2, u8g2_font_10x20_mf);
+#if MAIN_CONFIG_WIFI_AP
+                if (regs_global.vars.ap_connections_number){
+                    sprintf(temp_buff,"1c");
+                }else{
+                    sprintf(temp_buff,"1");
+                }
+#elif MAIN_CONFIG_WIFI_NODE
+                if (regs_global.vars.sta_connect){
+                    sprintf(temp_buff,"2c");
+                }else{
+                    sprintf(temp_buff,"2");
+                }
+#endif          
+                u8g2_SetFont(&u8g2, u8g2_font_4x6_mf);
+                u8g2_DrawStr(&u8g2, 0,6u, temp_buff);
                 u64 lap_own;
                 u64 lap_slave;
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
@@ -240,7 +256,8 @@ void common_duty_task(void *pvParameters ){
                     div = lap_slave - lap_own;
                 }
                 sprintf(temp_buff,"%llu ms",div);
-                u8g2_DrawStr(&u8g2, 0,22u, temp_buff);
+                u8g2_SetFont(&u8g2, u8g2_font_10x20_mf);
+                u8g2_DrawStr(&u8g2, 0,30u, temp_buff);
                 u8g2_SendBuffer(&u8g2);
 #elif   // DISPLAY_TIME_DIFF
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
