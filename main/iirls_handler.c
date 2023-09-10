@@ -31,7 +31,7 @@ void isimfw400_task(void *pvParameters ){
     task_tick = xTaskGetTickCount();
     u16 init_time=0;
     const int device_config = DEVICE_IIRLS_MASTER;
-    ui32 prev_signal=0;
+    u32 prev_signal=0;
     uint32_t signal_value;
     int event_is_signal;
     int itt = 0;

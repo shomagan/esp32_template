@@ -165,7 +165,7 @@ typedef struct MCU_PACK{
 
 typedef struct MCU_PACK{
     task_handle_t task_id;
-    regs_description_t * first_regs_description;
+    const regs_description_t * first_regs_description;
     u32 size_in_words;
     u32 failed_requests;
     u32 success_requests;

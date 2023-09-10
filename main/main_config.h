@@ -80,6 +80,7 @@
 #endif
 #define MAIN_CONFIG_WIFI_AP 1
 #define MAIN_CONFIG_WIFI_NODE 0
+#define ENABLE_DEEP_SLEEP 1
 
 /*add functions and variable declarations before */
 #ifdef __cplusplus

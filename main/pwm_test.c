@@ -44,7 +44,9 @@
 #include "regs.h"
 #include "regs_description.h"
 #include "driver/mcpwm.h"
+#if CONFIG_IDF_TARGET_ESP32
 #include "soc/mcpwm_periph.h"
+#endif //CONFIG_IDF_TARGET_ESP32
 #include "common.h"
 #include "pin_map.h"
 static void mcpwm_example_gpio_initialize(void);
@@ -62,18 +64,18 @@ static void mcpwm_example_gpio_initialize(void){
 #endif
 }
 void pwm_test_set(float duty_cycle){
-#if PWM_AIR_ENABLE
+#if (PWM_AIR_ENABLE && CONFIG_IDF_TARGET_ESP32)
     mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, duty_cycle);
     mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
     mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, duty_cycle);
     mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
-#endif
+#endif //PWM_AIR_ENABLE && CONFIG_IDF_TARGET_ESP32
 }
 
 static int pwm_test_init(void){
     mcpwm_example_gpio_initialize();
+#if (PWM_AIR_ENABLE && CONFIG_IDF_TARGET_ESP32)
     mcpwm_config_t pwm_config = {0};
-#if PWM_AIR_ENABLE
     pwm_config.frequency = 22000;    //frequency =22000Hz,
     pwm_config.cmpr_a = regs_global_part1.vars.test_pwm_value;    //duty cycle of PWMxA = 0
     pwm_config.cmpr_b = regs_global_part1.vars.test_pwm_value;    //duty cycle of PWMxb = 0
@@ -81,7 +83,8 @@ static int pwm_test_init(void){
     pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
     mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config);    //Configure PWM0A & PWM0B with above settings
     pwm_test_set(regs_global_part1.vars.test_pwm_value);
-#elif PWM_STEP_CONTROL_ENABLE
+#elif (PWM_STEP_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32)
+    mcpwm_config_t pwm_config = {0};
     pwm_config.frequency = 50;    //frequency = 50Hz,
     pwm_config.cmpr_a = servo_control_part.vars.servo_0;    //duty cycle of PWMxA = 0
     pwm_config.cmpr_b = servo_control_part.vars.servo_1;    //duty cycle of PWMxb = 0
@@ -99,10 +102,12 @@ static int pwm_test_init(void){
     return 0;
 }
 void pwm_control_task(void *arg){
+#if (PWM_STEP_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32)
     float servo0 = 0.0f;
     float servo1 = 0.0f;
     float servo2 = 0.0f;
     float servo3 = 0.0f;
+#endif //PWM_STEP_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32    
     uint32_t signal_value;
     pwm_test_init();
     while(1){
@@ -112,7 +117,7 @@ void pwm_control_task(void *arg){
             }else if(signal_value & PACKET_RECEIVED){
             }
         }
-#if PWM_STEP_CONTROL_ENABLE
+#if (PWM_STEP_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32)
         if (!compare_float_value(servo0, servo_control_part.vars.servo_0, 0.01f)){
             servo0=servo_control_part.vars.servo_0;
             mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, servo0);

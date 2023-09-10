@@ -50,6 +50,8 @@
 #define CONFIG_UART_BAUD_RATE     (115200u)
 #define CONFIG_IPV4 (1u)
 #define BUF_SIZE (512u)
+#define WAKE_UP_CONTROL_START_IS_NEEDED 0
+#define WAKE_UP_CONTROL_END_IS_NEEDED 1
 static const char *TAG = "wifi_slip_main";
 static bool s_sta_is_connected = false;
 slip_handle_config_t wifi_slip_config;
@@ -59,7 +61,6 @@ u8g2_t u8g2; // a structure which will contain all the data for one display
 /*ssd1306*/
 static int init_display(void);
 int main_init_tasks(void);
-static void setup_deep_sleep_pin(void);
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data);
 static void wifi_common_init(void);
@@ -67,6 +68,8 @@ static int common_init_gpio(void);
 static void wifi_init_softap(void);
 static bool wifi_init_sta(void);
 static void wifi_init_soft_ap_sta(void);
+static int wifi_init(void);
+static int wake_up_control(void);
 /**
  * @brief app_main
  */
@@ -96,38 +99,13 @@ void app_main(void){
     preinit_global_vars();
     ESP_ERROR_CHECK(esp_slip_init(&wifi_slip_config));
     common_init_gpio();
-    setup_deep_sleep_pin();/*set up pin to enter deep sleep mode - 25*/
-    u32 deep_sleep_pin = 0;
-    deep_sleep_pin = gpio_get_level(EXT_WAKEUP_PIN);
-    if (0u==deep_sleep_pin){/*dont wake up if pressed less than 2.5 sec*/
-        rtc_setup_wakeup_pin();
+    if(WAKE_UP_CONTROL_END_IS_NEEDED == wake_up_control()){
+        prepare_to_sleep();
         esp_deep_sleep_start();
     }
     init_display();
     main_init_tasks();/*init all necessary tasks */
-    wifi_common_init();
-    main_printf(TAG, "wifi setting %d",regs_global.vars.wifi_setting);
-    main_printf(TAG, "ap_name:%s ap_password:%s sta_name:%s sta_password:%s channel:%d",
-             regs_global.vars.wifi_name, regs_global.vars.wifi_password,
-             regs_global.vars.wifi_router_name, regs_global.vars.wifi_router_password,ESP_WIFI_CHANNEL);
-#if MAIN_CONFIG_WIFI_AP
-    regs_global.vars.wifi_setting = WIFI_ACCESS_POINT;
-#elif MAIN_CONFIG_WIFI_NODE
-    regs_global.vars.wifi_setting = WIFI_CLIENT;
-#endif
-    if (regs_global.vars.wifi_setting == WIFI_ACCESS_POINT ||
-        regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_ACCESS_POINT){
-        main_printf(TAG, "ESP_WIFI_MODE_AP");
-        wifi_init_softap();
-    }else if(regs_global.vars.wifi_setting == WIFI_CLIENT ||
-             regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_CLIENT){
-        main_printf(TAG, "ESP_WIFI_MODE_STA");
-        wifi_init_sta();
-    }else if(regs_global.vars.wifi_setting == WIFI_AP_STA||
-             regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_AP_STA){
-        main_printf(TAG, "ESP_WIFI_MODE_AP_STA");
-        wifi_init_soft_ap_sta();
-    }
+    wifi_init();
     httpd_init_sofi();
     modbus_tcp_init();
     udp_broadcast_init();
@@ -144,7 +122,6 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data){
     (void)(arg);
     (void)(event_data);
-
     if (event_base==WIFI_EVENT){
         switch (event_id) {
         case WIFI_EVENT_AP_STACONNECTED:
@@ -178,6 +155,50 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
             ESP_LOGI(TAG, "IP_EVENT_STA_GOT_IP");
         }
     }
+}
+/*
+* @brief wake_up_control - control wake up
+* @return non zero value if wake up is not needed
+*/
+static int wake_up_control(void){
+    int result = WAKE_UP_CONTROL_START_IS_NEEDED;
+    u32 deep_sleep_pin = 0;
+    deep_sleep_pin = gpio_get_level(EXT_WAKEUP_PIN);
+    if (0u==deep_sleep_pin){/*dont wake up if pressed less than 2.5 sec*/
+        result = WAKE_UP_CONTROL_END_IS_NEEDED;
+    }    
+    return result;
+}
+/*
+* @brief wifi_init - init wifi
+* @return
+*/
+static int wifi_init(void){
+    int result = 0;
+    wifi_common_init();
+    main_printf(TAG, "wifi setting %d",regs_global.vars.wifi_setting);
+    main_printf(TAG, "ap_name:%s ap_password:%s sta_name:%s sta_password:%s channel:%d",
+             regs_global.vars.wifi_name, regs_global.vars.wifi_password,
+             regs_global.vars.wifi_router_name, regs_global.vars.wifi_router_password,ESP_WIFI_CHANNEL);
+#if MAIN_CONFIG_WIFI_AP
+    regs_global.vars.wifi_setting = WIFI_ACCESS_POINT;
+#elif MAIN_CONFIG_WIFI_NODE
+    regs_global.vars.wifi_setting = WIFI_CLIENT;
+#endif
+    if (regs_global.vars.wifi_setting == WIFI_ACCESS_POINT ||
+        regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_ACCESS_POINT){
+        main_printf(TAG, "ESP_WIFI_MODE_AP");
+        wifi_init_softap();
+    }else if(regs_global.vars.wifi_setting == WIFI_CLIENT ||
+             regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_CLIENT){
+        main_printf(TAG, "ESP_WIFI_MODE_STA");
+        wifi_init_sta();
+    }else if(regs_global.vars.wifi_setting == WIFI_AP_STA||
+             regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_AP_STA){
+        main_printf(TAG, "ESP_WIFI_MODE_AP_STA");
+        wifi_init_soft_ap_sta();
+    }
+    return result;
 }
 /**
  * @brief wifi_common_init - common wifi init
@@ -356,18 +377,6 @@ int main_init_tasks(){
 #endif
     return res;
 }
-static void setup_deep_sleep_pin(void){
-    // Configure GPIOs as outputs, before going to sleep
-    gpio_config_t io_conf = {0};
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-    io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pin_bit_mask = (1ULL<<EXT_WAKEUP_PIN);
-    io_conf.pull_down_en = 1;
-    io_conf.pull_up_en = 0;
-    gpio_config(&io_conf);
-    gpio_get_level(EXT_WAKEUP_PIN);
-}
-
 /**
  * @brief common_init_gpio - init the common(system, like LED) use pins
  * @return
@@ -386,6 +395,16 @@ static int common_init_gpio(void){
     io_conf.pull_up_en = 0;
     //configure GPIO with the given settings
     gpio_config(&io_conf);
+#if ENABLE_DEEP_SLEEP
+    /*set up pin to enter deep sleep mode - 25*/
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pin_bit_mask = (1ULL<<EXT_WAKEUP_PIN);
+    io_conf.pull_down_en = 1;
+    io_conf.pull_up_en = 0;
+    gpio_config(&io_conf);
+    gpio_get_level(EXT_WAKEUP_PIN);
+#endif /*ENABLE_DEEP_SLEEP*/
     return 0;
 }
 #endif //WIFI_SLIP_MAIN_C

@@ -81,7 +81,6 @@ static task_handle_t common_timer_task_handle = NULL;
 static const char *TAG = "common";
 extern modbus_tcp_client_slave_connections_t modbus_tcp_client_slave_connections[];
 static u16 led_os_blink_on_time = 0;
-static portMUX_TYPE param_lock = portMUX_INITIALIZER_UNLOCKED;
 static int timer_init_state = 0;
 
 static int example_tg_timer_init(int group, int timer, bool auto_reload);
@@ -89,6 +88,10 @@ static bool timer_group_isr_callback(void *args);
 static void common_timer_task(void *pvParameters );
 static void example_tg_timer_deinit(int group, int timer);
 static int common_duty_init(void);
+#if ENABLE_DEEP_SLEEP
+/*set up wakeup source*/
+static void rtc_setup_wakeup_pin(void);
+#endif /*ENABLE_DEEP_SLEEP*/
 
 /**
  * @brief duty_task - do several common functions
@@ -278,8 +281,10 @@ void common_duty_task(void *pvParameters ){
                 u8g2_DrawStr(&u8g2, 0,22u, temp_buff);
                 u8g2_SendBuffer(&u8g2);
                 vTaskDelay(2500 / portTICK_PERIOD_MS);
-                rtc_setup_wakeup_pin();
-                esp_deep_sleep_start();
+#if ENABLE_DEEP_SLEEP                   
+                prepare_to_sleep();
+                esp_deep_sleep_start(); 
+#endif /*ENABLE_DEEP_SLEEP*/                
             }
         }else{
             /*by signal*/
@@ -492,8 +497,16 @@ void common_timer_task(void *pvParameters ){
         task_tick++;
     }
 }
+void prepare_to_sleep(void){
+    /*disable wifi*/
+#if ENABLE_DEEP_SLEEP    
+    esp_wifi_stop();
+    rtc_setup_wakeup_pin();
+#endif
+}
+#if ENABLE_DEEP_SLEEP
 /*set up wakeup source*/
- void rtc_setup_wakeup_pin(void){
+static void rtc_setup_wakeup_pin(void){
     main_printf(TAG,"Enabling EXT0 wakeup on pin GPIO%d\n", EXT_WAKEUP_PIN);
     ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(EXT_WAKEUP_PIN, 1));
     // Configure pullup/downs via RTCIO to tie wakeup pins to inactive level during deepsleep.
@@ -501,7 +514,10 @@ void common_timer_task(void *pvParameters ){
     // No need to keep that power domain explicitly, unlike EXT1.
     ESP_ERROR_CHECK(rtc_gpio_pullup_dis(EXT_WAKEUP_PIN));
     ESP_ERROR_CHECK(rtc_gpio_pulldown_en(EXT_WAKEUP_PIN));
+#if CONFIG_IDF_TARGET_ESP32    
     rtc_gpio_isolate(GPIO_NUM_12);
+#endif    /*CONFIG_IDF_TARGET_ESP32*/
 }
+#endif /*ENABLE_DEEP_SLEEP*/
 
 #endif //COMMON_C

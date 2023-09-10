@@ -100,8 +100,11 @@ int is_ascii_symbol_or_digital(u8 * buff, u32 len);
  * @return 0 -if not equal, 1 - if equal
  */
 int memcmp_not_equal(const u8 * buff_0,const u8 * buff_1,u32 len);
-/*set wake up pin*/
-void rtc_setup_wakeup_pin(void);
+/* 
+ * @brief prepare_to_sleep - prepare to sleep, disable wifi bluetooth and setup wakeup
+*/
+void prepare_to_sleep(void);
+
 
 /*add functions and variable declarations before */
 #ifdef __cplusplus

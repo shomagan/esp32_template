@@ -90,7 +90,7 @@ void sr04_task(void *arg){
     sr04_step_t sr04_step = 0;
     regs_global.vars.current_state[0] |= CS0_TASK_ACTIVE_SR04;
     while(1){
-        if(task_notify_wait(STOP_CHILD_PROCCES|ECHO_FALING_EDGE, &signal_value, 5u)==pdTRUE){
+        if(task_notify_wait(STOP_CHILD_PROCCES|ECHO_FALING_EDGE, &signal_value, 4u)==pdTRUE){
             /*by signal*/
             if (signal_value & STOP_CHILD_PROCCES){
                 regs_global.vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_SR04);
@@ -101,30 +101,16 @@ void sr04_task(void *arg){
                 os_enter_critical(&sr04_mux);
                 distance = (float)(time_faling_edge*10 - time_rising_edge*10) / 58.0f;
                 os_exit_critical(&sr04_mux);
-                if (distance>0.0f && distance<400.0f){
-                    state |= SR04_STATE_ECHO;
-                    if (distance < 2.0f){
-                        lap = regs_global.vars.sys_tick_counter;
-                        regs_copy_safe(&lap,&regs_global.vars.sys_tick_counter,sizeof(regs_global.vars.sys_tick_counter));
-                        regs_copy_safe(&sr04_reg.vars.lap,&lap,sizeof(sr04_reg.vars.lap));
-                    }
-                    regs_copy_safe(&sr04_reg.vars.lap_distance,&distance,sizeof(sr04_reg.vars.lap_distance));
-                }
-            }
-        }else{
-            os_enter_critical(&sr04_mux);
-            distance = (float)(time_faling_edge*10 - time_rising_edge*10) / 58.0f;
-            os_exit_critical(&sr04_mux);
-            if (distance>0.0f && distance<400.0f){
                 state |= SR04_STATE_ECHO;
-                if (distance < 10.0f){
+                regs_copy_safe(&sr04_reg.vars.lap_state,&state,sizeof(sr04_reg.vars.lap_state));                    
+                if (distance < 9.5f){
                     lap = regs_global.vars.sys_tick_counter;
                     regs_copy_safe(&lap,&regs_global.vars.sys_tick_counter,sizeof(regs_global.vars.sys_tick_counter));
                     regs_copy_safe(&sr04_reg.vars.lap,&lap,sizeof(sr04_reg.vars.lap));
                 }
                 regs_copy_safe(&sr04_reg.vars.lap_distance,&distance,sizeof(sr04_reg.vars.lap_distance));
-            }            
-            regs_copy_safe(&sr04_reg.vars.lap_state,&state,sizeof(sr04_reg.vars.lap_state));
+            }
+        }else{
             sr04_step = SR04_STEP_TRIGGER;
             sr04_trigger();
         }
@@ -134,10 +120,10 @@ void sr04_task(void *arg){
 static void sr04_trigger(){
     gpio_set_level(DI_HANDLER_PIN13_INPUT, 1);
     u64 temp_time, temp_time2;
-    int i =1000;
+    int i =10000u;
     timer_get_counter_value(TIMER_GROUP_0, TIMER_0, &temp_time);
     temp_time2 = temp_time;
-    while(i && ((temp_time2 - temp_time) != 0)){
+    while(i && ((temp_time2 - temp_time) > 2u)){
         timer_get_counter_value(TIMER_GROUP_0, TIMER_0, &temp_time2);
         i--;
     };

@@ -13,7 +13,9 @@
 #include "touch_handle.h"
 #include "regs.h"
 #include "regs_description.h"
+#if CONFIG_IDF_TARGET_ESP32
 #include "driver/touch_pad.h"
+#endif //CONFIG_IDF_TARGET_ESP32
 #include "driver/gpio.h"
 #include "mirror_storage.h"
 #include "math.h"
@@ -57,10 +59,12 @@ static void touch_gpio_initialize(void){
     io_conf.pull_up_en = 0;
     //configure GPIO with the given settings
     gpio_config(&io_conf);
+#if CONFIG_IDF_TARGET_ESP32
     touch_pad_config(GPIO_TOUCH_0, TOUCH_THRESH_NO_USE);
     touch_pad_config(GPIO_TOUCH_1, TOUCH_THRESH_NO_USE);
     touch_pad_config(GPIO_TOUCH_2, TOUCH_THRESH_NO_USE);
     touch_pad_config(GPIO_TOUCH_3, TOUCH_THRESH_NO_USE);
+#endif //CONFIG_IDF_TARGET_ESP32    
     //interrupt of rising edge
     io_conf.intr_type = GPIO_INTR_POSEDGE;
     //bit mask of the pins, use GPIO4/5 here
@@ -77,12 +81,14 @@ static void touch_gpio_initialize(void){
 }
 
 static int touch_handle_init(void){
+#if CONFIG_IDF_TARGET_ESP32    
     ESP_ERROR_CHECK(touch_pad_init());
     touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
     touch_gpio_initialize();
     if (regs_global_part1.vars.filter_use){
         touch_pad_filter_start(TOUCHPAD_FILTER_TOUCH_PERIOD);
     }
+#endif //CONFIG_IDF_TARGET_ESP32    
     return 0;
 }
 /*@brief deinit touch pins*/
@@ -99,9 +105,10 @@ void touch_task(void *arg){
     float driver_enabled_liters = regs_global_part1.vars.liters;
     u8 drive_enable = 0;
     u64 ticks=0;
-    u16 touch_0,touch_1,touch_2,touch_3;
     u16 touch_temp;
     uint16_t touch_value;
+#if CONFIG_IDF_TARGET_ESP32
+    u16 touch_0,touch_1,touch_2,touch_3;
     touch_pad_read_raw_data(GPIO_TOUCH_0, &touch_value);
     touch_pad_read_filtered(GPIO_TOUCH_0, &touch_temp);
     regs_global_part1.vars.touch_0 = touch_temp;
@@ -118,8 +125,10 @@ void touch_task(void *arg){
     touch_pad_read_filtered(GPIO_TOUCH_3, &touch_temp);
     regs_global_part1.vars.touch_3 = touch_temp;
     touch_3 = touch_temp;
+#endif    
     u32 filter_use = regs_global_part1.vars.filter_use;
     while(1){
+#if CONFIG_IDF_TARGET_ESP32        
         if (regs_global_part1.vars.filter_use && !filter_use){
             filter_use = regs_global_part1.vars.filter_use;
             touch_pad_filter_start(TOUCHPAD_FILTER_TOUCH_PERIOD);
@@ -127,6 +136,7 @@ void touch_task(void *arg){
             filter_use = regs_global_part1.vars.filter_use;
             touch_pad_filter_stop();
         }
+#endif //CONFIG_IDF_TARGET_ESP32        
         if(task_notify_wait(STOP_CHILD_PROCCES|PACKET_RECEIVED, &signal_value, 10)==pdTRUE){
             /*by signal*/
             if (signal_value & STOP_CHILD_PROCCES){
@@ -135,6 +145,7 @@ void touch_task(void *arg){
             }else if(signal_value & PACKET_RECEIVED){
             }
         }
+#if CONFIG_IDF_TARGET_ESP32        
         if (filter_use){
             touch_pad_read_raw_data(GPIO_TOUCH_0, &touch_value);
             touch_pad_read_filtered(GPIO_TOUCH_0, &touch_temp);
@@ -188,7 +199,7 @@ void touch_task(void *arg){
             touch_2 = regs_global_part1.vars.touch_2;
             touch_3 = regs_global_part1.vars.touch_3;
         }
-
+#endif
         if(ticks%10==0){
             regs_global_part1.vars.liters = regs_global_part1.vars.water_counter*regs_global_part1.vars.impulse_cost;
         }
