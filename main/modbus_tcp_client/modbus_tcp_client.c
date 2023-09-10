@@ -183,7 +183,7 @@ FNCT_NO_RETURN void modbus_tcp_client_common_task( void  * argument ){
         }
     }
 }
-#if TIME_SYNC_MEASUREMENT_ENABLE    
+#if TIME_SYNC_MEASUREMENT_ENABLE
     s32 time_sync_buffer[TIME_SYNC_BUFFER_SIZE] = {0};
     u16 time_sync_buffer_index = 0;
 #endif
@@ -286,6 +286,7 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                     errors_in_the_row++;
                     slave_connection->failed_requests++;
                 }else{
+#if TIME_SYNC_MEASUREMENT_ENABLE                            
                     if (time_sync_active == MDB_CLIENT_GROUP_SYS_TICK_COUNTER){
                         regs_copy_safe(&end_transsmition_time,&regs_global.vars.sys_tick_counter,sizeof(end_transsmition_time));
                         if ((end_transsmition_time - start_transsmition_time) < MAX_TRANSMISSION_TIME){
@@ -350,6 +351,7 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                             }
                         }
                     }
+#endif //TIME_SYNC_MEASUREMENT_ENABLE
                     errors_in_the_row=0;
                     success_packet_transaction_number++;
                     slave_connection->success_requests++;

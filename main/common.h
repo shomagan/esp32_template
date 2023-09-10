@@ -100,11 +100,6 @@ int is_ascii_symbol_or_digital(u8 * buff, u32 len);
  * @return 0 -if not equal, 1 - if equal
  */
 int memcmp_not_equal(const u8 * buff_0,const u8 * buff_1,u32 len);
-/**
- * @brief common_init_gpio - init the common(system, like LED) use pins
- * @return
- */
-int common_init_gpio(void);
 /*set wake up pin*/
 void rtc_setup_wakeup_pin(void);
 

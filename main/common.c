@@ -58,19 +58,23 @@
 #include "pwm_test.h"
 #include "main_config.h"
 #include "modbus_tcp_client.h"
-#if UDP_BROADCAST_ENABLE
-#include "udp_broadcast.h"
-#endif
 #include "wifi_slip_main.h"
 #include "modbus_tcp_client.h"
 #include "driver/timer.h"
 #include "driver/rtc_io.h"
+
+#if UDP_BROADCAST_ENABLE
+#include "udp_broadcast.h"
+#endif
+
 #define DUTY_TASK_PERIOD_MS 100
 #define TEMP_BUFFER_SIZE 64
 #define TIMER_INTERVAL_SECONDS    1u
 /*80.000.000 hz/800 = 100000 */
 #define TIMER_DIVIDER         800u  //  Hardware timer clock divider
 #define TIMER_SCALE           (TIMER_BASE_CLK / (TIMER_DIVIDER*200))  // convert counter value to seconds
+#define BOX_SHIFT 40u
+
 task_handle_t common_duty_task_handle;
 task_handle_t modbus_master_id;
 static task_handle_t common_timer_task_handle = NULL;
@@ -78,86 +82,14 @@ static const char *TAG = "common";
 extern modbus_tcp_client_slave_connections_t modbus_tcp_client_slave_connections[];
 static u16 led_os_blink_on_time = 0;
 static portMUX_TYPE param_lock = portMUX_INITIALIZER_UNLOCKED;
+static int timer_init_state = 0;
+
 static int example_tg_timer_init(int group, int timer, bool auto_reload);
 static bool timer_group_isr_callback(void *args);
 static void common_timer_task(void *pvParameters );
 static void example_tg_timer_deinit(int group, int timer);
-#define BOX_SHIFT 40u
+static int common_duty_init(void);
 
-static int timer_init_state = 0;
-/**
- * @brief led_blink_on enable the led on ms
- * @param time_ms
- */
-void led_blink_on(u16 time_ms){
-    if(!led_os_blink_on_time){led_os_blink_on_time = time_ms;}
-    return;
-}
-
-/**
- * @brief led_blink_off disable the led if it was enableb
- */
-void led_blink_off(){
-    if(led_os_blink_on_time){led_os_blink_on_time = 0u;}
-    return;
-}
-/**
- * @brief common_init
- * + creates task for timer
- * + timer initialization
- * @return
- */
-int common_duty_init(){
-    int res = task_create(common_timer_task, "common_timer_task", 1500, NULL, (tskIDLE_PRIORITY + 2), &common_timer_task_handle);
-    if (res != pdTRUE) {
-        ESP_LOGE(TAG, "create slip to wifi flow control task failed");
-        res = -1;
-    }else{
-        /*init timers*/
-        timer_init_state = example_tg_timer_init(TIMER_GROUP_0, TIMER_0, false);
-        if (timer_init_state <=0){
-            res = -1;
-        }else{
-            res = 0;
-        }
-    }
-    return res;
-}
-/**
- * @brief common_deinit
- * @return
- */
-int common_deinit(){
-    /*deinit timers*/
-    if (timer_init_state >0){
-        example_tg_timer_deinit(TIMER_GROUP_0, TIMER_0);
-    }
-    if (common_timer_task_handle!=NULL){
-        task_delete(common_timer_task_handle);
-    }
-    return 0;
-}
-
-/**
- * @brief common_init_gpio - init the common(system, like LED) use pins
- * @return
- */
-int common_init_gpio(){
-    gpio_config_t io_conf = {0};
-    //disable interrupt
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-    //set as output mode
-    io_conf.mode = GPIO_MODE_OUTPUT;
-    //bit mask of the pins that you want to set,e.g.GPIO18/19
-    io_conf.pin_bit_mask = 1<<CONFIG_LED_BLINK_GPIO;
-    //disable pull-down mode
-    io_conf.pull_down_en = 0;
-    //disable pull-up mode
-    io_conf.pull_up_en = 0;
-    //configure GPIO with the given settings
-    gpio_config(&io_conf);
-    return 0;
-}
 /**
  * @brief duty_task - do several common functions
  * @param pvParameters
@@ -259,7 +191,7 @@ void common_duty_task(void *pvParameters ){
                 u8g2_SetFont(&u8g2, u8g2_font_10x20_mf);
                 u8g2_DrawStr(&u8g2, 0,30u, temp_buff);
                 u8g2_SendBuffer(&u8g2);
-#elif   // DISPLAY_TIME_DIFF
+#else   // DISPLAY_TIME_DIFF
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
                     sprintf(temp_buff,"m %u;%u.%u.%u.%u;S-%u",regs_global.vars.mdb_addr,regs_global.vars.sta_ip[0],regs_global.vars.sta_ip[1],regs_global.vars.sta_ip[2],regs_global.vars.sta_ip[3],sync_active_temp & SYNC_STATE_SYNCRONIZED);
                 }semaphore_release(regs_access_mutex);
@@ -360,6 +292,60 @@ void common_duty_task(void *pvParameters ){
         task_tick++;
     }
 } 
+/**
+ * @brief common_init
+ * + creates task for timer
+ * + timer initialization
+ * @return
+ */
+static int common_duty_init(void){
+    int res = task_create(common_timer_task, "common_timer_task", 1500, NULL, (tskIDLE_PRIORITY + 2), &common_timer_task_handle);
+    if (res != pdTRUE) {
+        ESP_LOGE(TAG, "create slip to wifi flow control task failed");
+        res = -1;
+    }else{
+        /*init timers*/
+        timer_init_state = example_tg_timer_init(TIMER_GROUP_0, TIMER_0, false);
+        if (timer_init_state <=0){
+            res = -1;
+        }else{
+            res = 0;
+        }
+    }
+    return res;
+}
+
+/**
+ * @brief common_deinit
+ * @return
+ */
+int common_deinit(){
+    /*deinit timers*/
+    if (timer_init_state >0){
+        example_tg_timer_deinit(TIMER_GROUP_0, TIMER_0);
+    }
+    if (common_timer_task_handle!=NULL){
+        task_delete(common_timer_task_handle);
+    }
+    return 0;
+}
+/**
+ * @brief led_blink_on enable the led on ms
+ * @param time_ms
+ */
+void led_blink_on(u16 time_ms){
+    if(!led_os_blink_on_time){led_os_blink_on_time = time_ms;}
+    return;
+}
+
+/**
+ * @brief led_blink_off disable the led if it was enableb
+ */
+void led_blink_off(){
+    if(led_os_blink_on_time){led_os_blink_on_time = 0u;}
+    return;
+}
+
 /**
  * @brief is_ascii_symbol_or_digital
  * @param buff

@@ -58,12 +58,81 @@ u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
 u8g2_t u8g2; // a structure which will contain all the data for one display
 /*ssd1306*/
 static int init_display(void);
-/**
- * @brief common_init_tasks - all task must starting here
- * @return
- */
 int main_init_tasks(void);
 static void setup_deep_sleep_pin(void);
+static void wifi_event_handler(void* arg, esp_event_base_t event_base,
+                                    int32_t event_id, void* event_data);
+static void wifi_common_init(void);
+static int common_init_gpio(void);
+static void wifi_init_softap(void);
+static bool wifi_init_sta(void);
+static void wifi_init_soft_ap_sta(void);
+/**
+ * @brief app_main
+ */
+void app_main(void){
+    //Initialize NVS
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND){
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      ret = nvs_flash_init();
+    }
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    ESP_ERROR_CHECK(ret);
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    wifi_slip_config.running = 0;
+    wifi_slip_config.status = 0;
+    wifi_slip_config.reserv0 = 0;
+    wifi_slip_config.reserv1 = 1;
+    wifi_slip_config.uart_dev = 2;
+    wifi_slip_config.uart_tx_pin = 17;
+    wifi_slip_config.uart_rx_pin = 16;
+    wifi_slip_config.uart_baud = 400000;
+    wifi_slip_config.recv_buffer_len = 0;
+    regs_init();
+    mirror_storage_init();
+    dinamic_address = os_pool_create(&pool_dinamic_addr_def);
+    preinit_global_vars();
+    ESP_ERROR_CHECK(esp_slip_init(&wifi_slip_config));
+    common_init_gpio();
+    setup_deep_sleep_pin();/*set up pin to enter deep sleep mode - 25*/
+    u32 deep_sleep_pin = 0;
+    deep_sleep_pin = gpio_get_level(EXT_WAKEUP_PIN);
+    if (0u==deep_sleep_pin){/*dont wake up if pressed less than 2.5 sec*/
+        rtc_setup_wakeup_pin();
+        esp_deep_sleep_start();
+    }
+    init_display();
+    main_init_tasks();/*init all necessary tasks */
+    wifi_common_init();
+    main_printf(TAG, "wifi setting %d",regs_global.vars.wifi_setting);
+    main_printf(TAG, "ap_name:%s ap_password:%s sta_name:%s sta_password:%s channel:%d",
+             regs_global.vars.wifi_name, regs_global.vars.wifi_password,
+             regs_global.vars.wifi_router_name, regs_global.vars.wifi_router_password,ESP_WIFI_CHANNEL);
+#if MAIN_CONFIG_WIFI_AP
+    regs_global.vars.wifi_setting = WIFI_ACCESS_POINT;
+#elif MAIN_CONFIG_WIFI_NODE
+    regs_global.vars.wifi_setting = WIFI_CLIENT;
+#endif
+    if (regs_global.vars.wifi_setting == WIFI_ACCESS_POINT ||
+        regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_ACCESS_POINT){
+        main_printf(TAG, "ESP_WIFI_MODE_AP");
+        wifi_init_softap();
+    }else if(regs_global.vars.wifi_setting == WIFI_CLIENT ||
+             regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_CLIENT){
+        main_printf(TAG, "ESP_WIFI_MODE_STA");
+        wifi_init_sta();
+    }else if(regs_global.vars.wifi_setting == WIFI_AP_STA||
+             regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_AP_STA){
+        main_printf(TAG, "ESP_WIFI_MODE_AP_STA");
+        wifi_init_soft_ap_sta();
+    }
+    httpd_init_sofi();
+    modbus_tcp_init();
+    udp_broadcast_init();
+}
+
 /**
  * @brief wifi_event_handler
  * @param arg
@@ -110,6 +179,9 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         }
     }
 }
+/**
+ * @brief wifi_common_init - common wifi init
+ */
 static void wifi_common_init(void){
     static bool initialized = false;
     if (initialized) {
@@ -130,6 +202,9 @@ static void wifi_common_init(void){
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM));
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_NULL));
 }
+/**
+ * @brief wifi_init_softap - init softap
+ */
 static void wifi_init_soft_ap_sta(void){
     wifi_config_t ap_config;
     memset(&ap_config,0,sizeof(wifi_config_t));
@@ -176,7 +251,7 @@ void wifi_init_softap(void){
     ESP_LOGI(TAG, "wifi_init_softap finished. SSID:%s password:%s channel:%d",
              regs_global.vars.wifi_name, regs_global.vars.wifi_password, ESP_WIFI_CHANNEL);
 }
-static bool wifi_init_sta(){
+static bool wifi_init_sta(void){
     wifi_config_t sta_config;
     memset(&sta_config, 0,sizeof(wifi_config_t));
     strcpy((char *)sta_config.sta.ssid, (char*)regs_global.vars.wifi_router_name);
@@ -190,73 +265,6 @@ static bool wifi_init_sta(){
     return 0;
 }
 
-/**
- * @brief app_main
- */
-void app_main(void){
-    //Initialize NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND){
-      ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
-    }
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    ESP_ERROR_CHECK(ret);
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    wifi_slip_config.running = 0;
-    wifi_slip_config.status = 0;
-    wifi_slip_config.reserv0 = 0;
-    wifi_slip_config.reserv1 = 1;
-    wifi_slip_config.uart_dev = 2;
-    wifi_slip_config.uart_tx_pin = 17;
-    wifi_slip_config.uart_rx_pin = 16;
-    wifi_slip_config.uart_baud = 400000;
-    wifi_slip_config.recv_buffer_len = 0;
-    regs_init();
-    mirror_storage_init();
-    dinamic_address = os_pool_create(&pool_dinamic_addr_def);
-    preinit_global_vars();
-    ESP_ERROR_CHECK(esp_slip_init(&wifi_slip_config));
-    common_init_gpio();
-    setup_deep_sleep_pin();/*set up pin to enter deep sleep mode - 25*/
-    u32 deep_sleep_pin = 0;
-    deep_sleep_pin = gpio_get_level(EXT_WAKEUP_PIN);
-    if (0u==deep_sleep_pin){/*dont wake up if pressed less than 2.5 sec*/
-        if(ESP_SLEEP_WAKEUP_EXT0 == esp_sleep_get_wakeup_cause()){
-            rtc_setup_wakeup_pin();
-            esp_deep_sleep_start();
-        }
-    }
-    init_display();
-    main_init_tasks();/*init all necessary tasks */
-    wifi_common_init();
-    main_printf(TAG, "wifi setting %d",regs_global.vars.wifi_setting);
-    main_printf(TAG, "ap_name:%s ap_password:%s sta_name:%s sta_password:%s channel:%d",
-             regs_global.vars.wifi_name, regs_global.vars.wifi_password,
-             regs_global.vars.wifi_router_name, regs_global.vars.wifi_router_password,ESP_WIFI_CHANNEL);
-#if MAIN_CONFIG_WIFI_AP
-    regs_global.vars.wifi_setting = WIFI_ACCESS_POINT;
-#elif MAIN_CONFIG_WIFI_NODE
-    regs_global.vars.wifi_setting = WIFI_CLIENT;
-#endif
-    if (regs_global.vars.wifi_setting == WIFI_ACCESS_POINT ||
-        regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_ACCESS_POINT){
-        main_printf(TAG, "ESP_WIFI_MODE_AP");
-        wifi_init_softap();
-    }else if(regs_global.vars.wifi_setting == WIFI_CLIENT ||
-             regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_CLIENT){
-        main_printf(TAG, "ESP_WIFI_MODE_STA");
-        wifi_init_sta();
-    }else if(regs_global.vars.wifi_setting == WIFI_AP_STA||
-             regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_AP_STA){
-        main_printf(TAG, "ESP_WIFI_MODE_AP_STA");
-        wifi_init_soft_ap_sta();
-    }
-    httpd_init_sofi();
-    modbus_tcp_init();
-    udp_broadcast_init();
-}
 static int init_display(){
     int res=0;
     gpio_config_t io_conf = {0};
@@ -360,5 +368,24 @@ static void setup_deep_sleep_pin(void){
     gpio_get_level(EXT_WAKEUP_PIN);
 }
 
-
+/**
+ * @brief common_init_gpio - init the common(system, like LED) use pins
+ * @return
+ */
+static int common_init_gpio(void){
+    gpio_config_t io_conf = {0};
+    //disable interrupt
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    //set as output mode
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    //bit mask of the pins that you want to set,e.g.GPIO18/19
+    io_conf.pin_bit_mask = 1<<CONFIG_LED_BLINK_GPIO;
+    //disable pull-down mode
+    io_conf.pull_down_en = 0;
+    //disable pull-up mode
+    io_conf.pull_up_en = 0;
+    //configure GPIO with the given settings
+    gpio_config(&io_conf);
+    return 0;
+}
 #endif //WIFI_SLIP_MAIN_C
