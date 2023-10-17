@@ -122,8 +122,9 @@ void common_duty_task(void *pvParameters ){
             }else{
                 gpio_set_level(CONFIG_LED_BLINK_GPIO, 0u);
             }
+#if SR04_MODULE            
             if(((task_tick)%(1000u/DUTY_TASK_PERIOD_MS))==0u){
-                /* rtc time update start */
+                // rtc time update start 
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
                     regs_global.vars.live_time++;
                 }semaphore_release(regs_access_mutex);
@@ -146,9 +147,9 @@ void common_duty_task(void *pvParameters ){
                     time_div_slave = sync_time_regs_from_client.vars.cli_sys_tick_dev;
                     time_div_own = sync_time_regs.vars.sync_sys_tick_dev;
                 }semaphore_release(regs_access_mutex);    
-                if (time_div_slave!=0 && time_div_own != 0 ){
-                    if (time_div_slave + time_div_own < 10){
-                        synchronized = 1;
+                if ((time_div_slave != 0) && (time_div_own != 0) ){
+                    if ((time_div_slave + time_div_own) < 10){
+                        synchronized = 1u;
                         u8g2_DrawBox(&u8g2, BOX_SHIFT, 0, box_side, box_side/2);
                     }else{
                         u8g2_DrawFrame(&u8g2, position, 0, box_side, box_side/2);
@@ -159,7 +160,7 @@ void common_duty_task(void *pvParameters ){
                 if (position != BOX_SHIFT){
                     position = BOX_SHIFT;
                 }else{
-                    position = BOX_SHIFT + box_side * 2;
+                    position = BOX_SHIFT + box_side * 2u;
                 }
                 u8g2_SetFont(&u8g2, u8g2_font_10x20_mf);
 #if MAIN_CONFIG_WIFI_AP
@@ -174,14 +175,18 @@ void common_duty_task(void *pvParameters ){
                 }else{
                     sprintf(temp_buff,"2");
                 }
-#endif          
+#endif
                 u8g2_SetFont(&u8g2, u8g2_font_4x6_mf);
                 u8g2_DrawStr(&u8g2, 0,6u, temp_buff);
                 u64 lap_own;
                 u64 lap_slave;
+                int distance_own;
+                int distance_slave;
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
                     lap_own = sr04_reg.vars.lap;
                     lap_slave = sr04_reg_client.vars.cli_lap;
+                    distance_own = (int)sr04_reg.vars.distance_filtered;
+                    distance_slave = (int)sr04_reg_client.vars.cli_distance_filtered;
                 }semaphore_release(regs_access_mutex);
                 lap_own = lap_own - time_div_own;
                 u64 div;
@@ -191,8 +196,10 @@ void common_duty_task(void *pvParameters ){
                     div = lap_slave - lap_own;
                 }
                 sprintf(temp_buff,"%llu ms",div);
-                u8g2_SetFont(&u8g2, u8g2_font_10x20_mf);
-                u8g2_DrawStr(&u8g2, 0,30u, temp_buff);
+                u8g2_SetFont(&u8g2, u8g2_font_9x15B_mf);
+                u8g2_DrawStr(&u8g2, 0,18u, temp_buff);
+                sprintf(temp_buff,"%i sm %i",distance_own,distance_slave);
+                u8g2_DrawStr(&u8g2, 0,32u, temp_buff);
                 u8g2_SendBuffer(&u8g2);
 #else   // DISPLAY_TIME_DIFF
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
@@ -222,7 +229,8 @@ void common_duty_task(void *pvParameters ){
                 sprintf(temp_buff,"dev %li %li",sync_sys_tick_dev_own,sync_sys_tick_dev_client);
                 u8g2_DrawStr(&u8g2, 0,30u, temp_buff);
                 u8g2_SendBuffer(&u8g2);
-#endif  // DISPLAY_TIME_DIFF              
+#endif  // DISPLAY_TIME_DIFF
+#endif //SR04_MODULE
             }
 #if UDP_BROADCAST_ENABLE && UDP_ADVERTISMENT_PERIOD
             if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==0u){
@@ -236,9 +244,6 @@ void common_duty_task(void *pvParameters ){
 #endif
             }
 #endif
-            if(((task_tick)%(5000u/DUTY_TASK_PERIOD_MS))==0u){    // every 5 sec
-                main_printf(TAG,"tick %u",task_tick);
-            }
             if(((task_tick)%(60000u/DUTY_TASK_PERIOD_MS))==0u){    // every 60 sec
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
                     if(regs_global.vars.sta_connect==0){
@@ -284,8 +289,12 @@ void common_duty_task(void *pvParameters ){
 #if ENABLE_DEEP_SLEEP                   
                 prepare_to_sleep();
                 esp_deep_sleep_start(); 
-#endif /*ENABLE_DEEP_SLEEP*/                
+#endif //ENABLE_DEEP_SLEEP
             }
+            
+            if(((task_tick)%(5000u/DUTY_TASK_PERIOD_MS))==0u){    // every 5 sec
+                main_printf(TAG,"tick %u",task_tick);
+            }           
         }else{
             /*by signal*/
             if (signal_value & STOP_CHILD_PROCCES){

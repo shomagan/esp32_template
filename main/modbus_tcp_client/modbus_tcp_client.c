@@ -230,13 +230,13 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
         main_debug(TAG,"mdb address slave %lu mdb addr master%lu",RD_MDB_ADDRESS(regs_description_temp->modbus_description),RD_MDB_ADDRESS(regs_template.modbus_description));
         if(RD_MDB_ADDRESS(regs_description_temp->modbus_description) == RD_MDB_ADDRESS(regs_template.modbus_description)){
             time_sync_active = MDB_CLIENT_GROUP_SYS_TICK_COUNTER;
-        }
-    }else {
-        regs_template.name = "sync_sys_tick_dev";
-        if(regs_description_get_by_name(&regs_template)==0){
-            main_debug(TAG,"mdb address slave %lu mdb addr master%lu",RD_MDB_ADDRESS(regs_description_temp->modbus_description),RD_MDB_ADDRESS(regs_template.modbus_description));
-            if(RD_MDB_ADDRESS(regs_description_temp->modbus_description) == RD_MDB_ADDRESS(regs_template.modbus_description)){
-                time_sync_active = MDB_CLIENT_GROUP_TIME_SYNC;
+        } else {
+            regs_template.name = "sync_sys_tick_dev";
+            if(regs_description_get_by_name(&regs_template)==0){
+                main_debug(TAG,"mdb address slave %lu mdb addr master%lu",RD_MDB_ADDRESS(regs_description_temp->modbus_description),RD_MDB_ADDRESS(regs_template.modbus_description));
+                if(RD_MDB_ADDRESS(regs_description_temp->modbus_description) == RD_MDB_ADDRESS(regs_template.modbus_description)){
+                    time_sync_active = MDB_CLIENT_GROUP_TIME_SYNC;
+                }
             }
         }
     }

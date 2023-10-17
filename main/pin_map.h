@@ -49,7 +49,11 @@
    extern "C" {
 #endif
 /*add functions and variable declarations below */
+#if CONFIG_IDF_TARGET_ESP32
 #define CONFIG_LED_BLINK_GPIO (2)
+#else
+#define CONFIG_LED_BLINK_GPIO (10)
+#endif
 #define CONFIG_RXD_GPIO (16)
 #define CONFIG_TXD_GPIO (17)
 // ssd1306 SDA - GPIO21

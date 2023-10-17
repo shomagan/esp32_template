@@ -38,6 +38,7 @@
 #include "touch_handle.h"
 #include "di_handle.h"
 #include "sr04.h"
+#include "credentials.h"
 /* The examples use WiFi configuration that you can set via project configuration menu.
    If you'd rather not, just change the below entries to strings with
    the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
@@ -88,22 +89,36 @@ void app_main(void){
     wifi_slip_config.status = 0;
     wifi_slip_config.reserv0 = 0;
     wifi_slip_config.reserv1 = 1;
+#if CONFIG_IDF_TARGET_ESP32    
     wifi_slip_config.uart_dev = 2;
+#else
+    wifi_slip_config.uart_dev = 0;
+#endif 
     wifi_slip_config.uart_tx_pin = 17;
     wifi_slip_config.uart_rx_pin = 16;
+#if CONFIG_IDF_TARGET_ESP32    
     wifi_slip_config.uart_baud = 400000;
+#else
+    wifi_slip_config.uart_baud = 115200;
+#endif
     wifi_slip_config.recv_buffer_len = 0;
     regs_init();
     mirror_storage_init();
     dinamic_address = os_pool_create(&pool_dinamic_addr_def);
     preinit_global_vars();
+#if SLIP_ENABLE    
     ESP_ERROR_CHECK(esp_slip_init(&wifi_slip_config));
+#endif
     common_init_gpio();
+#if ENABLE_DEEP_SLEEP    
     if(WAKE_UP_CONTROL_END_IS_NEEDED == wake_up_control()){
         prepare_to_sleep();
         esp_deep_sleep_start();
     }
+#endif 
+#if SR04_MODULE
     init_display();
+#endif
     main_init_tasks();/*init all necessary tasks */
     wifi_init();
     httpd_init_sofi();
@@ -239,8 +254,9 @@ static void wifi_init_soft_ap_sta(void){
     ap_config.ap.channel = ESP_WIFI_CHANNEL;
     wifi_config_t sta_config;
     memset(&sta_config,0,sizeof(wifi_config_t));
-    strcpy((char *)sta_config.sta.ssid, (char*)regs_global.vars.wifi_router_name);
-    strcpy((char *)sta_config.sta.password, (char*)regs_global.vars.wifi_router_password);
+    memcpy(sta_config.sta.ssid,regs_global.vars.wifi_router_name,WIFE_STATION_NAME_SIZE);
+    memcpy(sta_config.sta.password,regs_global.vars.wifi_router_password,WIFE_STATION_PASSWORD_SIZE);
+    
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_APSTA) );
     ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_AP, &ap_config) );
     ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &sta_config) );
@@ -332,20 +348,24 @@ static int init_display(){
  */
 int main_init_tasks(){
     int res=0;
+#if SLIP_ENABLE    
     res = task_create(slip_flow_control_task, "wifi2slip_flow_ctl", 2048, NULL, (tskIDLE_PRIORITY + 2), &wifi_slip_config.slip_flow_control_handle);
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create wifi to slip flow control task failed");
     }
+#endif /*SLIP_ENABLE*/    
     res = task_create(common_duty_task, "common_duty_task", 3048, NULL, (tskIDLE_PRIORITY + 2), &common_duty_task_handle);
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create slip to wifi flow control task failed");
     }
+#if SLIP_ENABLE    
     res = task_create(slip_handle_uart_rx_task, "slip_modem_uart_rx_task", SLIP_RX_TASK_STACK_SIZE, &wifi_slip_config, SLIP_RX_TASK_PRIORITY, &wifi_slip_config.uart_rx_task);
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create slip_modem_uart_rx_task failed");
     }
+#endif /*SLIP_ENABLE*/
 #if PWM_TEST_ENABLE
-    res = task_create(pwm_control_task, "pwm_control_task", 2048, &wifi_slip_config, (tskIDLE_PRIORITY + 2), &pwm_task_handle);
+    res = task_create(pwm_control_task, "pwm_control_task", 2048, NULL, (tskIDLE_PRIORITY + 2), &pwm_task_handle);
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create pwm_control_task failed");
     }
@@ -368,7 +388,7 @@ int main_init_tasks(){
         main_printf(TAG,"di_handle_task inited success\n");
     }
 #endif
-#if SR04_HANDLING_ENABLE
+#if SR04_MODULE
     res = task_create(sr04_task, "sr04_task", 2464, NULL, (tskIDLE_PRIORITY + 3), &sr04_handle_id);
     if(res != pdTRUE){
         main_printf(TAG,"sr04_task inited success\n");

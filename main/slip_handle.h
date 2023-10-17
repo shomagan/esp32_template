@@ -58,7 +58,6 @@ typedef struct {
     uint8_t rx_buffer[SLIP_HANDLE_RX_BUFFER_LEN];
 } slip_handle_config_t;
 extern struct netif slipif;
-
 extern slip_handle_config_t wifi_slip_config;
 extern queue_handle_t slip_flow_control_queue;
 bool slip_rx_filter(uint8_t *data, uint32_t len);

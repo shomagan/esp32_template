@@ -102,6 +102,7 @@ static int pwm_test_init(void){
     return 0;
 }
 void pwm_control_task(void *arg){
+    (void)arg;
 #if (PWM_STEP_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32)
     float servo0 = 0.0f;
     float servo1 = 0.0f;

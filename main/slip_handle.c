@@ -244,7 +244,7 @@ static bool rx_filter(uint8_t *data, uint32_t len){
                 writed = regs_set_buffer(regs_global.vars.wifi_router_password,wifi_router_pass,WIFI_ROUTER_PASSWORD_LEN)==1?1:writed ;
             }
             if (writed){
-                ui32 prev_value = 0;
+                u32 prev_value = 0;
                 main_printf(TAG,"wifi settings was changed prepare to reset");
                 task_notify_send(common_duty_task_handle,PREPARE_TO_RESET,&prev_value);
             }

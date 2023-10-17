@@ -87,3 +87,4 @@
 { NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap_distance, 0,"current distance","lap_distance", FLOAT_REGS_FLAG, 86, 474, 0x31005, 1, 3, 5 },//!< "current distance" &ro
 { NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap, 0,"when we have sharp change of a distance, save it ","lap", U64_REGS_FLAG, 87, 478, 0x31007, 1, 3, 5 },//!< "when we have sharp change of a distance, save it " &ro 
 { NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap_paired_dev, 0,"lap from paired device","lap_paired_dev", U64_REGS_FLAG, 88, 486, 0x3100b, 1, 3, 5 },//!< "lap from paired device" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.distance_filtered, 0,"current distance filterd","distance_filtered", FLOAT_REGS_FLAG, 89, 494, 0x3100f, 1, 3, 5 },//!< "current distance filterd" &ro

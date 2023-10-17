@@ -418,6 +418,7 @@ typedef union{
         float lap_distance;        //!< "current distance" &ro
         u64 lap;       //!< "when we have sharp change of a distance, save it " &ro 
         u64 lap_paired_dev;    //!< "lap from paired device" &ro
+        float distance_filtered;      //!< "current distance filterd" &ro
     }vars;
     u8 bytes[32]; //for full bksram copy
 }sr04_reg_t;// #generator_use_description {"message":"end_struct"}
@@ -521,6 +522,7 @@ typedef union{
         float cli_distance;        //!< "current distance" &ro
         u64 cli_lap;       //!< "when we have sharp change of a distance, save it " &ro 
         u64 cli_lap_paired_dev;    //!< "lap from paired device" &ro
+        float cli_distance_filtered;      //!< "current distance filterd" &ro
     }vars;
     u8 bytes[32]; //for full bksram copy
 }sr04_reg_client_t;// #generator_use_description {"message":"end_struct"}

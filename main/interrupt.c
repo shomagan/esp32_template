@@ -15,6 +15,8 @@
 #include "driver/gpio.h"
 #include "driver/timer.h"
 #include "sr04.h"
+/*count faling edge only if rising edge has changed , skip 0*/
+u64 rising_edge_old = 0u;
 void IRAM_ATTR gpio_isr_handler(void* arg){
     uint32_t gpio_num = (uint32_t) arg;
     if (gpio_num == GPIO_WATER_COUNTER_INPUT){
@@ -25,8 +27,11 @@ void IRAM_ATTR gpio_isr_handler(void* arg){
         if(gpio_get_level(DI_HANDLER_PIN12_INPUT)){
             time_rising_edge = timer_group_get_counter_value_in_isr(TIMER_GROUP_0, TIMER_0);
         }else{
-            time_faling_edge = timer_group_get_counter_value_in_isr(TIMER_GROUP_0, TIMER_0);
-            task_notify_send_isr_overwrite(sr04_handle_id,0,(uint32_t)ECHO_FALING_EDGE,&prev_signal,&higher_priority_task_woken);
+            if (rising_edge_old != time_rising_edge){
+                time_faling_edge = timer_group_get_counter_value_in_isr(TIMER_GROUP_0, TIMER_0);
+                task_notify_send_isr_overwrite(sr04_handle_id,0,(uint32_t)ECHO_FALING_EDGE,&prev_signal,&higher_priority_task_woken);
+            }
+            rising_edge_old = time_rising_edge;
         }
     }
 }
