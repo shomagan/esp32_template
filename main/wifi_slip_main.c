@@ -116,7 +116,7 @@ void app_main(void){
         esp_deep_sleep_start();
     }
 #endif 
-#if SR04_MODULE
+#if SS1306_MODULE
     init_display();
 #endif
     main_init_tasks();/*init all necessary tasks */

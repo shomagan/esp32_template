@@ -19,7 +19,7 @@
 #include <stdlib.h> /* atoi */
 #include <stdio.h>
 
-static const u16 def_mdb_addr = 3;
+static const u16 def_mdb_addr = 11;
 static const u8 def_ip[4] = {192,168,1,232};
 static const u8 def_netmask[4] = {255,255,255,0};
 static const u8 def_gate[4] = {192,168,1,1};

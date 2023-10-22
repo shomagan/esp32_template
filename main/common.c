@@ -122,7 +122,7 @@ void common_duty_task(void *pvParameters ){
             }else{
                 gpio_set_level(CONFIG_LED_BLINK_GPIO, 0u);
             }
-#if SR04_MODULE            
+#if SS1306_MODULE            
             if(((task_tick)%(1000u/DUTY_TASK_PERIOD_MS))==0u){
                 // rtc time update start 
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
@@ -230,14 +230,17 @@ void common_duty_task(void *pvParameters ){
                 u8g2_DrawStr(&u8g2, 0,30u, temp_buff);
                 u8g2_SendBuffer(&u8g2);
 #endif  // DISPLAY_TIME_DIFF
-#endif //SR04_MODULE
             }
+#endif //SS1306_MODULE
+
 #if UDP_BROADCAST_ENABLE && UDP_ADVERTISMENT_PERIOD
-            if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==0u){
+            if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==0u)
 #if  UDP_BROADCAST_UDP_REQUEST_ENABLE 
-                    udp_broadcast_advertisement(UDP_BROADCAST_OPTION_UDP_REQUEST);
-#endif
+            {   
+                udp_broadcast_advertisement(UDP_BROADCAST_OPTION_UDP_REQUEST);
             }
+#endif
+            
             if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==1u){
 #if UDP_BROADCAST_INFORMATION_ENABLE 
                     udp_broadcast_advertisement(UDP_BROADCAST_OPTION_INFORMATION);

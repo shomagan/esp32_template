@@ -67,7 +67,8 @@
 #define UDP_ADVERTISMENT_PERIOD 300u
 #define MODBUS_MASTER_ENABLE 1
 #define DI_HANDLING_ENABLE 0
-#define SR04_MODULE 1
+#define SR04_MODULE 0
+#define SS1306_MODULE 0
 #define TIME_SYNC_MEASUREMENT_ENABLE 1
 #if TIME_SYNC_MEASUREMENT_ENABLE
 #define TIME_SYNC_DEVIATION_THRESHOLD 10
@@ -81,7 +82,7 @@
 #endif
 #define MAIN_CONFIG_WIFI_AP 0
 #define MAIN_CONFIG_WIFI_NODE 0
-#define ENABLE_DEEP_SLEEP 1
+#define ENABLE_DEEP_SLEEP 0
 
 /*add functions and variable declarations before */
 #ifdef __cplusplus
