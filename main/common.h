@@ -103,7 +103,9 @@ int memcmp_not_equal(const u8 * buff_0,const u8 * buff_1,u32 len);
 /* 
  * @brief prepare_to_sleep - prepare to sleep, disable wifi bluetooth and setup wakeup
 */
+#if ENABLE_DEEP_SLEEP
 void prepare_to_sleep(void);
+#endif
 
 
 /*add functions and variable declarations before */

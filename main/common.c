@@ -46,7 +46,8 @@
   * 2 led control
   */
 #include <string.h>
-#include "common.h"
+
+
 #include "pin_map.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -57,6 +58,7 @@
 #include "esp_sleep.h"
 #include "pwm_test.h"
 #include "main_config.h"
+#include "common.h"
 #include "modbus_tcp_client.h"
 #include "wifi_slip_main.h"
 #include "modbus_tcp_client.h"
@@ -67,8 +69,8 @@
 #include "udp_broadcast.h"
 #endif
 
-#define DUTY_TASK_PERIOD_MS 100
-#define TEMP_BUFFER_SIZE 64
+#define DUTY_TASK_PERIOD_MS 100u
+#define TEMP_BUFFER_SIZE 64u
 #define TIMER_INTERVAL_SECONDS    1u
 /*80.000.000 hz/800 = 100000 */
 #define TIMER_DIVIDER         800u  //  Hardware timer clock divider
@@ -90,7 +92,14 @@ static void example_tg_timer_deinit(int group, int timer);
 static int common_duty_init(void);
 #if ENABLE_DEEP_SLEEP
 /*set up wakeup source*/
+#if CONFIG_IDF_TARGET_ESP32
 static void rtc_setup_wakeup_pin(void);
+#endif
+#if CONFIG_IDF_TARGET_ESP32C3
+static void rtc_setup_wakeup_timer(void);
+#endif
+static int check_deep_sleep_condition_by_pin (const u32 duty_task_period_ms);
+static int check_deep_sleep_condition_by_timer (const u32 duty_task_period_ms);
 #endif /*ENABLE_DEEP_SLEEP*/
 
 /**
@@ -105,7 +114,6 @@ void common_duty_task(void *pvParameters ){
     uint32_t prepare_time = 0u;
     uint32_t task_tick = 0u;
     uint32_t signal_value;
-    uint32_t deep_sleep_counter = 0u;
     u8 position = BOX_SHIFT;
     u8 const box_side = 10;
     if(common_duty_init()<0){
@@ -273,27 +281,18 @@ void common_duty_task(void *pvParameters ){
                     esp_restart();
                 }
             }
-            u32 deep_sleep_pin = 0;
-            deep_sleep_pin = gpio_get_level(EXT_WAKEUP_PIN);
-            if (deep_sleep_pin){
-                deep_sleep_counter++;
-            }else{
-                deep_sleep_counter=0;
-            }
-            if (deep_sleep_counter>((5u/*sec*/*1000u)/DUTY_TASK_PERIOD_MS)){
-                main_printf(TAG, "deep sleep trough common duty task");
-                u8g2_ClearBuffer(&u8g2);
-                u8g2_SetFont(&u8g2, u8g2_font_9x15B_mf);
-                char temp_buff[TEMP_BUFFER_SIZE] = {0u};
-                sprintf(temp_buff,"going to sleep");
-                u8g2_DrawStr(&u8g2, 0,22u, temp_buff);
-                u8g2_SendBuffer(&u8g2);
-                vTaskDelay(2500 / portTICK_PERIOD_MS);
-#if ENABLE_DEEP_SLEEP                   
+#if ENABLE_DEEP_SLEEP
+#if CONFIG_IDF_TARGET_ESP32
+            if (check_deep_sleep_condition_by_pin (DUTY_TASK_PERIOD_MS) > 0u)
+#elif CONFIG_IDF_TARGET_ESP32C3
+            if (check_deep_sleep_condition_by_timer (DUTY_TASK_PERIOD_MS) > 0u)
+#endif
+            {
                 prepare_to_sleep();
-                esp_deep_sleep_start(); 
-#endif //ENABLE_DEEP_SLEEP
+                esp_deep_sleep_start();
             }
+#endif //ENABLE_DEEP_SLEEP
+            
             
             if(((task_tick)%(5000u/DUTY_TASK_PERIOD_MS))==0u){    // every 5 sec
                 main_printf(TAG,"tick %u",task_tick);
@@ -509,15 +508,18 @@ void common_timer_task(void *pvParameters ){
         task_tick++;
     }
 }
+#if ENABLE_DEEP_SLEEP
 void prepare_to_sleep(void){
     /*disable wifi*/
-#if ENABLE_DEEP_SLEEP    
     esp_wifi_stop();
+#if CONFIG_IDF_TARGET_ESP32
     rtc_setup_wakeup_pin();
-#endif
+#elif CONFIG_IDF_TARGET_ESP32C3
+    rtc_setup_wakeup_timer();
+#endif    /*CONFIG_IDF_TARGET_ESP32*/
 }
-#if ENABLE_DEEP_SLEEP
 /*set up wakeup source*/
+#if CONFIG_IDF_TARGET_ESP32
 static void rtc_setup_wakeup_pin(void){
     main_printf(TAG,"Enabling EXT0 wakeup on pin GPIO%d\n", EXT_WAKEUP_PIN);
     ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(EXT_WAKEUP_PIN, 1));
@@ -526,9 +528,46 @@ static void rtc_setup_wakeup_pin(void){
     // No need to keep that power domain explicitly, unlike EXT1.
     ESP_ERROR_CHECK(rtc_gpio_pullup_dis(EXT_WAKEUP_PIN));
     ESP_ERROR_CHECK(rtc_gpio_pulldown_en(EXT_WAKEUP_PIN));
-#if CONFIG_IDF_TARGET_ESP32    
     rtc_gpio_isolate(GPIO_NUM_12);
-#endif    /*CONFIG_IDF_TARGET_ESP32*/
+}
+#endif
+#if CONFIG_IDF_TARGET_ESP32C3
+static void rtc_setup_wakeup_timer(void){
+    const int wakeup_time_sec = 60;
+    main_printf(TAG,"Enabling timer wakeup, %ds\n", wakeup_time_sec);
+    esp_sleep_enable_timer_wakeup(wakeup_time_sec * 1000000);
+}
+#endif
+static int check_deep_sleep_condition_by_pin (const u32 duty_task_period_ms){
+    static u32 deep_sleep_counter;
+    u32 deep_sleep_pin = 0;
+    deep_sleep_pin = gpio_get_level(EXT_WAKEUP_PIN);
+    if (deep_sleep_pin){
+        deep_sleep_counter++;
+    }else{
+        deep_sleep_counter=0;
+    }
+    if (deep_sleep_counter>((5u/*sec*/*1000u)/duty_task_period_ms)){
+        main_printf(TAG, "deep sleep trough pin state in common task");
+        u8g2_ClearBuffer(&u8g2);
+        u8g2_SetFont(&u8g2, u8g2_font_9x15B_mf);
+        char temp_buff[TEMP_BUFFER_SIZE] = {0u};
+        sprintf(temp_buff,"going to sleep");
+        u8g2_DrawStr(&u8g2, 0,22u, temp_buff);
+        u8g2_SendBuffer(&u8g2);
+        vTaskDelay(2500 / portTICK_PERIOD_MS);
+        return 1;
+    }
+    return 0;
+}
+static int check_deep_sleep_condition_by_timer (const u32 duty_task_period_ms){
+    static u32 deep_sleep_counter;
+    deep_sleep_counter++;
+    if (deep_sleep_counter>((60u/*sec*/*1000u)/duty_task_period_ms)){
+        main_printf(TAG, "deep sleep trough timer");
+        return 1;
+    }
+    return 0;
 }
 #endif /*ENABLE_DEEP_SLEEP*/
 

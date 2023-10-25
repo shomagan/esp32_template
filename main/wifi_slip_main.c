@@ -110,12 +110,13 @@ void app_main(void){
     ESP_ERROR_CHECK(esp_slip_init(&wifi_slip_config));
 #endif
     common_init_gpio();
-#if ENABLE_DEEP_SLEEP    
+#if ENABLE_DEEP_SLEEP && CONFIG_IDF_TARGET_ESP32
     if(WAKE_UP_CONTROL_END_IS_NEEDED == wake_up_control()){
         prepare_to_sleep();
         esp_deep_sleep_start();
     }
-#endif 
+#endif            
+
 #if SS1306_MODULE
     init_display();
 #endif
