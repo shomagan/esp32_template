@@ -39,6 +39,7 @@
 #include "di_handle.h"
 #include "sr04.h"
 #include "credentials.h"
+#include "step_motor.h"
 /* The examples use WiFi configuration that you can set via project configuration menu.
    If you'd rather not, just change the below entries to strings with
    the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
@@ -60,7 +61,9 @@ u8 sta_connected = 0;
 u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
 u8g2_t u8g2; // a structure which will contain all the data for one display
 /*ssd1306*/
+#if SS1306_MODULE
 static int init_display(void);
+#endif
 int main_init_tasks(void);
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data);
@@ -70,7 +73,9 @@ static void wifi_init_softap(void);
 static bool wifi_init_sta(void);
 static void wifi_init_soft_ap_sta(void);
 static int wifi_init(void);
+#if ENABLE_DEEP_SLEEP && CONFIG_IDF_TARGET_ESP32
 static int wake_up_control(void);
+#endif
 /**
  * @brief app_main
  */
@@ -172,6 +177,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         }
     }
 }
+#if ENABLE_DEEP_SLEEP && CONFIG_IDF_TARGET_ESP32
 /*
 * @brief wake_up_control - control wake up
 * @return non zero value if wake up is not needed
@@ -185,6 +191,7 @@ static int wake_up_control(void){
     }    
     return result;
 }
+#endif
 /*
 * @brief wifi_init - init wifi
 * @return
@@ -302,7 +309,7 @@ static bool wifi_init_sta(void){
     ESP_ERROR_CHECK( esp_wifi_connect() );
     return 0;
 }
-
+#if SS1306_MODULE
 static int init_display(){
     int res=0;
     gpio_config_t io_conf = {0};
@@ -343,6 +350,7 @@ static int init_display(){
     u8g2_SendBuffer(&u8g2);
     return res;
 }
+#endif
 /**
  * @brief main_init_tasks - all task must starting here
  * @return
@@ -394,7 +402,12 @@ int main_init_tasks(){
     if(res != pdTRUE){
         main_printf(TAG,"sr04_task inited success\n");
     }
-
+#endif
+#if STEP_MOTOR
+    res = task_create(step_motor_task, "step_motor_task", 2464, NULL, (tskIDLE_PRIORITY + 2), &step_motor_handle_id);
+    if(res != pdTRUE){
+        main_printf(TAG,"step_motor_task inited success\n");
+    }
 #endif
     return res;
 }

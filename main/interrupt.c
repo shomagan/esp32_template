@@ -19,9 +19,14 @@
 u64 rising_edge_old = 0u;
 void IRAM_ATTR gpio_isr_handler(void* arg){
     uint32_t gpio_num = (uint32_t) arg;
-    if (gpio_num == GPIO_WATER_COUNTER_INPUT){
+#if    TOUCH_HANDLE_ENABLE/*need to rename!!!*/
+    if (gpio_num == GPIO_WATER_COUNTER_INPUT)
+    {
         regs_global_part1.vars.water_counter++;
-    }else if(gpio_num == DI_HANDLER_PIN12_INPUT){
+    }else
+#endif
+#if SR04_MODULE 
+    if(gpio_num == DI_HANDLER_PIN12_INPUT){
         ui32 prev_signal=0;
         int  higher_priority_task_woken;
         if(gpio_get_level(DI_HANDLER_PIN12_INPUT)){
@@ -34,6 +39,7 @@ void IRAM_ATTR gpio_isr_handler(void* arg){
             rising_edge_old = time_rising_edge;
         }
     }
+#endif
 }
 
 

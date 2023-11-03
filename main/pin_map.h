@@ -51,9 +51,6 @@
 /*add functions and variable declarations below */
 #if CONFIG_IDF_TARGET_ESP32
 #define CONFIG_LED_BLINK_GPIO (2)
-#else
-#define CONFIG_LED_BLINK_GPIO (10)
-#endif
 #define CONFIG_RXD_GPIO (16)
 #define CONFIG_TXD_GPIO (17)
 // ssd1306 SDA - GPIO21
@@ -95,8 +92,15 @@
 
 #define EXT_WAKEUP_PIN 25
 
+#elif CONFIG_IDF_TARGET_ESP32C3
+#define CONFIG_LED_BLINK_GPIO (10)
+#define GPIO_OUTPUT_STEP_MOTOR_EN     21
+#define GPIO_OUTPUT_STEP_MOTOR_DIR0     20
+#define GPIO_OUTPUT_STEP_MOTOR_STEP0     8
+#define GPIO_OUTPUT_STEP_MOTOR_DIR1     9
+#define GPIO_OUTPUT_STEP_MOTOR_STEP1     10
 
-
+#endif
 
 /*add functions and variable declarations before */
 #ifdef __cplusplus

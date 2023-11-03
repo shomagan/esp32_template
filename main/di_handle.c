@@ -16,6 +16,7 @@
 #include "driver/gpio.h"
 #define PIN_STATE_DEBUG 0
 task_handle_t di_handle_id = NULL;
+#if DI_HANDLING_ENABLE
 /*GPIO init*/
 int di_handle_init(){
     int result = 0;
@@ -129,4 +130,5 @@ void di_handle_task(void *arg){
         task_counter++;
     }
 }
+#endif /*DI_HANDLING_ENABLE*/
 #endif //DI_HANDLER_C

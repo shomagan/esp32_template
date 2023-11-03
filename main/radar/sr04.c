@@ -25,6 +25,7 @@ static portMUX_TYPE sr04_mux = portMUX_INITIALIZER_UNLOCKED;
 u64 time_rising_edge = 0;
 u64 time_faling_edge = 0;
 /*regs used in interrupts end*/
+#if SR04_MODULE
 static void copy_regs(void);
 static int sr04_init(void);
 static int sr04_deinit();
@@ -147,4 +148,5 @@ static u8 distance_is_in_range(float first,float second,float range){
     }
     return result;
 }
+#endif/*SR04_MODULE*/
 #endif //SR04_CPP

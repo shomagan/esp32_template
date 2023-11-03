@@ -55,7 +55,7 @@ uint8_t u8g2_esp32_spi_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void 
 #if CONFIG_IDF_TARGET_ESP32
 		  ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &bus_config, 1));
 #elif CONFIG_IDF_TARGET_ESP32C3
-		  ESP_ERROR_CHECK(spi_bus_initialize(SPI3_HOST, &bus_config, 1));
+		  ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &bus_config, 1));
 #endif
 
 		  spi_device_interface_config_t dev_config;
@@ -76,7 +76,7 @@ uint8_t u8g2_esp32_spi_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void 
 #if CONFIG_IDF_TARGET_ESP32
 		  ESP_ERROR_CHECK(spi_bus_add_device(HSPI_HOST, &dev_config, &handle_spi));
 #elif CONFIG_IDF_TARGET_ESP32C3
-		  ESP_ERROR_CHECK(spi_bus_add_device(SPI3_HOST, &dev_config, &handle_spi));
+		  ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &dev_config, &handle_spi));
 #endif		  
 
 		  break;

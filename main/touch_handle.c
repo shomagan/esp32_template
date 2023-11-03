@@ -22,9 +22,6 @@
 #include "pin_map.h"
 #include "interrupt.h"
 static const char *TAG = "touch_handle";
-static void touch_gpio_initialize(void);
-static int touch_handle_init(void);
-static int handle_touch_value(u16 touch_0,u16 touch_1,u16 touch_2,u16 touch_3);
 #define TOUCH_THRESH_NO_USE   (0)
 #define TOUCHPAD_FILTER_TOUCH_PERIOD (10)
 #define MAX_ENABLED_PERIOD_MS 600000UL
@@ -41,10 +38,13 @@ typedef enum{
     TOUCH_3_STATE = BIT(3),
 
 }touch_states_t;
-
-
-static touch_states_t touch_states = IDLE_STATE;
 task_handle_t touch_task_handle;
+
+#if TOUCH_HANDLE_ENABLE
+static touch_states_t touch_states = IDLE_STATE;
+static void touch_gpio_initialize(void);
+static int touch_handle_init(void);
+static int handle_touch_value(u16 touch_0,u16 touch_1,u16 touch_2,u16 touch_3);
 static void touch_gpio_initialize(void){
     gpio_config_t io_conf;
     //disable interrupt
@@ -293,5 +293,5 @@ static int handle_touch_value(u16 touch_0,u16 touch_1,u16 touch_2,u16 touch_3){
     int res=0;
     return res;
 }
-
+#endif /*TOUCH_HANDLE_ENABLE*/
 #endif //TOUCH_HANDLE
