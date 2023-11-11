@@ -74,8 +74,8 @@ def main():
    if type_source == "H":
       file_template.write("/*add includes below */\n")
       file_template.write("#include \"type_def.h\"\n")
-      file_template.write("#include \"main_debug.h\"\n")
       file_template.write("#include \"main_config.h\"\n")
+      file_template.write("#include \"regs.h\"\n")
       file_template.write("\n")
       file_template.write("/*add includes before */\n")
       file_template.write("#ifdef __cplusplus \n")           
@@ -103,9 +103,13 @@ def add_task_dependencies_for_header(file_template, component_name):
 
 
 def add_task_dependencies_for_c_source(file_template, component_name):
-   file_template.write(f"task_handle_t {component_name}_handle_id = NULL;\n")
-   file_template.write(f"static int {component_name}_init(void);\n")
-   file_template.write(f"static int {component_name}_deinit();\n")
+   file_template.write(f"""
+task_handle_t {component_name}_handle_id = NULL;
+static const char *TAG = \"{component_name}\";
+#define {component_name}_TASK_PERIOD (100u)
+static int {component_name}_init(void);
+static int {component_name}_deinit();
+""")
    file_template.write(f"""
 static int {component_name}_init(){{
    int result = 0;
@@ -123,9 +127,9 @@ void {component_name}_task(void *arg){{
    (void)(*arg);
    uint32_t signal_value;
    {component_name}_init();
-   u64 task_counter = 0;
+   u64 task_counter = 0u;
    while(1){{
-      if(task_notify_wait(STOP_CHILD_PROCCES, &signal_value, 100u)==pdTRUE){{
+      if(task_notify_wait(STOP_CHILD_PROCCES, &signal_value, {component_name}_TASK_PERIOD)==pdTRUE){{
          /*by signal*/
          if (signal_value & STOP_CHILD_PROCCES){{
             {component_name}_deinit();
