@@ -26,11 +26,12 @@ idf_component_register(
     SRCS "radar/sr04.c"
     SRCS "interrupt.c"
     SRCS "step_motor.c"
+    SRCS "sleep_control.c"
     INCLUDE_DIRS "."
     INCLUDE_DIRS "radar/."
     INCLUDE_DIRS "http/."
     INCLUDE_DIRS "udp_broadcast/."
     INCLUDE_DIRS "modbus_tcp_client/."
     EMBED_TXTFILES ${project_dir}/server_certs/ca_cert.pem
-    REQUIRES esp_netif nvs_flash u8g2
+    REQUIRES esp_netif nvs_flash u8g2 bt
 )

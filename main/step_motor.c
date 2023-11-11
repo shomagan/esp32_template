@@ -64,7 +64,7 @@ void step_motor_task(void *arg){
     gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_DIR0, 1u);
     gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_DIR1, 0u);
     while(1){
-        if(task_notify_wait(STOP_CHILD_PROCCES, &signal_value, 5u)==pdTRUE){
+        if(task_notify_wait(STOP_CHILD_PROCCES, &signal_value, 2u)==pdTRUE){
             /*by signal*/
             if (signal_value & STOP_CHILD_PROCCES){
                 step_motor_deinit();

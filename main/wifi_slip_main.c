@@ -40,6 +40,7 @@
 #include "sr04.h"
 #include "credentials.h"
 #include "step_motor.h"
+#include "sleep_control.h"
 /* The examples use WiFi configuration that you can set via project configuration menu.
    If you'd rather not, just change the below entries to strings with
    the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
@@ -188,7 +189,7 @@ static int wake_up_control(void){
     deep_sleep_pin = gpio_get_level(EXT_WAKEUP_PIN);
     if (0u==deep_sleep_pin){/*dont wake up if pressed less than 2.5 sec*/
         result = WAKE_UP_CONTROL_END_IS_NEEDED;
-    }    
+    }
     return result;
 }
 #endif
@@ -357,17 +358,15 @@ static int init_display(){
  */
 int main_init_tasks(){
     int res=0;
-#if SLIP_ENABLE    
-    res = task_create(slip_flow_control_task, "wifi2slip_flow_ctl", 2048, NULL, (tskIDLE_PRIORITY + 2), &wifi_slip_config.slip_flow_control_handle);
-    if (res != pdTRUE) {
-        ESP_LOGE(TAG, "create wifi to slip flow control task failed");
-    }
-#endif /*SLIP_ENABLE*/    
     res = task_create(common_duty_task, "common_duty_task", 3048, NULL, (tskIDLE_PRIORITY + 2), &common_duty_task_handle);
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create slip to wifi flow control task failed");
     }
 #if SLIP_ENABLE    
+    res = task_create(slip_flow_control_task, "wifi2slip_flow_ctl", 2048, NULL, (tskIDLE_PRIORITY + 2), &wifi_slip_config.slip_flow_control_handle);
+    if (res != pdTRUE) {
+        ESP_LOGE(TAG, "create wifi to slip flow control task failed");
+    }
     res = task_create(slip_handle_uart_rx_task, "slip_modem_uart_rx_task", SLIP_RX_TASK_STACK_SIZE, &wifi_slip_config, SLIP_RX_TASK_PRIORITY, &wifi_slip_config.uart_rx_task);
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create slip_modem_uart_rx_task failed");
@@ -409,6 +408,12 @@ int main_init_tasks(){
         main_printf(TAG,"step_motor_task inited success\n");
     }
 #endif
+#if ENABLE_DEEP_SLEEP
+    res = task_create(sleep_control_task, "sleep_control_task", 2464, NULL, (tskIDLE_PRIORITY + 2), &sleep_control_handle_id);
+    if(res != pdTRUE){
+        main_printf(TAG,"sleep_control_task inited success\n");
+    }
+#endif
     return res;
 }
 /**
@@ -429,7 +434,7 @@ static int common_init_gpio(void){
     io_conf.pull_up_en = 0;
     //configure GPIO with the given settings
     gpio_config(&io_conf);
-#if ENABLE_DEEP_SLEEP
+#if ENABLE_DEEP_SLEEP && CONFIG_IDF_TARGET_ESP32
     /*set up pin to enter deep sleep mode - 25*/
     io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_INPUT;
