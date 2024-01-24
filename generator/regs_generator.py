@@ -4,6 +4,7 @@ import re
 import fileinput
 import regs_handl
 import argparse
+import platform
 import base_object
 from git import Repo
 import hashlib
@@ -27,7 +28,7 @@ def generate(type_module):
                           "\"description\"\n"\
                           "   :widths: 3, 5, 3, 5, 5, 12, 10, 30\n\n"
     user_describe_rst.write(rst_desc_table_head)
-    regs_hand = regs_handl.RegsHand()
+    regs_hand = regs_handl.RegsHand(os_type=platform.system())
     regs_hand.regs_file_handling(regs_file_path, regs_description, regs_description_client)
     user_describe_rst.write(regs_hand.user_describe_rst)
     user_describe_rst.close()

@@ -274,6 +274,8 @@ typedef union{
         u16 i2c_display_address; //!< "address of display" &ro
         u8 sta_ip[4]; //!< "ip address of sta" &ro &save
         u32 live_time; //!< "live time in seconds" &ro
+        u64 unix_time; //!< "unix time , not implemented" 
+        u32 seconds_of_the_day; //!< "seconds of the day" 
         u32 flash_write_number; //!< "increments every flash write by an app" &ro &save
         u32 current_state[4]; //!< "current state of proccess" &ro description above
     }vars;

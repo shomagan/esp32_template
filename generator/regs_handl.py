@@ -52,25 +52,35 @@ MODBUS_FUNCTIONS = {
     "holding_registers": 3,
     "input_registers": 4,
 }
+SELF_TYPE_FLAG = 0x01
+RO_TYPE_FLAG = 0x02
+SAVE_TYPE_FLAG = 0x04
+USER_VARS_FLAG = 0x08
+CREDENTIAL_FLAG = 0x10
+CRITICAL_FLAG = 0x20
+MIN_VALUE_FLAG = 0x40
+MAX_VALUE_FLAG = 0x80
+
+FLAG_TYPE_STRING = {
+    RO_TYPE_FLAG: "READ_ONLY",
+    SAVE_TYPE_FLAG: "SAVED",
+    CREDENTIAL_FLAG: "CREDENTIAL",
+    CRITICAL_FLAG: "CRITICAL",
+    MIN_VALUE_FLAG: "HAVE_MIN_VALUE",
+    MAX_VALUE_FLAG: "HAVE_MAX_VALUE"
+}
+
 
 def short_name(name):
     return REGS_SHORT_NAME[name]
 
 
 class RegsHand(base_object.Base):
-    SELF_TYPE_FLAG = 0x01
-    RO_TYPE_FLAG = 0x02
-    SAVE_TYPE_FLAG = 0x04
-    USER_VARS_FLAG = 0x08
-    CREDENTIAL_FLAG = 0x10
-    CRITICAL_FLAG = 0x20
-    MIN_VALUE_FLAG = 0x40
-    MAX_VALUE_FLAG = 0x80
-
     GENERATOR_MARKER = "#generator_use_description"
     REGS_DESCRIPTION_SETTINGS = MIN_VALUE_FLAG | MAX_VALUE_FLAG
 
-    def __init__(self):
+    def __init__(self, os_type):
+        super().__init__(os_type)
         self.p_default = "NULL"
         self.p_min_value = "NULL"
         self.p_max_value = "NULL"
@@ -148,21 +158,21 @@ class RegsHand(base_object.Base):
                             self.add_variable_to_regs_description(regs_description, regs_description_client, i)
                             self.guid += self.size_value * REGS_SIZE[self.type]
                             self.byte_number += self.size_value * REGS_SIZE[self.type]
-                            if self.flag & self.SAVE_TYPE_FLAG:
+                            if self.flag & SAVE_TYPE_FLAG:
                                 self.saved_address += self.size_value * REGS_SIZE[self.type]
                     else:
                         self.user_describe_rst += self.add_variable_desc_rst()
                         self.add_variable_to_regs_description(regs_description, regs_description_client, 0)
                         self.guid += self.size_array * REGS_SIZE[self.type]
                         self.byte_number += self.size_array * REGS_SIZE[self.type]
-                        if self.flag & self.SAVE_TYPE_FLAG:
+                        if self.flag & SAVE_TYPE_FLAG:
                             self.saved_address += self.size_array * REGS_SIZE[self.type]
         regs_file.close()
 
     def check(self, line):
         self.size_array = 1
         self.reg_opt_is_struct = 0
-        self.flag = self.SELF_TYPE_FLAG
+        self.flag = SELF_TYPE_FLAG
         self.is_reduced = 0
         w = re.compile(
             '^\s*(?P<type>[\w\d]+)\s+(?P<name>[\w\d]+)\s*(\[(?P<size>[\d\w]+)\])?\s*;\s*(?P<descript>\/\/[\w\W]*$)*',
@@ -182,18 +192,18 @@ class RegsHand(base_object.Base):
                 else:
                     self.p_default = "NULL"
                 if "&ro" in self.temp_description:
-                    self.flag |= self.RO_TYPE_FLAG & 0xff
+                    self.flag |= RO_TYPE_FLAG & 0xff
                 if "&credential" in self.temp_description:
-                    self.flag |= self.CREDENTIAL_FLAG & 0xff
+                    self.flag |= CREDENTIAL_FLAG & 0xff
                 if "&save" in self.temp_description:
-                    self.flag |= self.SAVE_TYPE_FLAG & 0xff
+                    self.flag |= SAVE_TYPE_FLAG & 0xff
                 if "&max" in self.temp_description:
-                    self.flag |= self.MAX_VALUE_FLAG & 0xff
+                    self.flag |= MAX_VALUE_FLAG & 0xff
                     self.p_max_value = "&def_max_" + self.internal_name
                 else:
                     self.p_max_value = "NULL"
                 if "&min" in self.temp_description:
-                    self.flag |= self.MIN_VALUE_FLAG & 0xff
+                    self.flag |= MIN_VALUE_FLAG & 0xff
                     self.p_min_value = "&def_min_" + self.internal_name
                 else:
                     self.p_min_value = "NULL"
@@ -262,19 +272,7 @@ class RegsHand(base_object.Base):
 
     def add_variable_desc(self):
         mdb_base = self.modbus_structures_description[self.structure_number - 1]["register_start_address"]
-        flag_str = ""
-        if self.flag & self.RO_TYPE_FLAG:
-            flag_str += "READ_ONLY"
-        if self.flag & self.SAVE_TYPE_FLAG:
-            flag_str += ",SAVED"
-        if self.flag & self.CREDENTIAL_FLAG:
-            flag_str += ",CREDENTIAL"
-        if self.flag & self.CRITICAL_FLAG:
-            flag_str += ",CRITICAL"
-        if self.flag & self.MIN_VALUE_FLAG:
-            flag_str += ",HAVE_MIN_VALUE"
-        if self.flag & self.MAX_VALUE_FLAG:
-            flag_str += ",HAVE_MAX_VALUE"
+        flag_str = self.add_flag_string(self.flag)
         description = self.temp_description.replace("//", " ")
         description = description.replace("\n", " ")
         description = description.replace("!<", " ")
@@ -298,21 +296,11 @@ class RegsHand(base_object.Base):
         register_start_address = mdb_base + self.byte_number // 2
         modbus_function = self.modbus_structures_description[self.structure_number - 1]["modbus_function"]
         modbus_type = self.modbus_structures_description[self.structure_number - 1]["modbus_type"]
-        if self.flag & self.RO_TYPE_FLAG:
-            flag_str += "READ_ONLY"
+        flag_str = self.add_flag_string(self.flag)
+        if self.flag & RO_TYPE_FLAG:
             mdb_description = "{}_{} function-4".format(modbus_function, register_start_address)
         else:
             mdb_description = "{}_{} function-3,4,6,16".format(modbus_function, register_start_address)
-        if self.flag & self.SAVE_TYPE_FLAG:
-            flag_str += " SAVED"
-        if self.flag & self.CREDENTIAL_FLAG:
-            flag_str += ",CREDENTIAL"
-        if self.flag & self.CRITICAL_FLAG:
-            flag_str += ",CRITICAL"
-        if self.flag & self.MIN_VALUE_FLAG:
-            flag_str += ",HAVE_MIN_VALUE"
-        if self.flag & self.MAX_VALUE_FLAG:
-            flag_str += ",HAVE_MAX_VALUE"
         description = self.temp_description.replace("//", "")
         description = description.replace("\"", "")
         description = description.replace("\n", "")
@@ -327,6 +315,21 @@ class RegsHand(base_object.Base):
         return f'    \"{modbus_type}\",{str(self.ind)},\"{self.internal_name}\",\"{short_name(self.type)}\",{str(self.size_array)},' \
                f'{str(self.guid)},\"{mdb_description}\",\"{flag_str}\",\"{description}\"\n'
 
+
+    @staticmethod
+    def add_flag_string(flag):
+        def add_flag_string_by_type(flag_type, flag_str_temp=""):
+            if flag & flag_type:
+                if len(flag_str_temp):
+                    flag_str_temp += ","
+                flag_str_temp += FLAG_TYPE_STRING[flag_type]
+            return flag_str_temp
+        flag_str = ""
+        for i in FLAG_TYPE_STRING:
+            flag_str = add_flag_string_by_type(i, flag_str)
+        return flag_str
+
+
     def add_variable_to_regs_description(self, regs_description_write_file, regs_description_client, number):
         mdb_regs_global_name = self.modbus_structures_description[self.structure_number - 1]["regs_global_name"]
         mdb_base = self.modbus_structures_description[self.structure_number - 1]["register_start_address"]
@@ -334,7 +337,7 @@ class RegsHand(base_object.Base):
             self.modbus_structures_description[self.structure_number - 1]["modbus_function"]]
         modbus_type = self.modbus_structures_description[self.structure_number - 1]["modbus_type"]
         register_start_address = (mdb_base + self.byte_number // 2) + (modbus_function << 16)
-        if self.flag & self.SAVE_TYPE_FLAG:
+        if self.flag & SAVE_TYPE_FLAG:
             saved_address = self.saved_address
         else:
             saved_address = 0

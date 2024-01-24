@@ -26,7 +26,7 @@ static const u8 def_gate[4] = {192,168,1,1};
 static const u8 def_slip_ip[4] = {172,16,1,200};
 static const u8 def_slip_netmask[4] = {255,255,255,0};
 static const u8 def_slip_gate[4] = {172,16,1,232};
-static const u16 def_uart_debug_sets = 0xC853;
+static const u16 def_uart_debug_sets = 0xC853;/*what!?*/
 static const u8 def_fw_version[FW_VERSION_SIZE] = FW_VERSION;
 static const u16 def_num_of_vars = NUM_OF_SELF_VARS;
 static const u16 def_client_num_of_vars = NUM_OF_CLIENT_VARS;
@@ -38,7 +38,7 @@ static const u8 def_wifi_router_name[WIFI_ROUTER_NAME_LEN] = WIFE_STATION_SECURE
 static const u8 def_wifi_router_password[WIFI_ROUTER_PASSWORD_LEN] = WIFE_STATION_SECURE_PASSWORD;
 static const u16 def_wifi_setting = WIFI_AP_STA;               //!<"type of wifi and settings" &save &def
 static const float def_test_pwm_value = 50.0f;
-const u32 def_table_version = 0x0005;
+const u32 def_table_version = 0x0006;   //!<"current version, if changed, starting from scratch"
 static const float def_servo_0 = 10.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
 static const float def_min_servo_0 = 0.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
 static const float def_max_servo_0 = 100.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
@@ -120,68 +120,70 @@ regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { NULL, NULL, NULL, (u8*)&regs_global.vars.i2c_display_address, 0,"address of display","i2c_display_address", U16_REGS_FLAG, 48, 316, 0x3009e, 1, 3, 0 },//!< "address of display" &ro
 { NULL, NULL, NULL, (u8*)&regs_global.vars.sta_ip[0], 142,"ip address of sta","sta_ip", U8_REGS_FLAG, 49, 318, 0x3009f, 4, 7, 0 },//!< "ip address of sta" &ro &save
 { NULL, NULL, NULL, (u8*)&regs_global.vars.live_time, 0,"live time in seconds","live_time", U32_REGS_FLAG, 50, 322, 0x300a1, 1, 3, 0 },//!< "live time in seconds" &ro
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.flash_write_number, 146,"increments every flash write by an app","flash_write_number", U32_REGS_FLAG, 51, 326, 0x300a3, 1, 7, 0 },//!< "increments every flash write by an app" &ro &save
-{ NULL, NULL, NULL, (u8*)&regs_global.vars.current_state[0], 0,"current state of proccess","current_state", U32_REGS_FLAG, 52, 330, 0x300a5, 4, 3, 0 },//!< "current state of proccess" &ro description above
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.test_pwm_value, 150,"test pwm value [0;100]","test_pwm_value", FLOAT_REGS_FLAG, 53, 346, 0x303e8, 1, 5, 1 },//!<"test pwm value [0;100]" &def &save
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_0, 0,"touch_0","touch_0", U16_REGS_FLAG, 54, 350, 0x303ea, 1, 1, 1 },
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1, 0,"touch_1","touch_1", U16_REGS_FLAG, 55, 352, 0x303eb, 1, 1, 1 },
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2, 0,"touch_2","touch_2", U16_REGS_FLAG, 56, 354, 0x303ec, 1, 1, 1 },
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3, 0,"touch_3","touch_3", U16_REGS_FLAG, 57, 356, 0x303ed, 1, 1, 1 },
-{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.water_counter, 154,"di counter","water_counter", U64_REGS_FLAG, 58, 358, 0x303ee, 1, 7, 1 },//!< "di counter" &save &ro
-{ &def_impulse_cost, NULL, NULL, (u8*)&regs_global_part1.vars.impulse_cost, 162,"cost of di impulse in liters","impulse_cost", FLOAT_REGS_FLAG, 59, 366, 0x303f2, 1, 5, 1 },//!< "cost of di impulse in liters" &save &def
-{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.liters, 166,"liters calculated","liters", FLOAT_REGS_FLAG, 60, 370, 0x303f4, 1, 5, 1 },//!< "liters calculated" &save
-{ &def_touch_1_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_count, 170,"ms ","touch_1_count", U32_REGS_FLAG, 61, 374, 0x303f6, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_2_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_count, 174,"ms ","touch_2_count", U32_REGS_FLAG, 62, 378, 0x303f8, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_3_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_count, 178,"ms ","touch_3_count", U32_REGS_FLAG, 63, 382, 0x303fa, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_1_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_liters, 182,"ms ","touch_1_liters", FLOAT_REGS_FLAG, 64, 386, 0x303fc, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_2_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_liters, 186,"ms ","touch_2_liters", FLOAT_REGS_FLAG, 65, 390, 0x303fe, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_3_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_liters, 190,"ms ","touch_3_liters", FLOAT_REGS_FLAG, 66, 394, 0x30400, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_0_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_0_trshld, 194,"in percents","touch_0_trshld", FLOAT_REGS_FLAG, 67, 398, 0x30402, 1, 5, 1 },//!< "in percents" &save &def
-{ &def_touch_1_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_trshld, 198,"in percents","touch_1_trshld", FLOAT_REGS_FLAG, 68, 402, 0x30404, 1, 5, 1 },//!< "in percents" &save &def
-{ &def_touch_2_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_trshld, 202,"in percents","touch_2_trshld", FLOAT_REGS_FLAG, 69, 406, 0x30406, 1, 5, 1 },//!< "in percents" &save &def
-{ &def_touch_3_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_trshld, 206,"in percents","touch_3_trshld", FLOAT_REGS_FLAG, 70, 410, 0x30408, 1, 5, 1 },//!< "in percents" &save &def
-{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.filter_use, 210,"use inside filter fot touch sensors or not ","filter_use", U32_REGS_FLAG, 71, 414, 0x3040a, 1, 5, 1 },//!< "use inside filter fot touch sensors or not " &save
-{ &def_touch_handle_period, NULL, NULL, (u8*)&regs_global_part1.vars.touch_handle_period, 214,"in ms period of handle touchs","touch_handle_period", U32_REGS_FLAG, 72, 418, 0x3040c, 1, 5, 1 },//!< "in ms period of handle touchs" &save &def
-{ &def_by_time, NULL, NULL, (u8*)&regs_global_part1.vars.by_time, 218,"by time or counter","by_time", U32_REGS_FLAG, 73, 422, 0x3040e, 1, 5, 1 },//!< "by time or counter" &save &def
-{ &def_servo_0, &def_min_servo_0, &def_max_servo_0, (u8*)&servo_control_part.vars.servo_0, 0,"servo pwm value [0;100]","servo_0", FLOAT_REGS_FLAG, 74, 426, 0x307d0, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
-{ &def_servo_1, &def_min_servo_1, &def_max_servo_1, (u8*)&servo_control_part.vars.servo_1, 0,"servo pwm value [0;100]","servo_1", FLOAT_REGS_FLAG, 75, 430, 0x307d2, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
-{ &def_servo_2, &def_min_servo_2, &def_max_servo_2, (u8*)&servo_control_part.vars.servo_2, 0,"servo pwm value [0;100]","servo_2", FLOAT_REGS_FLAG, 76, 434, 0x307d4, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
-{ &def_servo_3, &def_min_servo_3, &def_max_servo_3, (u8*)&servo_control_part.vars.servo_3, 0,"servo pwm value [0;100]","servo_3", FLOAT_REGS_FLAG, 77, 438, 0x307d6, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
-{ NULL, NULL, NULL, (u8*)&di_control.vars.pin_state, 0,"current states of digital inputs","pin_state", U32_REGS_FLAG, 78, 442, 0x30bb8, 1, 1, 3 },//!<"current states of digital inputs"
-{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_sys_tick_dev, 0,"deviation between master and slave","sync_sys_tick_dev", S32_REGS_FLAG, 79, 446, 0x30fa0, 1, 3, 4 },//!< "deviation between master and slave" &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_sys_tick_slave, 0,"time read from slave","sync_sys_tick_slave", U64_REGS_FLAG, 80, 450, 0x30fa2, 1, 3, 4 },//!< "time read from slave" &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_sys_tick_master, 0,"time read from master","sync_sys_tick_master", U64_REGS_FLAG, 81, 458, 0x30fa6, 1, 3, 4 },//!< "time read from master" &ro 
-{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_average_time_ms, 0,"average send receive time ","sync_average_time_ms", U16_REGS_FLAG, 82, 466, 0x30faa, 1, 3, 4 },//!< "average send receive time " &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_last_req_time_ms, 0,"last send receive time ","sync_last_req_time_ms", U16_REGS_FLAG, 83, 468, 0x30fab, 1, 3, 4 },//!< "last send receive time " &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_active, 0,"activated measurement","sync_active", U16_REGS_FLAG, 84, 470, 0x30fac, 1, 3, 4 },//!< "activated measurement" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap_state, 0,"state sr04, bit0 - activated, bit1 - echo signal received","lap_state", U16_REGS_FLAG, 85, 472, 0x31004, 1, 3, 5 },//!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap_distance, 0,"current distance","lap_distance", FLOAT_REGS_FLAG, 86, 474, 0x31005, 1, 3, 5 },//!< "current distance" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap, 0,"when we have sharp change of a distance, save it ","lap", U64_REGS_FLAG, 87, 478, 0x31007, 1, 3, 5 },//!< "when we have sharp change of a distance, save it " &ro 
-{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap_paired_dev, 0,"lap from paired device","lap_paired_dev", U64_REGS_FLAG, 88, 486, 0x3100b, 1, 3, 5 },//!< "lap from paired device" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.distance_filtered, 0,"current distance filterd","distance_filtered", FLOAT_REGS_FLAG, 89, 494, 0x3100f, 1, 3, 5 },//!< "current distance filterd" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.unix_time, 0,"unix time , not implemented","unix_time", U64_REGS_FLAG, 51, 326, 0x300a3, 1, 1, 0 },//!< "unix time , not implemented" 
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.seconds_of_the_day, 0,"seconds of the day","seconds_of_the_day", U32_REGS_FLAG, 52, 334, 0x300a7, 1, 1, 0 },//!< "seconds of the day" 
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.flash_write_number, 146,"increments every flash write by an app","flash_write_number", U32_REGS_FLAG, 53, 338, 0x300a9, 1, 7, 0 },//!< "increments every flash write by an app" &ro &save
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.current_state[0], 0,"current state of proccess","current_state", U32_REGS_FLAG, 54, 342, 0x300ab, 4, 3, 0 },//!< "current state of proccess" &ro description above
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.test_pwm_value, 150,"test pwm value [0;100]","test_pwm_value", FLOAT_REGS_FLAG, 55, 358, 0x303e8, 1, 5, 1 },//!<"test pwm value [0;100]" &def &save
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_0, 0,"touch_0","touch_0", U16_REGS_FLAG, 56, 362, 0x303ea, 1, 1, 1 },
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1, 0,"touch_1","touch_1", U16_REGS_FLAG, 57, 364, 0x303eb, 1, 1, 1 },
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2, 0,"touch_2","touch_2", U16_REGS_FLAG, 58, 366, 0x303ec, 1, 1, 1 },
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3, 0,"touch_3","touch_3", U16_REGS_FLAG, 59, 368, 0x303ed, 1, 1, 1 },
+{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.water_counter, 154,"di counter","water_counter", U64_REGS_FLAG, 60, 370, 0x303ee, 1, 7, 1 },//!< "di counter" &save &ro
+{ &def_impulse_cost, NULL, NULL, (u8*)&regs_global_part1.vars.impulse_cost, 162,"cost of di impulse in liters","impulse_cost", FLOAT_REGS_FLAG, 61, 378, 0x303f2, 1, 5, 1 },//!< "cost of di impulse in liters" &save &def
+{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.liters, 166,"liters calculated","liters", FLOAT_REGS_FLAG, 62, 382, 0x303f4, 1, 5, 1 },//!< "liters calculated" &save
+{ &def_touch_1_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_count, 170,"ms ","touch_1_count", U32_REGS_FLAG, 63, 386, 0x303f6, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_2_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_count, 174,"ms ","touch_2_count", U32_REGS_FLAG, 64, 390, 0x303f8, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_3_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_count, 178,"ms ","touch_3_count", U32_REGS_FLAG, 65, 394, 0x303fa, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_1_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_liters, 182,"ms ","touch_1_liters", FLOAT_REGS_FLAG, 66, 398, 0x303fc, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_2_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_liters, 186,"ms ","touch_2_liters", FLOAT_REGS_FLAG, 67, 402, 0x303fe, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_3_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_liters, 190,"ms ","touch_3_liters", FLOAT_REGS_FLAG, 68, 406, 0x30400, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_0_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_0_trshld, 194,"in percents","touch_0_trshld", FLOAT_REGS_FLAG, 69, 410, 0x30402, 1, 5, 1 },//!< "in percents" &save &def
+{ &def_touch_1_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_trshld, 198,"in percents","touch_1_trshld", FLOAT_REGS_FLAG, 70, 414, 0x30404, 1, 5, 1 },//!< "in percents" &save &def
+{ &def_touch_2_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_trshld, 202,"in percents","touch_2_trshld", FLOAT_REGS_FLAG, 71, 418, 0x30406, 1, 5, 1 },//!< "in percents" &save &def
+{ &def_touch_3_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_trshld, 206,"in percents","touch_3_trshld", FLOAT_REGS_FLAG, 72, 422, 0x30408, 1, 5, 1 },//!< "in percents" &save &def
+{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.filter_use, 210,"use inside filter fot touch sensors or not ","filter_use", U32_REGS_FLAG, 73, 426, 0x3040a, 1, 5, 1 },//!< "use inside filter fot touch sensors or not " &save
+{ &def_touch_handle_period, NULL, NULL, (u8*)&regs_global_part1.vars.touch_handle_period, 214,"in ms period of handle touchs","touch_handle_period", U32_REGS_FLAG, 74, 430, 0x3040c, 1, 5, 1 },//!< "in ms period of handle touchs" &save &def
+{ &def_by_time, NULL, NULL, (u8*)&regs_global_part1.vars.by_time, 218,"by time or counter","by_time", U32_REGS_FLAG, 75, 434, 0x3040e, 1, 5, 1 },//!< "by time or counter" &save &def
+{ &def_servo_0, &def_min_servo_0, &def_max_servo_0, (u8*)&servo_control_part.vars.servo_0, 0,"servo pwm value [0;100]","servo_0", FLOAT_REGS_FLAG, 76, 438, 0x307d0, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ &def_servo_1, &def_min_servo_1, &def_max_servo_1, (u8*)&servo_control_part.vars.servo_1, 0,"servo pwm value [0;100]","servo_1", FLOAT_REGS_FLAG, 77, 442, 0x307d2, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ &def_servo_2, &def_min_servo_2, &def_max_servo_2, (u8*)&servo_control_part.vars.servo_2, 0,"servo pwm value [0;100]","servo_2", FLOAT_REGS_FLAG, 78, 446, 0x307d4, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ &def_servo_3, &def_min_servo_3, &def_max_servo_3, (u8*)&servo_control_part.vars.servo_3, 0,"servo pwm value [0;100]","servo_3", FLOAT_REGS_FLAG, 79, 450, 0x307d6, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ NULL, NULL, NULL, (u8*)&di_control.vars.pin_state, 0,"current states of digital inputs","pin_state", U32_REGS_FLAG, 80, 454, 0x30bb8, 1, 1, 3 },//!<"current states of digital inputs"
+{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_sys_tick_dev, 0,"deviation between master and slave","sync_sys_tick_dev", S32_REGS_FLAG, 81, 458, 0x30fa0, 1, 3, 4 },//!< "deviation between master and slave" &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_sys_tick_slave, 0,"time read from slave","sync_sys_tick_slave", U64_REGS_FLAG, 82, 462, 0x30fa2, 1, 3, 4 },//!< "time read from slave" &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_sys_tick_master, 0,"time read from master","sync_sys_tick_master", U64_REGS_FLAG, 83, 470, 0x30fa6, 1, 3, 4 },//!< "time read from master" &ro 
+{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_average_time_ms, 0,"average send receive time ","sync_average_time_ms", U16_REGS_FLAG, 84, 478, 0x30faa, 1, 3, 4 },//!< "average send receive time " &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_last_req_time_ms, 0,"last send receive time ","sync_last_req_time_ms", U16_REGS_FLAG, 85, 480, 0x30fab, 1, 3, 4 },//!< "last send receive time " &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_active, 0,"activated measurement","sync_active", U16_REGS_FLAG, 86, 482, 0x30fac, 1, 3, 4 },//!< "activated measurement" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap_state, 0,"state sr04, bit0 - activated, bit1 - echo signal received","lap_state", U16_REGS_FLAG, 87, 484, 0x31004, 1, 3, 5 },//!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap_distance, 0,"current distance","lap_distance", FLOAT_REGS_FLAG, 88, 486, 0x31005, 1, 3, 5 },//!< "current distance" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap, 0,"when we have sharp change of a distance, save it ","lap", U64_REGS_FLAG, 89, 490, 0x31007, 1, 3, 5 },//!< "when we have sharp change of a distance, save it " &ro 
+{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap_paired_dev, 0,"lap from paired device","lap_paired_dev", U64_REGS_FLAG, 90, 498, 0x3100b, 1, 3, 5 },//!< "lap from paired device" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.distance_filtered, 0,"current distance filterd","distance_filtered", FLOAT_REGS_FLAG, 91, 506, 0x3100f, 1, 3, 5 },//!< "current distance filterd" &ro
 };
 regs_description_t const regs_description_user[NUM_OF_CLIENT_VARS]={
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_mdb_addr, 0,"modbus address","cli_mdb_addr", U16_REGS_FLAG, 90, 498, 0x30000, 1, 1, 0x603 },//!<"modbus address" 
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_ip[0], 0,"device ip address, warning!!! ","cli_ip", U8_REGS_FLAG, 91, 500, 0x30001, 4, 1, 0x603 },//!<"device ip address, warning!!! " 
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_netmask[0], 0,"netmask address for main wifi net","cli_netmask", U8_REGS_FLAG, 92, 504, 0x30003, 4, 1, 0x603 },//!<"netmask address for main wifi net",
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_gate[0], 0,"gateaway address, warning!!! ","cli_gate", U8_REGS_FLAG, 93, 508, 0x30005, 4, 1, 0x603 },//!<"gateaway address, warning!!! " 
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_slip_ip[0], 0,"ip address for local net","cli_slip_ip", U8_REGS_FLAG, 94, 512, 0x30007, 4, 1, 0x603 },//!<"ip address for local net",
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_slip_netmask[0], 0,"netmask address for local net","cli_slip_netmask", U8_REGS_FLAG, 95, 516, 0x30009, 4, 1, 0x603 },//!<"netmask address for local net", 
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_slip_gate[0], 0,"gateaway address for local net","cli_slip_gate", U8_REGS_FLAG, 96, 520, 0x3000b, 4, 1, 0x603 },//!<"gateaway address for local net", 
-{ NULL, NULL, NULL, (u8*)&client_part_1.vars.cli_num_of_vars, 0,"cli_num_of_vars","cli_num_of_vars", U16_REGS_FLAG, 97, 524, 0x30050, 1, 3, 0x703 },//!<"number of vars self + config(user) &ro 
-{ NULL, NULL, NULL, (u8*)&client_part_1.vars.cli_client_num_of_vars, 0,"number of client vars self","cli_client_num_of_vars", U16_REGS_FLAG, 98, 526, 0x30051, 1, 3, 0x703 },//!<"number of client vars self" &ro 
-{ NULL, NULL, NULL, (u8*)&sync_time_client.vars.sys_tick_slave, 0,"time read from slave","sys_tick_slave", U64_REGS_FLAG, 99, 528, 0x3003f, 1, 3, 0x803 },//!< "time read from slave" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_state, 0,"state sr04, bit0 - activated, bit1 - echo signal received","cli_state", U16_REGS_FLAG, 100, 536, 0x31004, 1, 3, 0x903 },//!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_distance, 0,"current distance","cli_distance", FLOAT_REGS_FLAG, 101, 538, 0x31005, 1, 3, 0x903 },//!< "current distance" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_lap, 0,"when we have sharp change of a distance, save it ","cli_lap", U64_REGS_FLAG, 102, 542, 0x31007, 1, 3, 0x903 },//!< "when we have sharp change of a distance, save it " &ro 
-{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_lap_paired_dev, 0,"lap from paired device","cli_lap_paired_dev", U64_REGS_FLAG, 103, 550, 0x3100b, 1, 3, 0x903 },//!< "lap from paired device" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_distance_filtered, 0,"current distance filterd","cli_distance_filtered", FLOAT_REGS_FLAG, 104, 558, 0x3100f, 1, 3, 0x903 },//!< "current distance filterd" &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sys_tick_dev, 0,"deviation between master and slave","cli_sys_tick_dev", S32_REGS_FLAG, 105, 562, 0x30fa0, 1, 3, 0xa03 },//!< "deviation between master and slave" &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sys_tick_slave, 0,"time read from slave","cli_sys_tick_slave", U64_REGS_FLAG, 106, 566, 0x30fa2, 1, 3, 0xa03 },//!< "time read from slave" &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sys_tick_master, 0,"time read from master","cli_sys_tick_master", U64_REGS_FLAG, 107, 574, 0x30fa6, 1, 3, 0xa03 },//!< "time read from master" &ro 
-{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_average_time_ms, 0,"average send receive time ","cli_average_time_ms", U16_REGS_FLAG, 108, 582, 0x30faa, 1, 3, 0xa03 },//!< "average send receive time " &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_last_req_time_ms, 0,"last send receive time ","cli_last_req_time_ms", U16_REGS_FLAG, 109, 584, 0x30fab, 1, 3, 0xa03 },//!< "last send receive time " &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sync_state, 0,"activated measurement","cli_sync_state", U16_REGS_FLAG, 110, 586, 0x30fac, 1, 3, 0xa03 },//!< "activated measurement" &ro
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_mdb_addr, 0,"modbus address","cli_mdb_addr", U16_REGS_FLAG, 92, 510, 0x30000, 1, 1, 0x603 },//!<"modbus address" 
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_ip[0], 0,"device ip address, warning!!! ","cli_ip", U8_REGS_FLAG, 93, 512, 0x30001, 4, 1, 0x603 },//!<"device ip address, warning!!! " 
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_netmask[0], 0,"netmask address for main wifi net","cli_netmask", U8_REGS_FLAG, 94, 516, 0x30003, 4, 1, 0x603 },//!<"netmask address for main wifi net",
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_gate[0], 0,"gateaway address, warning!!! ","cli_gate", U8_REGS_FLAG, 95, 520, 0x30005, 4, 1, 0x603 },//!<"gateaway address, warning!!! " 
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_slip_ip[0], 0,"ip address for local net","cli_slip_ip", U8_REGS_FLAG, 96, 524, 0x30007, 4, 1, 0x603 },//!<"ip address for local net",
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_slip_netmask[0], 0,"netmask address for local net","cli_slip_netmask", U8_REGS_FLAG, 97, 528, 0x30009, 4, 1, 0x603 },//!<"netmask address for local net", 
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_slip_gate[0], 0,"gateaway address for local net","cli_slip_gate", U8_REGS_FLAG, 98, 532, 0x3000b, 4, 1, 0x603 },//!<"gateaway address for local net", 
+{ NULL, NULL, NULL, (u8*)&client_part_1.vars.cli_num_of_vars, 0,"cli_num_of_vars","cli_num_of_vars", U16_REGS_FLAG, 99, 536, 0x30050, 1, 3, 0x703 },//!<"number of vars self + config(user) &ro 
+{ NULL, NULL, NULL, (u8*)&client_part_1.vars.cli_client_num_of_vars, 0,"number of client vars self","cli_client_num_of_vars", U16_REGS_FLAG, 100, 538, 0x30051, 1, 3, 0x703 },//!<"number of client vars self" &ro 
+{ NULL, NULL, NULL, (u8*)&sync_time_client.vars.sys_tick_slave, 0,"time read from slave","sys_tick_slave", U64_REGS_FLAG, 101, 540, 0x3003f, 1, 3, 0x803 },//!< "time read from slave" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_state, 0,"state sr04, bit0 - activated, bit1 - echo signal received","cli_state", U16_REGS_FLAG, 102, 548, 0x31004, 1, 3, 0x903 },//!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_distance, 0,"current distance","cli_distance", FLOAT_REGS_FLAG, 103, 550, 0x31005, 1, 3, 0x903 },//!< "current distance" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_lap, 0,"when we have sharp change of a distance, save it ","cli_lap", U64_REGS_FLAG, 104, 554, 0x31007, 1, 3, 0x903 },//!< "when we have sharp change of a distance, save it " &ro 
+{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_lap_paired_dev, 0,"lap from paired device","cli_lap_paired_dev", U64_REGS_FLAG, 105, 562, 0x3100b, 1, 3, 0x903 },//!< "lap from paired device" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_distance_filtered, 0,"current distance filterd","cli_distance_filtered", FLOAT_REGS_FLAG, 106, 570, 0x3100f, 1, 3, 0x903 },//!< "current distance filterd" &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sys_tick_dev, 0,"deviation between master and slave","cli_sys_tick_dev", S32_REGS_FLAG, 107, 574, 0x30fa0, 1, 3, 0xa03 },//!< "deviation between master and slave" &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sys_tick_slave, 0,"time read from slave","cli_sys_tick_slave", U64_REGS_FLAG, 108, 578, 0x30fa2, 1, 3, 0xa03 },//!< "time read from slave" &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sys_tick_master, 0,"time read from master","cli_sys_tick_master", U64_REGS_FLAG, 109, 586, 0x30fa6, 1, 3, 0xa03 },//!< "time read from master" &ro 
+{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_average_time_ms, 0,"average send receive time ","cli_average_time_ms", U16_REGS_FLAG, 110, 594, 0x30faa, 1, 3, 0xa03 },//!< "average send receive time " &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_last_req_time_ms, 0,"last send receive time ","cli_last_req_time_ms", U16_REGS_FLAG, 111, 596, 0x30fab, 1, 3, 0xa03 },//!< "last send receive time " &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sync_state, 0,"activated measurement","cli_sync_state", U16_REGS_FLAG, 112, 598, 0x30fac, 1, 3, 0xa03 },//!< "activated measurement" &ro
 };
 const regs_description_t * regs_description_client = regs_description_user;
 /**
