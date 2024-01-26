@@ -90,7 +90,8 @@ static bool timer_group_isr_callback(void *args);
 static void common_timer_task(void *pvParameters );
 static void example_tg_timer_deinit(int group, int timer);
 static int common_duty_init(void);
-
+static void display_update(uint32_t task_tick);
+static void udp_broabcast_update(uint32_t task_tick);
 /**
  * @brief duty_task - do several common functions
  * @param pvParameters
@@ -119,131 +120,16 @@ void common_duty_task(void *pvParameters ){
             }else{
                 gpio_set_level(CONFIG_LED_BLINK_GPIO, 0u);
             }
-#if SS1306_MODULE            
             if(((task_tick)%(1000u/DUTY_TASK_PERIOD_MS))==0u){
                 // rtc time update start 
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
                     regs_global.vars.live_time++;
                 }semaphore_release(regs_access_mutex);
                 led_blink_on(250u);
-                s32 deviation;
-                u64 slave_tick_calculated;
-                u64 sys_tick_own;
-                regs_copy_safe(&sys_tick_own,&regs_global.vars.sys_tick_counter,sizeof(deviation));
-                regs_copy_safe(&deviation,&sync_time_regs.vars.sync_sys_tick_dev,sizeof(deviation));
-                slave_tick_calculated = sys_tick_own - deviation;
-                char temp_buff[TEMP_BUFFER_SIZE] = {0u};
-                u16 sync_active_temp;
-                regs_copy_safe(&sync_active_temp,&sync_time_regs.vars.sync_active,sizeof(sync_active_temp));
-                u8g2_ClearBuffer(&u8g2);
-#if DISPLAY_TIME_DIFF
-                s32 time_div_slave = 0;
-                s32 time_div_own = 0;
-                u8 synchronized = 0;
-                semaphore_take(regs_access_mutex, portMAX_DELAY);{
-                    time_div_slave = sync_time_regs_from_client.vars.cli_sys_tick_dev;
-                    time_div_own = sync_time_regs.vars.sync_sys_tick_dev;
-                }semaphore_release(regs_access_mutex);    
-                if ((time_div_slave != 0) && (time_div_own != 0) ){
-                    if ((time_div_slave + time_div_own) < 10){
-                        synchronized = 1u;
-                        u8g2_DrawBox(&u8g2, BOX_SHIFT, 0, box_side, box_side/2);
-                    }else{
-                        u8g2_DrawFrame(&u8g2, position, 0, box_side, box_side/2);
-                    }
-                }else{
-                    u8g2_DrawFrame(&u8g2, position, 0, box_side, box_side/2);
-                }
-                if (position != BOX_SHIFT){
-                    position = BOX_SHIFT;
-                }else{
-                    position = BOX_SHIFT + box_side * 2u;
-                }
-                u8g2_SetFont(&u8g2, u8g2_font_10x20_mf);
-#if MAIN_CONFIG_WIFI_AP
-                if (regs_global.vars.ap_connections_number){
-                    sprintf(temp_buff,"1c");
-                }else{
-                    sprintf(temp_buff,"1");
-                }
-#elif MAIN_CONFIG_WIFI_NODE
-                if (regs_global.vars.sta_connect){
-                    sprintf(temp_buff,"2c");
-                }else{
-                    sprintf(temp_buff,"2");
-                }
-#endif
-                u8g2_SetFont(&u8g2, u8g2_font_4x6_mf);
-                u8g2_DrawStr(&u8g2, 0,6u, temp_buff);
-                u64 lap_own;
-                u64 lap_slave;
-                int distance_own;
-                int distance_slave;
-                semaphore_take(regs_access_mutex, portMAX_DELAY);{
-                    lap_own = sr04_reg.vars.lap;
-                    lap_slave = sr04_reg_client.vars.cli_lap;
-                    distance_own = (int)sr04_reg.vars.distance_filtered;
-                    distance_slave = (int)sr04_reg_client.vars.cli_distance_filtered;
-                }semaphore_release(regs_access_mutex);
-                lap_own = lap_own - time_div_own;
-                u64 div;
-                if (lap_own > lap_slave){
-                    div = lap_own - lap_slave;
-                }else{
-                    div = lap_slave - lap_own;
-                }
-                sprintf(temp_buff,"%llu ms",div);
-                u8g2_SetFont(&u8g2, u8g2_font_9x15B_mf);
-                u8g2_DrawStr(&u8g2, 0,18u, temp_buff);
-                sprintf(temp_buff,"%i sm %i",distance_own,distance_slave);
-                u8g2_DrawStr(&u8g2, 0,32u, temp_buff);
-                u8g2_SendBuffer(&u8g2);
-#else   // DISPLAY_TIME_DIFF
-                semaphore_take(regs_access_mutex, portMAX_DELAY);{
-                    sprintf(temp_buff,"m %u;%u.%u.%u.%u;S-%u",regs_global.vars.mdb_addr,regs_global.vars.sta_ip[0],regs_global.vars.sta_ip[1],regs_global.vars.sta_ip[2],regs_global.vars.sta_ip[3],sync_active_temp & SYNC_STATE_SYNCRONIZED);
-                }semaphore_release(regs_access_mutex);
-                u8g2_SetFont(&u8g2, u8g2_font_5x8_tf);
-                u8g2_DrawStr(&u8g2, 0,6u, temp_buff);
-                memset(temp_buff,0,TEMP_BUFFER_SIZE);
-                memset(temp_buff,0,TEMP_BUFFER_SIZE);
-                u32 success_requests = 0;
-                u32 failed_requests = 0;
-                for (int i = 0;i < MAX_NUMBER_OF_SLAVES_CONNECTIONS;i++){
-                    success_requests += modbus_tcp_client_slave_connections[i].success_requests;
-                    failed_requests += modbus_tcp_client_slave_connections[i].failed_requests;
-                }
-                //sprintf(temp_buff,"OT%llu;SC%llu",sys_tick_own,slave_tick_calculated);
-                sprintf(temp_buff,"%f %llu",sr04_reg.vars.lap_distance,sr04_reg.vars.lap);
-                u8g2_DrawStr(&u8g2, 0,14u, temp_buff);
-                semaphore_take(regs_access_mutex, portMAX_DELAY);{
-                sprintf(temp_buff,"RC:%lu;P%lu;E%lu",regs_global.vars.reset_num,success_requests,failed_requests);
-                }semaphore_release(regs_access_mutex);
-                u8g2_DrawStr(&u8g2, 0,22u, temp_buff);
-                s32 sync_sys_tick_dev_own;         //deviation between master and slave on our side
-                s32 sync_sys_tick_dev_client;      //deviation between master and slave on client side
-                regs_copy_safe(&sync_sys_tick_dev_own,&sync_time_regs.vars.sync_sys_tick_dev,sizeof(sync_sys_tick_dev_own));
-                regs_copy_safe(&sync_sys_tick_dev_client,&sync_time_regs_from_client.vars.cli_sys_tick_dev,sizeof(sync_sys_tick_dev_client));
-                sprintf(temp_buff,"dev %li %li",sync_sys_tick_dev_own,sync_sys_tick_dev_client);
-                u8g2_DrawStr(&u8g2, 0,30u, temp_buff);
-                u8g2_SendBuffer(&u8g2);
-#endif  // DISPLAY_TIME_DIFF
+                display_update(task_tick);
             }
-#endif //SS1306_MODULE
+            udp_broabcast_update(task_tick);
 
-#if UDP_BROADCAST_ENABLE && UDP_ADVERTISMENT_PERIOD
-            if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==0u)
-#if  UDP_BROADCAST_UDP_REQUEST_ENABLE 
-            {   
-                udp_broadcast_advertisement(UDP_BROADCAST_OPTION_UDP_REQUEST);
-            }
-#endif
-            
-            if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==1u){
-#if UDP_BROADCAST_INFORMATION_ENABLE 
-                    udp_broadcast_advertisement(UDP_BROADCAST_OPTION_INFORMATION);
-#endif
-            }
-#endif
             if(((task_tick)%(60000u/DUTY_TASK_PERIOD_MS))==0u){    // every 60 sec
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
                     if(regs_global.vars.sta_connect==0){
@@ -328,6 +214,127 @@ int common_deinit(){
     }
     return 0;
 }
+static void udp_broabcast_update(uint32_t task_tick){
+#if UDP_BROADCAST_ENABLE && UDP_ADVERTISMENT_PERIOD
+    if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==0u)
+#if  UDP_BROADCAST_UDP_REQUEST_ENABLE 
+    {   
+        udp_broadcast_advertisement(UDP_BROADCAST_OPTION_UDP_REQUEST);
+    }
+#endif
+    if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==1u){
+#if UDP_BROADCAST_INFORMATION_ENABLE 
+        udp_broadcast_advertisement(UDP_BROADCAST_OPTION_INFORMATION);
+#endif
+    }
+#endif
+}
+static void display_update(uint32_t task_tick){
+#if SS1306_MODULE
+    s32 deviation;
+    u64 slave_tick_calculated;
+    u64 sys_tick_own;
+    regs_copy_safe(&sys_tick_own,&regs_global.vars.sys_tick_counter,sizeof(deviation));
+    regs_copy_safe(&deviation,&sync_time_regs.vars.sync_sys_tick_dev,sizeof(deviation));
+    slave_tick_calculated = sys_tick_own - deviation;
+    char temp_buff[TEMP_BUFFER_SIZE] = {0u};
+    u16 sync_active_temp;
+    regs_copy_safe(&sync_active_temp,&sync_time_regs.vars.sync_active,sizeof(sync_active_temp));
+    u8g2_ClearBuffer(&u8g2);
+#if DISPLAY_TIME_DIFF
+    s32 time_div_slave = 0;
+    s32 time_div_own = 0;
+    u8 synchronized = 0;
+    semaphore_take(regs_access_mutex, portMAX_DELAY);{
+        time_div_slave = sync_time_regs_from_client.vars.cli_sys_tick_dev;
+        time_div_own = sync_time_regs.vars.sync_sys_tick_dev;
+    }semaphore_release(regs_access_mutex);    
+    if ((time_div_slave != 0) && (time_div_own != 0) ){
+        if ((time_div_slave + time_div_own) < 10){
+            synchronized = 1u;
+            u8g2_DrawBox(&u8g2, BOX_SHIFT, 0, box_side, box_side/2);
+        }else{
+            u8g2_DrawFrame(&u8g2, position, 0, box_side, box_side/2);
+        }
+    }else{
+        u8g2_DrawFrame(&u8g2, position, 0, box_side, box_side/2);
+    }
+    if (position != BOX_SHIFT){
+        position = BOX_SHIFT;
+    }else{
+        position = BOX_SHIFT + box_side * 2u;
+    }
+    u8g2_SetFont(&u8g2, u8g2_font_10x20_mf);
+#if MAIN_CONFIG_WIFI_AP
+    if (regs_global.vars.ap_connections_number){
+        sprintf(temp_buff,"1c");
+    }else{
+        sprintf(temp_buff,"1");
+    }
+#elif MAIN_CONFIG_WIFI_NODE
+    if (regs_global.vars.sta_connect){
+        sprintf(temp_buff,"2c");
+    }else{
+        sprintf(temp_buff,"2");
+    }
+#endif
+    u8g2_SetFont(&u8g2, u8g2_font_4x6_mf);
+    u8g2_DrawStr(&u8g2, 0,6u, temp_buff);
+    u64 lap_own;
+    u64 lap_slave;
+    int distance_own;
+    int distance_slave;
+    semaphore_take(regs_access_mutex, portMAX_DELAY);{
+        lap_own = sr04_reg.vars.lap;
+        lap_slave = sr04_reg_client.vars.cli_lap;
+        distance_own = (int)sr04_reg.vars.distance_filtered;
+        distance_slave = (int)sr04_reg_client.vars.cli_distance_filtered;
+    }semaphore_release(regs_access_mutex);
+    lap_own = lap_own - time_div_own;
+    u64 div;
+    if (lap_own > lap_slave){
+        div = lap_own - lap_slave;
+    }else{
+        div = lap_slave - lap_own;
+    }
+    sprintf(temp_buff,"%llu ms",div);
+    u8g2_SetFont(&u8g2, u8g2_font_9x15B_mf);
+    u8g2_DrawStr(&u8g2, 0,18u, temp_buff);
+    sprintf(temp_buff,"%i sm %i",distance_own,distance_slave);
+    u8g2_DrawStr(&u8g2, 0,32u, temp_buff);
+    u8g2_SendBuffer(&u8g2);
+#else   // DISPLAY_TIME_DIFF
+    semaphore_take(regs_access_mutex, portMAX_DELAY);{
+        sprintf(temp_buff,"m %u;%u.%u.%u.%u;S-%u",regs_global.vars.mdb_addr,regs_global.vars.sta_ip[0],regs_global.vars.sta_ip[1],regs_global.vars.sta_ip[2],regs_global.vars.sta_ip[3],sync_active_temp & SYNC_STATE_SYNCRONIZED);
+    }semaphore_release(regs_access_mutex);
+    u8g2_SetFont(&u8g2, u8g2_font_5x8_tf);
+    u8g2_DrawStr(&u8g2, 0,6u, temp_buff);
+    memset(temp_buff,0,TEMP_BUFFER_SIZE);
+    memset(temp_buff,0,TEMP_BUFFER_SIZE);
+    u32 success_requests = 0;
+    u32 failed_requests = 0;
+    for (int i = 0;i < MAX_NUMBER_OF_SLAVES_CONNECTIONS;i++){
+        success_requests += modbus_tcp_client_slave_connections[i].success_requests;
+        failed_requests += modbus_tcp_client_slave_connections[i].failed_requests;
+    }
+    //sprintf(temp_buff,"OT%llu;SC%llu",sys_tick_own,slave_tick_calculated);
+    sprintf(temp_buff,"%f %llu",sr04_reg.vars.lap_distance,sr04_reg.vars.lap);
+    u8g2_DrawStr(&u8g2, 0,14u, temp_buff);
+    semaphore_take(regs_access_mutex, portMAX_DELAY);{
+    sprintf(temp_buff,"RC:%lu;P%lu;E%lu",regs_global.vars.reset_num,success_requests,failed_requests);
+    }semaphore_release(regs_access_mutex);
+    u8g2_DrawStr(&u8g2, 0,22u, temp_buff);
+    s32 sync_sys_tick_dev_own;         //deviation between master and slave on our side
+    s32 sync_sys_tick_dev_client;      //deviation between master and slave on client side
+    regs_copy_safe(&sync_sys_tick_dev_own,&sync_time_regs.vars.sync_sys_tick_dev,sizeof(sync_sys_tick_dev_own));
+    regs_copy_safe(&sync_sys_tick_dev_client,&sync_time_regs_from_client.vars.cli_sys_tick_dev,sizeof(sync_sys_tick_dev_client));
+    sprintf(temp_buff,"dev %li %li",sync_sys_tick_dev_own,sync_sys_tick_dev_client);
+    u8g2_DrawStr(&u8g2, 0,30u, temp_buff);
+    u8g2_SendBuffer(&u8g2);
+#endif  // DISPLAY_TIME_DIFF
+#endif
+}
+
 /**
  * @brief led_blink_on enable the led on ms
  * @param time_ms
