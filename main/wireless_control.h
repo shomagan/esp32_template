@@ -20,6 +20,11 @@
 #ifdef __cplusplus 
    extern "C" {
 #endif
+enum wireless_control_task_event{
+   WIRELESS_TASK_STOP_CHILD_PROCCES          = (1<<0),   /*!< sended before kill external thread*/
+   WIRELESS_TASK_STOP_WIFI = (1<<1),  /*!< disable WIFI - stop it*/
+};
+
 /*add functions and variable declarations below */
 extern task_handle_t wireless_control_handle_id;
 extern void wireless_control_task(void *arg);

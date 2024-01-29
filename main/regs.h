@@ -614,18 +614,19 @@ typedef enum {
     FLASH_ACCESS_CREDENTIAL_ERR_COMM = 0x54fe,   /*!< 0x54ff */
     FLASH_ACCESS_ERR_COMM = 0x54ff,   /*!< 0x54ff */
     SW_RESET_COMM = 0x5500,   /*!< 0x5500 software reset command*/
-    SAVE_ALL_RETAINS_COMM,    /*!< 0x5501 */
-    SET_DEFAULT_VALUES_COMM,  /*!< 0x5502 set default value command(plc will reboot)*/
-    CHANGE_OS_COMM,           /*!< 0x5503 Automatically return back*/
-    RUN_OS1_COMM,             /*!< 0x5504 to main OS if not confirmed*/
-    RUN_OS2_COMM,             /*!< 0x5505 during OS_CONFIRM_TIME*/
-    CONFIRM_OS_COMM,          /*!< 0x5506 set current OS as main, command use after CHANGE_OS_COMM,RUN_OS1_COMM,RUN_OS2_COMM*/
-    SET_MAIN_AND_RUN_OS1_COMM,/*!< 0x5507 run OS1 without confirmation*/
-    SET_MAIN_AND_RUN_OS2_COMM,/*!< 0x5508 run OS2 without confirmation*/
-    REMOTE_UPDATE_ENABLE_COMM, /*!< 0x5509 ignore BOOTKEY for download OS*/
-    REMOTE_UPDATE_DISABLE_COMM,/*!< 0x550a check BOOTKEY for downloas OS*/
-    LAN_RESET_COMM,            /*!< 0x550b check BOOTKEY for downloas OS*/
-    MAKE_TEST_COMM,            /*!< 0x550c command for debug purpose*/
+    SAVE_ALL_RETAINS_COMM  = 0x5501,    /*!< 0x5501 */
+    SET_DEFAULT_VALUES_COMM = 0x5502,  /*!< 0x5502 set default value command(plc will reboot)*/
+    CHANGE_OS_COMM = 0x5503,           /*!< 0x5503 Automatically return back*/
+    RUN_OS1_COMM = 0x5504,             /*!< 0x5504 to main OS if not confirmed*/
+    RUN_OS2_COMM = 0x5505,             /*!< 0x5505 during OS_CONFIRM_TIME*/
+    CONFIRM_OS_COMM = 0x5506,          /*!< 0x5506 set current OS as main, command use after CHANGE_OS_COMM,RUN_OS1_COMM,RUN_OS2_COMM*/
+    SET_MAIN_AND_RUN_OS1_COMM = 0x5507,/*!< 0x5507 run OS1 without confirmation*/
+    SET_MAIN_AND_RUN_OS2_COMM = 0x5508,/*!< 0x5508 run OS2 without confirmation*/
+    REMOTE_UPDATE_ENABLE_COMM = 0x5509, /*!< 0x5509 ignore BOOTKEY for download OS*/
+    REMOTE_UPDATE_DISABLE_COMM = 0x550a,/*!< 0x550a check BOOTKEY for downloas OS*/
+    LAN_RESET_COMM = 0x550b,            /*!< 0x550b check BOOTKEY for downloas OS*/
+    MAKE_TEST_COMM = 0x550c,            /*!< 0x550c command for debug purpose*/
+    DEEP_SLEEP_FOR_120_SEC_COMM = 0x550D,            /*!< 0x550d go to deep sleep*/
     IIRLS_HANDSHAKE = 0x7000,   /*!< 28672 Issues a command for slave to perform "handshake" procedure.*/
     IIRLS_HANDSHAKE_CONFIRMATION = 0x7001,   /*!< 28673 Issues a command for slave to confirm successful "handshake".*/
 

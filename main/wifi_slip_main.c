@@ -104,7 +104,7 @@ void app_main(void){
     common_init_gpio();
 #if ENABLE_DEEP_SLEEP && CONFIG_IDF_TARGET_ESP32
     if(WAKE_UP_CONTROL_END_IS_NEEDED == wake_up_control()){
-        prepare_to_sleep();
+        rtc_setup_wakeup_pin();
         esp_deep_sleep_start();
     }
 #endif            

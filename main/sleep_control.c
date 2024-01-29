@@ -15,6 +15,7 @@
 #include "esp_sleep.h"
 #include "driver/rtc_io.h"
 #include "common.h"
+#include "wireless_control.h"
 
 #define SLEEP_CONTROL_TASK_PERIOD_MS 100u
 static const char *TAG = "sleep_control";
@@ -28,7 +29,6 @@ static void rtc_setup_wakeup_pin(void);
 static void rtc_setup_wakeup_timer(void);
 #endif
 static int check_deep_sleep_condition_by_pin (const u32 duty_task_period_ms);
-static int check_deep_sleep_condition_by_timer (const u32 duty_task_period_ms);
 static void display_good_bye_message(void);
 static int sleep_control_init(void);
 static int sleep_control_deinit();
@@ -47,39 +47,35 @@ void sleep_control_task(void *arg){
    (void)(*arg);
    uint32_t signal_value;
    sleep_control_init();
+   u32 prev_signal=0;
    u64 task_counter = 0;
    while(1){
-      if(task_notify_wait(STOP_CHILD_PROCCES, &signal_value, SLEEP_CONTROL_TASK_PERIOD_MS)==pdTRUE){
+      if(task_notify_wait(STOP_CHILD_PROCCES|SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC, &signal_value, SLEEP_CONTROL_TASK_PERIOD_MS)==pdTRUE){
          /*by signal*/
          if (signal_value & STOP_CHILD_PROCCES){
             sleep_control_deinit();
             task_delete(task_get_id());
          }
+         if (signal_value & SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC){
+            task_notify_send(wireless_control_handle_id, WIRELESS_TASK_STOP_WIFI,&prev_signal);
+            task_delay_ms(100);
+            rtc_setup_wakeup_timer();
+            esp_deep_sleep_start();
+         }
       }
 #if ENABLE_DEEP_SLEEP
 #if CONFIG_IDF_TARGET_ESP32
       if (check_deep_sleep_condition_by_pin (SLEEP_CONTROL_TASK_PERIOD_MS) > 0u)
-#elif CONFIG_IDF_TARGET_ESP32C3
-      if (check_deep_sleep_condition_by_timer (SLEEP_CONTROL_TASK_PERIOD_MS) > 0u)
-#endif
       {
-         prepare_to_sleep();
+         rtc_setup_wakeup_pin();
          esp_deep_sleep_start();
       }
+#endif
 #endif //ENABLE_DEEP_SLEEP      
       task_counter++;
    }
 }
 
-void prepare_to_sleep(void){
-    /*disable wifi*/
-    esp_wifi_stop();
-#if CONFIG_IDF_TARGET_ESP32
-    rtc_setup_wakeup_pin();
-#elif CONFIG_IDF_TARGET_ESP32C3
-    rtc_setup_wakeup_timer();
-#endif    /*CONFIG_IDF_TARGET_ESP32*/
-}
 /*set up wakeup source*/
 #if CONFIG_IDF_TARGET_ESP32
 static void rtc_setup_wakeup_pin(void){
@@ -95,7 +91,7 @@ static void rtc_setup_wakeup_pin(void){
 #endif
 #if CONFIG_IDF_TARGET_ESP32C3
 static void rtc_setup_wakeup_timer(void){
-    const int wakeup_time_sec = 60;
+    const int wakeup_time_sec = 120;
     main_printf(TAG,"Enabling timer wakeup, %ds\n", wakeup_time_sec);
     esp_sleep_enable_timer_wakeup(wakeup_time_sec * 1000000);
 }
@@ -128,15 +124,6 @@ static void display_good_bye_message(void){
    u8g2_DrawStr(&u8g2, 0,22u, temp_buff);
    u8g2_SendBuffer(&u8g2);
 #endif
-}
-static int check_deep_sleep_condition_by_timer (const u32 duty_task_period_ms){
-    static u32 deep_sleep_counter;
-    deep_sleep_counter++;
-    if (deep_sleep_counter>((180u/*sec*/*1000u)/duty_task_period_ms)){
-        main_printf(TAG, "deep sleep trough timer");
-        return 1;
-    }
-    return 0;
 }
 
 #endif /*ENABLE_DEEP_SLEEP*/

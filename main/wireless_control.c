@@ -88,12 +88,19 @@ void wireless_control_task(void *arg){
    u64 task_counter = 0u;
    wifi_init();
    while(1){
-      if(task_notify_wait(STOP_CHILD_PROCCES, &signal_value, wireless_control_TASK_PERIOD)==pdTRUE){
+      if(task_notify_wait(STOP_CHILD_PROCCES|WIRELESS_TASK_STOP_WIFI, &signal_value, wireless_control_TASK_PERIOD)==pdTRUE){
          /*by signal*/
+         
+         if (signal_value & WIRELESS_TASK_STOP_WIFI){
+            /*disable wifi*/
+            esp_wifi_stop();
+            main_printf(TAG, "wifi was stopped");
+         }
          if (signal_value & STOP_CHILD_PROCCES){
             wireless_control_deinit();
             task_delete(task_get_id());
          }
+
       }
       if(((task_counter)%(60000u/wireless_control_TASK_PERIOD))==0u){    // every 60 sec
          if((regs_global.vars.wifi_setting == WIFI_CLIENT) ||
