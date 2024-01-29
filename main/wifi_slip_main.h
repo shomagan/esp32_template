@@ -33,5 +33,4 @@ typedef struct {
 #define SLIP_FLOW_CONTROL_QUEUE_TIMEOUT_MS (100)
 #define SLIP_FLOW_CONTROL_QUEUE_LENGTH (20)
 #define SLIP_FLOW_CONTROL_WIFI_SEND_TIMEOUT_MS (100)
-extern u8 sta_connected;
 #endif //WIFI_SLIP_MAIN_H

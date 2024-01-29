@@ -132,7 +132,7 @@ static void display_good_bye_message(void){
 static int check_deep_sleep_condition_by_timer (const u32 duty_task_period_ms){
     static u32 deep_sleep_counter;
     deep_sleep_counter++;
-    if (deep_sleep_counter>((60u/*sec*/*1000u)/duty_task_period_ms)){
+    if (deep_sleep_counter>((180u/*sec*/*1000u)/duty_task_period_ms)){
         main_printf(TAG, "deep sleep trough timer");
         return 1;
     }

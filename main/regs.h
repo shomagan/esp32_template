@@ -83,6 +83,7 @@ typedef enum{
     CS0_TASK_ACTIVE_SR04                = BIT(10),/*!< SR04 task must be work on*/
     CS0_TASK_ACTIVE_STEP_MOTOR          = BIT(11),/*!< step motor task must be work on*/
     CS0_TASK_ACTIVE_SLEEP_CONTROL       = BIT(12),/*!< sleep motor task must be work on*/
+    CS0_TASK_ACTIVE_WIRELESS_CONTROL    = BIT(13),/*!< wireless conrol task must be work on*/
 } current_state_0;
 /**
   * @brief structures for u32 current_state[4]; //!< "current state of proccess" &ro description above contain flags

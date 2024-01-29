@@ -130,14 +130,6 @@ void common_duty_task(void *pvParameters ){
             }
             udp_broabcast_update(task_tick);
 
-            if(((task_tick)%(60000u/DUTY_TASK_PERIOD_MS))==0u){    // every 60 sec
-                semaphore_take(regs_access_mutex, portMAX_DELAY);{
-                    if(regs_global.vars.sta_connect==0){
-                        main_printf(TAG, "try connect to sta");
-                        esp_wifi_connect();
-                    }
-                }semaphore_release(regs_access_mutex);
-            }
             regs_access_t async_flags;
             async_flags.flag = U64_REGS_FLAG;
             regs_get(&regs_global.vars.async_flags,&async_flags);

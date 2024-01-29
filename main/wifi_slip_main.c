@@ -9,8 +9,6 @@
 #include <string.h>
 #include "wifi_slip_main.h"
 #include "esp_system.h"
-#include "esp_wifi.h"
-#include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "esp_private/wifi.h"
@@ -19,7 +17,6 @@
 #include "sdkconfig.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
-#include "esp_wifi_types.h"
 #include "esp_netif.h"
 #include "esp_sleep.h"
 #include "lwip/sockets.h"
@@ -38,15 +35,13 @@
 #include "touch_handle.h"
 #include "di_handle.h"
 #include "sr04.h"
-#include "credentials.h"
 #include "step_motor.h"
 #include "sleep_control.h"
+#include "wireless_control.h"
 /* The examples use WiFi configuration that you can set via project configuration menu.
    If you'd rather not, just change the below entries to strings with
    the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
 */
-#define ESP_WIFI_CHANNEL   1u
-#define MAX_STA_CONN       4u
 #define CONFIG_RTS_GPIO (UART_PIN_NO_CHANGE)
 #define CONFIG_CTS_GPIO (UART_PIN_NO_CHANGE)
 #define CONFIG_UART_PORT_NUM      (2u)
@@ -56,9 +51,7 @@
 #define WAKE_UP_CONTROL_START_IS_NEEDED 0
 #define WAKE_UP_CONTROL_END_IS_NEEDED 1
 static const char *TAG = "wifi_slip_main";
-static bool s_sta_is_connected = false;
 slip_handle_config_t wifi_slip_config;
-u8 sta_connected = 0;
 u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
 u8g2_t u8g2; // a structure which will contain all the data for one display
 /*ssd1306*/
@@ -66,14 +59,7 @@ u8g2_t u8g2; // a structure which will contain all the data for one display
 static int init_display(void);
 #endif
 int main_init_tasks(void);
-static void wifi_event_handler(void* arg, esp_event_base_t event_base,
-                                    int32_t event_id, void* event_data);
-static void wifi_common_init(void);
 static int common_init_gpio(void);
-static void wifi_init_softap(void);
-static bool wifi_init_sta(void);
-static void wifi_init_soft_ap_sta(void);
-static int wifi_init(void);
 #if ENABLE_DEEP_SLEEP && CONFIG_IDF_TARGET_ESP32
 static int wake_up_control(void);
 #endif
@@ -127,57 +113,11 @@ void app_main(void){
     init_display();
 #endif
     main_init_tasks();/*init all necessary tasks */
-    wifi_init();
     httpd_init_sofi();
     modbus_tcp_init();
     udp_broadcast_init();
 }
 
-/**
- * @brief wifi_event_handler
- * @param arg
- * @param event_base
- * @param event_id
- * @param event_data
- */
-static void wifi_event_handler(void* arg, esp_event_base_t event_base,
-                                    int32_t event_id, void* event_data){
-    (void)(arg);
-    (void)(event_data);
-    if (event_base==WIFI_EVENT){
-        switch (event_id) {
-        case WIFI_EVENT_AP_STACONNECTED:
-            ESP_LOGI(TAG, "Wi-Fi AP got a station connected");
-            if (!regs_global.vars.ap_connections_number) {
-                s_sta_is_connected = true;
-            }
-            regs_global.vars.ap_connections_number++;
-            break;
-        case WIFI_EVENT_AP_STADISCONNECTED:
-            ESP_LOGI(TAG, "Wi-Fi AP got a station disconnected");
-            if (regs_global.vars.ap_connections_number){
-                regs_global.vars.ap_connections_number--;
-            }
-            if (!regs_global.vars.ap_connections_number) {
-                s_sta_is_connected = false;
-            }
-            break;
-        case WIFI_EVENT_STA_DISCONNECTED:
-            ESP_LOGI(TAG, "Wi-Fi sta got a station disconnected");
-            regs_global.vars.sta_connect=0;
-            break;
-        default:
-            break;
-        }
-    }else if(event_base==IP_EVENT){
-        if (event_id==IP_EVENT_STA_GOT_IP){
-            ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
-            regs_global.vars.sta_connect = 1;
-            memcpy(&regs_global.vars.sta_ip, &event->ip_info.ip.addr, sizeof(uint32_t));
-            ESP_LOGI(TAG, "IP_EVENT_STA_GOT_IP");
-        }
-    }
-}
 #if ENABLE_DEEP_SLEEP && CONFIG_IDF_TARGET_ESP32
 /*
 * @brief wake_up_control - control wake up
@@ -193,123 +133,6 @@ static int wake_up_control(void){
     return result;
 }
 #endif
-/*
-* @brief wifi_init - init wifi
-* @return
-*/
-static int wifi_init(void){
-    int result = 0;
-    wifi_common_init();
-    main_printf(TAG, "wifi setting %d",regs_global.vars.wifi_setting);
-    main_printf(TAG, "ap_name:%s ap_password:%s sta_name:%s sta_password:%s channel:%d",
-             regs_global.vars.wifi_name, regs_global.vars.wifi_password,
-             regs_global.vars.wifi_router_name, regs_global.vars.wifi_router_password,ESP_WIFI_CHANNEL);
-#if MAIN_CONFIG_WIFI_AP
-    regs_global.vars.wifi_setting = WIFI_ACCESS_POINT;
-#elif MAIN_CONFIG_WIFI_NODE
-    regs_global.vars.wifi_setting = WIFI_CLIENT;
-#endif
-    if (regs_global.vars.wifi_setting == WIFI_ACCESS_POINT ||
-        regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_ACCESS_POINT){
-        main_printf(TAG, "ESP_WIFI_MODE_AP");
-        wifi_init_softap();
-    }else if(regs_global.vars.wifi_setting == WIFI_CLIENT ||
-             regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_CLIENT){
-        main_printf(TAG, "ESP_WIFI_MODE_STA");
-        wifi_init_sta();
-    }else if(regs_global.vars.wifi_setting == WIFI_AP_STA||
-             regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_AP_STA){
-        main_printf(TAG, "ESP_WIFI_MODE_AP_STA");
-        wifi_init_soft_ap_sta();
-    }
-    return result;
-}
-/**
- * @brief wifi_common_init - common wifi init
- */
-static void wifi_common_init(void){
-    static bool initialized = false;
-    if (initialized) {
-        return;
-    }
-    esp_netif_t *ap_netif = esp_netif_create_default_wifi_ap();
-    if(ap_netif==NULL){
-        ESP_LOGE(TAG, "ESP_WIFI_MODE_AP");
-    }
-    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
-    if(sta_netif==NULL){
-        ESP_LOGE(TAG, "ESP_WIFI_MODE_AP");
-    }
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
-    ESP_ERROR_CHECK( esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
-    ESP_ERROR_CHECK( esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL));
-    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_NULL));
-}
-/**
- * @brief wifi_init_softap - init softap
- */
-static void wifi_init_soft_ap_sta(void){
-    wifi_config_t ap_config;
-    memset(&ap_config,0,sizeof(wifi_config_t));
-    memset(ap_config.ap.ssid,0,sizeof(ap_config.ap.ssid));
-    memset(ap_config.ap.password,0,sizeof(ap_config.ap.password));
-    memcpy(ap_config.ap.ssid,regs_global.vars.wifi_name,WIFI_NAME_LEN);
-    memcpy(ap_config.ap.password,regs_global.vars.wifi_password,WIFI_PASSWORD_LEN);
-    ap_config.ap.authmode = WIFI_AUTH_WPA2_PSK;
-    ap_config.ap.ssid_len = WIFI_NAME_LEN;
-    ap_config.ap.max_connection = MAX_STA_CONN;
-    ap_config.ap.channel = ESP_WIFI_CHANNEL;
-    wifi_config_t sta_config;
-    memset(&sta_config,0,sizeof(wifi_config_t));
-    memcpy(sta_config.sta.ssid,regs_global.vars.wifi_router_name,WIFE_STATION_NAME_SIZE);
-    memcpy(sta_config.sta.password,regs_global.vars.wifi_router_password,WIFE_STATION_PASSWORD_SIZE);
-    
-    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_APSTA) );
-    ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_AP, &ap_config) );
-    ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &sta_config) );
-    ESP_ERROR_CHECK( esp_wifi_start() );
-    ESP_ERROR_CHECK( esp_wifi_connect() );
-    return;
-}
-/**
- * @brief wifi_init_softap
- */
-void wifi_init_softap(void){
-    static uint8_t temp_ssid[32] = {0};
-    memcpy(temp_ssid,regs_global.vars.wifi_name,WIFI_NAME_LEN);
-    wifi_config_t wifi_config = {
-        .ap = {
-            .ssid_len = WIFI_NAME_LEN,
-            .channel = ESP_WIFI_CHANNEL,
-            .max_connection = MAX_STA_CONN,
-            .authmode = WIFI_AUTH_WPA2_PSK
-        },
-    };
-    memset(wifi_config.ap.ssid,0,sizeof(wifi_config.ap.ssid));
-    memset(wifi_config.ap.password,0,sizeof(wifi_config.ap.password));
-    memcpy(wifi_config.ap.ssid,regs_global.vars.wifi_name,WIFI_NAME_LEN);
-    memcpy(wifi_config.ap.password,regs_global.vars.wifi_password,WIFI_PASSWORD_LEN);
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_LOGI(TAG, "wifi_init_softap finished. SSID:%s password:%s channel:%d",
-             regs_global.vars.wifi_name, regs_global.vars.wifi_password, ESP_WIFI_CHANNEL);
-}
-static bool wifi_init_sta(void){
-    wifi_config_t sta_config;
-    memset(&sta_config, 0,sizeof(wifi_config_t));
-    strcpy((char *)sta_config.sta.ssid, (char*)regs_global.vars.wifi_router_name);
-    strcpy((char *)sta_config.sta.password, (char*)regs_global.vars.wifi_router_password);
-    main_printf(TAG, "ap_name:%s ap_password:%s ",
-             sta_config.sta.ssid, sta_config.sta.password);
-    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_ERROR_CHECK( esp_wifi_connect() );
-    return 0;
-}
 #if SS1306_MODULE
 static int init_display(){
     int res=0;
@@ -362,6 +185,11 @@ int main_init_tasks(){
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create slip to wifi flow control task failed");
     }
+    res = task_create(wireless_control_task, "wireless_control_task", 3048, NULL, (tskIDLE_PRIORITY + 2), &wireless_control_handle_id);
+    if (res != pdTRUE) {
+        ESP_LOGE(TAG, "create wireless_control task failed");
+    }
+
 #if SLIP_ENABLE    
     res = task_create(slip_flow_control_task, "wifi2slip_flow_ctl", 2048, NULL, (tskIDLE_PRIORITY + 2), &wifi_slip_config.slip_flow_control_handle);
     if (res != pdTRUE) {

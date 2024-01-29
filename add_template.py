@@ -13,7 +13,7 @@ def main():
                              '(default: %(default)s)'))
 
    parser.add_argument('-n', '--name', type=str, default="template",
-                       help=('name file with extens=cion .c .h .cpp .hpp'
+                       help=('name file with extention .c .h .cpp .hpp'
                              '(default: %(default)s)'))
 
    parser.add_argument('-t', dest='task', action='store_const',
@@ -76,6 +76,7 @@ def main():
       file_template.write("#include \"type_def.h\"\n")
       file_template.write("#include \"main_config.h\"\n")
       file_template.write("#include \"regs.h\"\n")
+      file_template.write("#include \"common.h\"\n")
       file_template.write("\n")
       file_template.write("/*add includes before */\n")
       file_template.write("#ifdef __cplusplus \n")           
@@ -106,7 +107,7 @@ def add_task_dependencies_for_c_source(file_template, component_name):
    file_template.write(f"""
 task_handle_t {component_name}_handle_id = NULL;
 static const char *TAG = \"{component_name}\";
-#define {component_name}_TASK_PERIOD (100u)
+#define {component_name.upper()}_TASK_PERIOD (100u)
 static int {component_name}_init(void);
 static int {component_name}_deinit();
 """)
