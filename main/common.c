@@ -127,6 +127,18 @@ void common_duty_task(void *pvParameters ){
                 }semaphore_release(regs_access_mutex);
                 led_blink_on(250u);
                 display_update(task_tick);
+                main_printf(TAG,"tick %u",task_tick);
+                struct timeval tv;
+                if (gettimeofday(&tv, NULL)!= 0) {
+                    main_printf(TAG,"Failed to obtain time");
+                }else{
+                    regs_global.vars.seconds_of_the_day = (u32)tv.tv_sec;
+                    main_printf(TAG,"sec of the day %u",tv.tv_sec);
+                }
+                time_t now;
+                now = time(0);
+                regs_copy_safe(&regs_global.vars.unix_time,&now,sizeof(regs_global.vars.unix_time));
+                main_printf(TAG,"unix time %u",regs_global.vars.unix_time&0xffffffff);
             }
             udp_broabcast_update(task_tick);
 
@@ -148,16 +160,6 @@ void common_duty_task(void *pvParameters ){
                     esp_restart();
                 }
             }
-            if(((task_tick)%(5000u/DUTY_TASK_PERIOD_MS))==0u){    // every 5 sec
-                main_printf(TAG,"tick %u",task_tick);
-                struct timeval tv;
-                if (gettimeofday(&tv, NULL)!= 0) {
-                    main_printf(TAG,"Failed to obtain time");
-                }else{
-                    regs_global.vars.seconds_of_the_day = (u32)tv.tv_sec;
-                    main_printf(TAG,"sec of the day %u",tv.tv_sec);
-                }
-            }           
         }else{
             /*by signal*/
             if (signal_value & STOP_CHILD_PROCCES){

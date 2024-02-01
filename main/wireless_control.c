@@ -15,21 +15,33 @@
 #include "esp_wifi_types.h"
 #include <string.h>
 #include "credentials.h"
+#define wireless_control_TASK_PERIOD (100u)
 #define ESP_WIFI_CHANNEL   1u
 #define MAX_STA_CONN       4u
+#define TEMPORAL_DISACTIVATION_TIME 120/*sec*/ 
+typedef enum {
+    WIFI_STATE_NOT_ACTIVATED = 0,/*not yet initialIzed or not disabled by default*/
+    WIFI_STATE_ACTIVATED = 1,/*activated STA ot AP*/
+    WIFI_STATE_DISACTIVATED = 2, /*stoped*/
+    WIFI_STATE_DISACTIVATED_TEMPORAL = 3,/*temporal stopped*/
+}wireless_state_t;
 
 task_handle_t wireless_control_handle_id = NULL;
 static const char *TAG = "wireless_control";
-#define wireless_control_TASK_PERIOD (100u)
+esp_netif_t *ap_netif = NULL;
+esp_netif_t *sta_netif = NULL;
+
 static int wireless_control_init(void);
 static int wireless_control_deinit();
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data);
-static int wifi_init(void);
+static wireless_state_t wifi_init(void);
 static void wifi_common_setup(void);
 static void wifi_init_softap(void);
 static bool wifi_init_sta(void);
 static void wifi_init_soft_ap_sta(void);
+static int wifi_full_stop(void);
+static int wifi_state_handle(u64 task_counter,u32 start_reset_time,wireless_state_t * wifi_state);
 
 /**
  * @brief wifi_event_handler
@@ -86,45 +98,90 @@ void wireless_control_task(void *arg){
    uint32_t signal_value;
    wireless_control_init();
    u64 task_counter = 0u;
-   wifi_init();
+   u32 start_reset_time = 0u;/*capture time of reset command*/
+   wireless_state_t wifi_state = WIFI_STATE_NOT_ACTIVATED;
    while(1){
+      wifi_state_handle(task_counter, start_reset_time, &wifi_state);
+      signal_value = 0;
       if(task_notify_wait(STOP_CHILD_PROCCES|WIRELESS_TASK_STOP_WIFI, &signal_value, wireless_control_TASK_PERIOD)==pdTRUE){
          /*by signal*/
-         
          if (signal_value & WIRELESS_TASK_STOP_WIFI){
-            /*disable wifi*/
-            esp_wifi_stop();
+            if (WIFI_STATE_ACTIVATED == wifi_state){
+               wifi_full_stop();
+            }
+            wifi_state = WIFI_STATE_DISACTIVATED;
             main_printf(TAG, "wifi was stopped");
          }
+         if (signal_value & WIRELESS_TASK_START_WIFI){
+            if (wifi_state != WIFI_STATE_ACTIVATED){
+               wifi_state = WIFI_STATE_NOT_ACTIVATED;/*give it a chance to start*/
+               main_printf(TAG, "start wifi if need it");
+            }
+         }
+         if (signal_value & WIRELESS_TASK_RESET_WIFI_FOR_120_SEC){
+            main_printf(TAG, "wifi WIRELESS_TASK_RESET_WIFI_FOR_120_SEC");
+            if (WIFI_STATE_ACTIVATED == wifi_state){
+               wifi_full_stop();
+            }
+            regs_copy_safe(&start_reset_time,&regs_global.vars.live_time,sizeof(regs_global.vars.live_time));
+            wifi_state = WIFI_STATE_DISACTIVATED_TEMPORAL;
+         }
          if (signal_value & STOP_CHILD_PROCCES){
+            if (WIFI_STATE_ACTIVATED == wifi_state){
+               wifi_full_stop();
+            }
             wireless_control_deinit();
             task_delete(task_get_id());
          }
-
       }
-      if(((task_counter)%(60000u/wireless_control_TASK_PERIOD))==0u){    // every 60 sec
-         if((regs_global.vars.wifi_setting == WIFI_CLIENT) ||
-            (regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_CLIENT)||
-            (regs_global.vars.wifi_setting == WIFI_AP_STA)||
-            (regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_AP_STA)){
-            semaphore_take(regs_access_mutex, portMAX_DELAY);{
-            if(regs_global.vars.sta_connect==0){
-               main_printf(TAG, "try connect to sta");
-               esp_wifi_connect();
-            }
-            }semaphore_release(regs_access_mutex);
-         }
-      }
-
       task_counter++;
    }
+}
+static int wifi_state_handle(u64 task_counter,u32 start_reset_time,wireless_state_t * wifi_state){
+   int result = 0;
+   switch(*wifi_state){
+      case WIFI_STATE_NOT_ACTIVATED:/*not yet initialIzed*/
+         *wifi_state = wifi_init();/*trying to init */
+      break;
+      case WIFI_STATE_ACTIVATED:/*activated STA ot AP*/
+         if(((task_counter)%(60000u/wireless_control_TASK_PERIOD))==0u){    // every 60 sec
+            if((regs_global.vars.wifi_setting == WIFI_CLIENT) ||
+               (regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_CLIENT)||
+               (regs_global.vars.wifi_setting == WIFI_AP_STA)||
+               (regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_AP_STA)){
+               semaphore_take(regs_access_mutex, portMAX_DELAY);{
+               if(regs_global.vars.sta_connect==0){
+                  main_printf(TAG, "try connect to sta");
+                  esp_wifi_connect();
+               }
+               }semaphore_release(regs_access_mutex);
+            }
+         }
+         break;
+      case WIFI_STATE_DISACTIVATED:/*stoped*/
+      break;
+      case WIFI_STATE_DISACTIVATED_TEMPORAL:/*temporal stopped*/
+      {
+         u32 current_live_time = 0u;
+         regs_copy_safe(&current_live_time,&regs_global.vars.live_time,sizeof(regs_global.vars.live_time));
+         if ((current_live_time < start_reset_time)||
+               ((current_live_time - start_reset_time)>TEMPORAL_DISACTIVATION_TIME)){
+            *wifi_state = WIFI_STATE_NOT_ACTIVATED;/*give it a chance to start*/
+         }
+      }
+      break;
+      default:
+      result = -1;
+      break;
+   }
+   return result;
 }
 /*
 * @brief wifi_init - init wifi
 * @return
 */
-static int wifi_init(void){
-    int result = 0;
+static wireless_state_t wifi_init(void){
+    wireless_state_t result = WIFI_STATE_NOT_ACTIVATED;
     wifi_common_setup();
     main_printf(TAG, "wifi setting %d",regs_global.vars.wifi_setting);
     main_printf(TAG, "ap_name:%s ap_password:%s sta_name:%s sta_password:%s channel:%d",
@@ -139,14 +196,19 @@ static int wifi_init(void){
         regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_ACCESS_POINT){
         main_printf(TAG, "ESP_WIFI_MODE_AP");
         wifi_init_softap();
+        result = WIFI_STATE_ACTIVATED;
     }else if(regs_global.vars.wifi_setting == WIFI_CLIENT ||
              regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_CLIENT){
         main_printf(TAG, "ESP_WIFI_MODE_STA");
         wifi_init_sta();
+        result = WIFI_STATE_ACTIVATED;
     }else if(regs_global.vars.wifi_setting == WIFI_AP_STA||
              regs_global.vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_AP_STA){
         main_printf(TAG, "ESP_WIFI_MODE_AP_STA");
         wifi_init_soft_ap_sta();
+        result = WIFI_STATE_ACTIVATED;
+    }else{
+        result = WIFI_STATE_NOT_ACTIVATED;
     }
     return result;
 }
@@ -158,13 +220,13 @@ static void wifi_common_setup(void){
     if (initialized) {
         return;
     }
-    esp_netif_t *ap_netif = esp_netif_create_default_wifi_ap();
-    if(ap_netif==NULL){
+    ap_netif = esp_netif_create_default_wifi_ap();
+    if(NULL == ap_netif){
         ESP_LOGE(TAG, "ESP_WIFI_MODE_AP");
     }
-    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
-    if(sta_netif==NULL){
-        ESP_LOGE(TAG, "ESP_WIFI_MODE_AP");
+    sta_netif = esp_netif_create_default_wifi_sta();
+    if(NULL == sta_netif){
+        ESP_LOGE(TAG, "ESP_WIFI_MODE_STA");
     }
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
@@ -236,5 +298,24 @@ static bool wifi_init_sta(void){
     ESP_ERROR_CHECK( esp_wifi_connect() );
     return 0;
 }
+static int wifi_full_stop(void){
+   int result = 0;
+   esp_err_t err = esp_wifi_stop();
+   if (err != ESP_ERR_WIFI_NOT_INIT) {
+      ESP_ERROR_CHECK(err);
+      ESP_ERROR_CHECK(esp_wifi_deinit());
+      if(ap_netif!=NULL){
+         ESP_ERROR_CHECK(esp_wifi_clear_default_wifi_driver_and_handlers(ap_netif));
+         esp_netif_destroy(ap_netif);
+      }
+      if(sta_netif!=NULL){
+         ESP_ERROR_CHECK(esp_wifi_clear_default_wifi_driver_and_handlers(sta_netif));
+         esp_netif_destroy(sta_netif);
+      }
+   }else{
+      result = -1;
+   }
+   return result;
+} 
 
 #endif /*WIRELESS_CONTROL_C*/

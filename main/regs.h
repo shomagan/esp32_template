@@ -275,7 +275,7 @@ typedef union{
         u16 i2c_display_address; //!< "address of display" &ro
         u8 sta_ip[4]; //!< "ip address of sta" &ro &save
         u32 live_time; //!< "live time in seconds" &ro
-        u64 unix_time; //!< "unix time , not implemented" 
+        s64 unix_time; //!< "unix time , not implemented" 
         u32 seconds_of_the_day; //!< "seconds of the day" 
         u32 flash_write_number; //!< "increments every flash write by an app" &ro &save
         u32 current_state[4]; //!< "current state of proccess" &ro description above
@@ -627,6 +627,7 @@ typedef enum {
     LAN_RESET_COMM = 0x550b,            /*!< 0x550b check BOOTKEY for downloas OS*/
     MAKE_TEST_COMM = 0x550c,            /*!< 0x550c command for debug purpose*/
     DEEP_SLEEP_FOR_120_SEC_COMM = 0x550D,            /*!< 0x550d go to deep sleep*/
+    RESET_WIFI_FOR_120_SEC_COMM = 0x550E,            /*!< 0x550e disables wifi*/
     IIRLS_HANDSHAKE = 0x7000,   /*!< 28672 Issues a command for slave to perform "handshake" procedure.*/
     IIRLS_HANDSHAKE_CONFIRMATION = 0x7001,   /*!< 28673 Issues a command for slave to confirm successful "handshake".*/
 

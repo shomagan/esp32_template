@@ -22,6 +22,7 @@
 #include "common.h"
 #include "pwm_test.h"
 #include "sleep_control.h"
+#include "wireless_control.h"
 #ifndef DEBUG
 #define DEBUG           0   /** @warning DEBUG must be defined in CMake */
 #endif
@@ -659,6 +660,9 @@ static void execute_main_command(u16 command){
         break;
     case DEEP_SLEEP_FOR_120_SEC_COMM:
         task_notify_send(sleep_control_handle_id,SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC,&prev_value);
+        break;
+    case RESET_WIFI_FOR_120_SEC_COMM:
+        task_notify_send(wireless_control_handle_id,WIRELESS_TASK_RESET_WIFI_FOR_120_SEC,&prev_value);
         break;
     default:
         break;
