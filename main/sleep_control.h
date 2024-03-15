@@ -22,6 +22,9 @@
 enum sleep_task_event{
    SLEEP_TASK_STOP_CHILD_PROCCES          = (1<<0),   /*!< sended before kill external thread*/
    SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC = (1<<1),  /*!< go to deep sleep*/
+   SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC = (1<<2),  /*!< go to deep sleep for N sec*/
+   /*up to bit 15 ,16 to 31 are taken for sleep second time*/
+   
 };
 /*add functions and variable declarations below */
 extern task_handle_t sleep_control_handle_id;

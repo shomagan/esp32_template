@@ -26,7 +26,7 @@ task_handle_t sleep_control_handle_id = NULL;
 static void rtc_setup_wakeup_pin(void);
 #endif
 #if CONFIG_IDF_TARGET_ESP32C3
-static void rtc_setup_wakeup_timer(void);
+static void rtc_setup_wakeup_timer(u16 sec);
 #endif
 static int check_deep_sleep_condition_by_pin (const u32 duty_task_period_ms);
 static void display_good_bye_message(void);
@@ -50,7 +50,7 @@ void sleep_control_task(void *arg){
    u32 prev_signal=0;
    u64 task_counter = 0;
    while(1){
-      if(task_notify_wait(STOP_CHILD_PROCCES|SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC, &signal_value, SLEEP_CONTROL_TASK_PERIOD_MS)==pdTRUE){
+      if(task_notify_wait(0xffffffff, &signal_value, SLEEP_CONTROL_TASK_PERIOD_MS)==pdTRUE){
          /*by signal*/
          if (signal_value & STOP_CHILD_PROCCES){
             sleep_control_deinit();
@@ -58,8 +58,15 @@ void sleep_control_task(void *arg){
          }
          if (signal_value & SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC){
             task_notify_send(wireless_control_handle_id, WIRELESS_TASK_STOP_WIFI,&prev_signal);
-            task_delay_ms(100);
-            rtc_setup_wakeup_timer();
+            task_delay_ms(100u);
+            rtc_setup_wakeup_timer(120u);
+            esp_deep_sleep_start();
+         }
+         if (signal_value & SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC){
+            task_notify_send(wireless_control_handle_id, WIRELESS_TASK_STOP_WIFI,&prev_signal);
+            task_delay_ms(100u);
+            u16 seconds = (signal_value >> 16u) & 0x0000ffff; 
+            rtc_setup_wakeup_timer(seconds);
             esp_deep_sleep_start();
          }
       }
@@ -90,10 +97,9 @@ static void rtc_setup_wakeup_pin(void){
 }
 #endif
 #if CONFIG_IDF_TARGET_ESP32C3
-static void rtc_setup_wakeup_timer(void){
-    const int wakeup_time_sec = 120;
-    main_printf(TAG,"Enabling timer wakeup, %ds\n", wakeup_time_sec);
-    esp_sleep_enable_timer_wakeup(wakeup_time_sec * 1000000);
+static void rtc_setup_wakeup_timer(u16 seconds){
+    main_printf(TAG,"Enabling timer wakeup, %ds\n", seconds);
+    esp_sleep_enable_timer_wakeup((int)seconds * 1000000);
 }
 #endif
 static int check_deep_sleep_condition_by_pin (const u32 duty_task_period_ms){

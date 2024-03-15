@@ -8,6 +8,15 @@ import platform
 import base_object
 from git import Repo
 import hashlib
+try:
+    import msvcrt
+    PLATFORM = "win"
+except ImportError:
+    PLATFORM = "unix"
+    import tty
+    import termios
+    from select import select
+
 # Define your own exception
 class Error(Exception):
     pass
@@ -46,11 +55,6 @@ def generate(type_module):
     fs_save_file = open('../main/http/fs.c', 'a')
     fs_save_file.write(' ')
     fs_save_file.close()
-    print('close index.html in project')
-    print('start makefsdata')
-    os.chdir("../main/http/")
-    os.system("./makefsdata_l")
-    os.chdir("../../generator/")
 
 
 def main():
@@ -108,11 +112,13 @@ def main():
     else:
         fs_save_file = open('../main/http/fs.c', 'a')
         fs_save_file.write(' ')
-        fs_save_file.close()
+    print('start makefsdata')
     os.chdir("../main/http/")
-    os.system("./makefsdata_l")
+    if PLATFORM == "win":
+        os.system("makefsdata.exe")
+    else:
+        os.system("./makefsdata_l")
     os.chdir("../../generator/")
-
 def change_version(git_base_path):
     repo = Repo(git_base_path)
     assert not repo.bare
@@ -125,18 +131,18 @@ def change_version(git_base_path):
     version_array = re.findall(r'\d+', version)
     version = version.replace("v", "")
     version = version.replace(".", ",")
-    str_before = "\#define\s+OS_VERSION\s+\{[\d\,]+\}"
+    str_before = r"\#define\s+OS_VERSION\s+\{[\d\,]+\}"
     str_to = "#define OS_VERSION {"+version+"}"
     print(str_before, str_to)
     substitute_reg_exp(REGS_H_PATH, str_before, str_to)
-    str_before = "\#define\s+OS_VERSION_STR\s+\"[\d\.\w\-]+\""
+    str_before = r"\#define\s+OS_VERSION_STR\s+\"[\d\.\w\-]+\""
     str_to = "#define OS_VERSION_STR \"{}.{}.{}-beta.{}\"".format(version_array[0],
                                                                   version_array[1],
                                                                   version_array[2],
                                                                   version_array[3])
     print(str_before, str_to)
     substitute_reg_exp(REGS_H_PATH, str_before, str_to)
-    str_before = "\#define\s+OS_FIRMWARE_HASH\s+\"[\d\-\w]+\""
+    str_before = r"\#define\s+OS_FIRMWARE_HASH\s+\"[\d\-\w]+\""
     str_to = "#define OS_FIRMWARE_HASH \"{}-{}\"".format(count_commits, head_commit.hexsha[:30])
     print(str_before, str_to)
     substitute_reg_exp(REGS_H_PATH, str_before, str_to)
@@ -156,18 +162,18 @@ def get_git_version(git_base_path):
 
 
 def change_regs_num(regs_description_header_path, regs_self_num, regs_client_num):
-    str_before = '\#define\s+NUM_OF_SELF_VARS\s+[\d]+'
+    str_before = r'\#define\s+NUM_OF_SELF_VARS\s+[\d]+'
     str_to = '#define NUM_OF_SELF_VARS ' + str(regs_self_num)
     substitute_reg_exp(regs_description_header_path, str_before, str_to)
-    str_before = '\#define\s+NUM_OF_CLIENT_VARS\s+[\d]+'
+    str_before = r'\#define\s+NUM_OF_CLIENT_VARS\s+[\d]+'
     str_to = '#define NUM_OF_CLIENT_VARS ' + str(regs_client_num)
     substitute_reg_exp(regs_description_header_path, str_before, str_to)
 
 
 def substitute_parameter(file_name, str_before, str_to):
     message = ''
-    str_before_t = '([\w\W^])'+str_before+'([\w\W$\s])'
-    str_to_t = '\g<1>'+str_to+'\g<2>'
+    str_before_t = r'([\w\W^])'+str_before+r'([\w\W$\s])'
+    str_to_t = r'\g<1>'+str_to+r'\g<2>'
     try:
         temp_buff = ''
         with  open(file_name, 'r', encoding="utf-8") as file_opened:
@@ -212,11 +218,11 @@ def write_exist_file():
     number = 0
     file_path = '../main/regs_description.c'
     for line in fileinput.input(file_path, inplace=1):
-        if re.search("\s*regs_description_t\s+const\s+regs_description\[\s*NUM_OF_SELF_VARS\s*\]\s*\=\s*\{",line):
+        if re.search(r"\s*regs_description_t\s+const\s+regs_description\[\s*NUM_OF_SELF_VARS\s*\]\s*\=\s*\{",line):
             replace = 1
             print(line, end='')
         elif replace:
-            cancel = re.compile('^\s*\}\;', re.ASCII)
+            cancel = re.compile(r'^\s*\}\;', re.ASCII)
             test = cancel.match(line)
             if test:
                 replace = 0
@@ -238,12 +244,11 @@ def write_exist_file():
     number = 0
     file_path = '../main/regs_description.c'
     for line in fileinput.input(file_path, inplace=1):
-
-        if re.search("\s*regs_description_t\s+const\s+regs_description_user\[\s*NUM_OF_CLIENT_VARS\s*\]\s*\=\s*\{",line):
+        if re.search(r"\s*regs_description_t\s+const\s+regs_description_user\[\s*NUM_OF_CLIENT_VARS\s*\]\s*\=\s*\{",line):
             replace = 1
             print(line, end='')
         elif replace:
-            cancel = re.compile('^\s*\}\;', re.ASCII)
+            cancel = re.compile(r'^\s*\}\;', re.ASCII)
             test = cancel.match(line)
             if test:
                 replace = 0

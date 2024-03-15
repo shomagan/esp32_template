@@ -661,6 +661,12 @@ static void execute_main_command(u16 command){
     case DEEP_SLEEP_FOR_120_SEC_COMM:
         task_notify_send(sleep_control_handle_id,SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC,&prev_value);
         break;
+    case DEEP_SLEEP_FOR_N_SEC_COMM:
+    {
+        u32 signal = (u32)SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC | (((u32)regs_global.vars.sleep_time << 16u)&0xffff0000);
+        task_notify_send(sleep_control_handle_id, signal, &prev_value);
+        break;
+    }
     case RESET_WIFI_FOR_120_SEC_COMM:
         task_notify_send(wireless_control_handle_id,WIRELESS_TASK_RESET_WIFI_FOR_120_SEC,&prev_value);
         break;
