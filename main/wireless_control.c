@@ -251,8 +251,8 @@ static void wifi_init_soft_ap_sta(void){
     ap_config.ap.channel = ESP_WIFI_CHANNEL;
     wifi_config_t sta_config;
     memset(&sta_config,0,sizeof(wifi_config_t));
-    memcpy(sta_config.sta.ssid,regs_global.vars.wifi_router_name,WIFE_STATION_NAME_SIZE);
-    memcpy(sta_config.sta.password,regs_global.vars.wifi_router_password,WIFE_STATION_PASSWORD_SIZE);
+    memcpy(sta_config.sta.ssid,regs_global.vars.wifi_router_name,strlen((char*)&regs_global.vars.wifi_router_name));
+    memcpy(sta_config.sta.password,regs_global.vars.wifi_router_password,strlen((char*)&regs_global.vars.wifi_router_password));
     
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_APSTA) );
     ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_AP, &ap_config) );

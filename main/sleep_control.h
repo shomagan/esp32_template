@@ -19,6 +19,9 @@
 #ifdef __cplusplus 
    extern "C" {
 #endif
+#define WAKE_UP_START 0
+#define WAKE_UP_END 1
+
 enum sleep_task_event{
    SLEEP_TASK_STOP_CHILD_PROCCES          = (1<<0),   /*!< sended before kill external thread*/
    SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC = (1<<1),  /*!< go to deep sleep*/
@@ -29,6 +32,8 @@ enum sleep_task_event{
 /*add functions and variable declarations below */
 extern task_handle_t sleep_control_handle_id;
 extern void sleep_control_task(void *arg);
+void rtc_setup_wakeup(u16 seconds);
+
 
 /*add functions and variable declarations before */
 #ifdef __cplusplus

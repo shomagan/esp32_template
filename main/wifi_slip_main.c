@@ -48,8 +48,7 @@
 #define CONFIG_UART_BAUD_RATE     (115200u)
 #define CONFIG_IPV4 (1u)
 #define BUF_SIZE (512u)
-#define WAKE_UP_CONTROL_START_IS_NEEDED 0
-#define WAKE_UP_CONTROL_END_IS_NEEDED 1
+
 static const char *TAG = "wifi_slip_main";
 slip_handle_config_t wifi_slip_config;
 u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
@@ -58,11 +57,9 @@ u8g2_t u8g2; // a structure which will contain all the data for one display
 #if SS1306_MODULE
 static int init_display(void);
 #endif
-int main_init_tasks(void);
+int main_init_tasks(esp_sleep_wakeup_cause_t * esp_sleep_wakeup_cause);
 static int common_init_gpio(void);
-#if ENABLE_DEEP_SLEEP && CONFIG_IDF_TARGET_ESP32
-static int wake_up_control(void);
-#endif
+static esp_sleep_wakeup_cause_t esp_sleep_wakeup_cause;
 /**
  * @brief app_main
  */
@@ -73,7 +70,6 @@ void app_main(void){
       ESP_ERROR_CHECK(nvs_flash_erase());
       ret = nvs_flash_init();
     }
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
     ESP_ERROR_CHECK(ret);
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -102,37 +98,17 @@ void app_main(void){
     ESP_ERROR_CHECK(esp_slip_init(&wifi_slip_config));
 #endif
     common_init_gpio();
-#if ENABLE_DEEP_SLEEP && CONFIG_IDF_TARGET_ESP32
-    if(WAKE_UP_CONTROL_END_IS_NEEDED == wake_up_control()){
-        rtc_setup_wakeup_pin();
-        esp_deep_sleep_start();
-    }
-#endif            
-
+    esp_sleep_wakeup_cause = esp_sleep_get_wakeup_cause(); 
 #if SS1306_MODULE
     init_display();
 #endif
-    main_init_tasks();/*init all necessary tasks */
+    main_init_tasks(&esp_sleep_wakeup_cause);/*init all necessary tasks */
     httpd_init_sofi();
     modbus_tcp_init();
     udp_broadcast_init();
 }
 
-#if ENABLE_DEEP_SLEEP && CONFIG_IDF_TARGET_ESP32
-/*
-* @brief wake_up_control - control wake up
-* @return non zero value if wake up is not needed
-*/
-static int wake_up_control(void){
-    int result = WAKE_UP_CONTROL_START_IS_NEEDED;
-    u32 deep_sleep_pin = 0;
-    deep_sleep_pin = gpio_get_level(EXT_WAKEUP_PIN);
-    if (0u==deep_sleep_pin){/*dont wake up if pressed less than 2.5 sec*/
-        result = WAKE_UP_CONTROL_END_IS_NEEDED;
-    }
-    return result;
-}
-#endif
+
 #if SS1306_MODULE
 static int init_display(){
     int res=0;
@@ -179,7 +155,7 @@ static int init_display(){
  * @brief main_init_tasks - all task must starting here
  * @return
  */
-int main_init_tasks(){
+int main_init_tasks(esp_sleep_wakeup_cause_t * esp_sleep_wakeup_cause){
     int res=0;
     res = task_create(common_duty_task, "common_duty_task", 3048, NULL, (tskIDLE_PRIORITY + 2), &common_duty_task_handle);
     if (res != pdTRUE) {
@@ -237,7 +213,7 @@ int main_init_tasks(){
     }
 #endif
 #if ENABLE_DEEP_SLEEP
-    res = task_create(sleep_control_task, "sleep_control_task", 2464, NULL, (tskIDLE_PRIORITY + 2), &sleep_control_handle_id);
+    res = task_create(sleep_control_task, "sleep_control_task", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &sleep_control_handle_id);
     if(res != pdTRUE){
         main_printf(TAG,"sleep_control_task inited success\n");
     }
@@ -271,6 +247,15 @@ static int common_init_gpio(void){
     io_conf.pull_up_en = 0;
     gpio_config(&io_conf);
     gpio_get_level(EXT_WAKEUP_PIN);
+#else
+    const gpio_config_t config = {
+        .pin_bit_mask = BIT(EXT_WAKEUP_PIN),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = 0,
+        .pull_down_en = 1,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    ESP_ERROR_CHECK(gpio_config(&config));    
 #endif /*ENABLE_DEEP_SLEEP*/
     return 0;
 }

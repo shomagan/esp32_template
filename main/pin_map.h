@@ -93,12 +93,25 @@
 #define EXT_WAKEUP_PIN 25
 
 #elif CONFIG_IDF_TARGET_ESP32C3
+
+/*
+GP2 is strapping pin  ┌───────┐
+GP2   a0     d0    ───┤       ├───5V
+GP3   a1     d1    ───┤       ├───gnd
+GP4   a2     d2    ───┤       ├───3v3
+GP5   a3     d3    ───┤       ├───d10 mosi GP10
+GP6   sda    d4    ───┤       ├───d9  miso GP9 strapping pin
+GP7   scl    d5    ───┤       ├───d8  sck  GP8 strapping pin
+GP8   tx     d6    ───┤       ├───d7  rx   GP20
+                      └───────┘
+*/
 #define CONFIG_LED_BLINK_GPIO (10)
 #define GPIO_OUTPUT_STEP_MOTOR_EN     21
 #define GPIO_OUTPUT_STEP_MOTOR_DIR0     20
 #define GPIO_OUTPUT_STEP_MOTOR_STEP0     8
 #define GPIO_OUTPUT_STEP_MOTOR_DIR1     9
 #define GPIO_OUTPUT_STEP_MOTOR_STEP1     10
+#define EXT_WAKEUP_PIN 3
 
 #endif
 
