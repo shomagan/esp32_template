@@ -77,9 +77,13 @@
 #define MAX_TRANSMISSION_TIME 1000u
 #define DISPLAY_TIME_DIFF 1
 #endif
-#define STEP_MOTOR 1
+#define STEP_MOTOR 0
 #if DI_HANDLING_ENABLE && PMW_TEST_ENABLE
 #error "DI_HANDLING_ENABLE and PMW_TEST_ENABLE can't be enabled at the same time"
+#endif
+#define FEEDER 1
+#if FEEDER && STEP_MOTOR
+  #error "feeder and step_motor used simulteniosly"
 #endif
 #define MAIN_CONFIG_WIFI_AP 0
 #define MAIN_CONFIG_WIFI_NODE 0

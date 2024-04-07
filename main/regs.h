@@ -84,6 +84,7 @@ typedef enum{
     CS0_TASK_ACTIVE_STEP_MOTOR          = BIT(11),/*!< step motor task must be work on*/
     CS0_TASK_ACTIVE_SLEEP_CONTROL       = BIT(12),/*!< sleep motor task must be work on*/
     CS0_TASK_ACTIVE_WIRELESS_CONTROL    = BIT(13),/*!< wireless conrol task must be work on*/
+    CS0_TASK_ACTIVE_FEEDER              = BIT(14),/*!< feeder task must be work on*/
 } current_state_0;
 /**
   * @brief structures for u32 current_state[4]; //!< "current state of proccess" &ro description above contain flags
@@ -429,6 +430,30 @@ typedef union{
     u8 bytes[32]; //for full bksram copy
 }sr04_reg_t;// #generator_use_description {"message":"end_struct"}
 extern sr04_reg_t sr04_reg;
+
+/**
+ * @brief feeders struct for feed control
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *                  
+ * @ingroup regs
+ */
+/** #generator_use_description {"space_name" :"feeder_reg_t",  "address_space" :6, "modbus_type" :"server", "modbus_function" :"holding_registers", "register_start_address" :4200}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        u32 feeder_counter;         //!<"how many time step motor started" &save &ro
+        u16 feeder_interval;        //!< "minutes between a feeds" &save &def &min
+        u16 feeder_reserv0;         //!< "reserved"
+        float feeder_time_sec;       //!< "turn time is seconds" &save &def &min &max
+    }vars;
+    u32 bytes[4]; //for full bksram copy
+}feeder_reg_t;// #generator_use_description {"message":"end_struct"}
+extern feeder_reg_t feeder_reg;
 /**
  * @brief struct for reading modbus data from another device maximume bytes - 240
  * name variables uses for generate name in description file and then in get value by name
@@ -632,7 +657,7 @@ typedef enum {
     DEEP_SLEEP_FOR_N_SEC_COMM = 0x550f,            /*!< 0x550d go to deep sleep for sleep_time seconds*/
     IIRLS_HANDSHAKE = 0x7000,   /*!< 28672 Issues a command for slave to perform "handshake" procedure.*/
     IIRLS_HANDSHAKE_CONFIRMATION = 0x7001,   /*!< 28673 Issues a command for slave to confirm successful "handshake".*/
-
+    FEEDER_TASK_ONE_FEED_COMM = 0x8000, /*!< 32768 start feeder , only one cycle.*/
 }main_command_t;
 typedef enum{
     INTERLOCK_OK = BIT(0), /*!< when 3.3 v power is absent interlock dumped*/

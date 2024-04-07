@@ -67,6 +67,7 @@
 #define semaphore_delete     vSemaphoreDelete
 #define semaphore_take(mutex,time_ms) xSemaphoreTake(mutex,time_ms)
 #define semaphore_release(x) xSemaphoreGive(x)
+#define semaphore_release_ISR(sem,res) xSemaphoreGiveFromISR(sem,res)
 
 #define queue_handle_t   xQueueHandle
 #define queue_create(queue_len, item_len) xQueueCreate(queue_len, item_len)

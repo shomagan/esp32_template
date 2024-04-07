@@ -21,7 +21,7 @@ static int step_motor_deinit();
 
 static int step_motor_init(){
     int result = 0;
-    gpio_config_t io_conf = {};
+    gpio_config_t io_conf = {0};
     io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pin_bit_mask = (1ull<<GPIO_OUTPUT_STEP_MOTOR_EN)|
@@ -39,7 +39,7 @@ static int step_motor_init(){
 /*GPIO deinit*/
 static int step_motor_deinit(){
     int result = 0;
-    gpio_config_t io_conf = {};
+    gpio_config_t io_conf = {0};
     gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1);/*not active*/
     io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_DISABLE;

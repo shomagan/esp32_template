@@ -23,6 +23,7 @@
 #include "pwm_test.h"
 #include "sleep_control.h"
 #include "wireless_control.h"
+#include "feeder.h"
 #ifndef DEBUG
 #define DEBUG           0   /** @warning DEBUG must be defined in CMake */
 #endif
@@ -624,11 +625,12 @@ int regs_saved_and_have_def_value(const void * reg_address){
  */
 static void execute_main_command(u16 command){
     int res = 0;
+    uint32_t prev_value = 0;
+    main_printf(TAG,"execute a command %u",command);
     switch ((main_command_t)command){
     case SW_RESET_COMM:
         // add necessary actions before reset
         ESP_LOGI(TAG, "SW_RESET_COMM");
-        ui32 prev_value = 0;
         main_printf(TAG,"task notify to prepare reset");
         task_notify_send(common_duty_task_handle,PREPARE_TO_RESET,&prev_value);
         break;
@@ -669,6 +671,9 @@ static void execute_main_command(u16 command){
     }
     case RESET_WIFI_FOR_120_SEC_COMM:
         task_notify_send(wireless_control_handle_id,WIRELESS_TASK_RESET_WIFI_FOR_120_SEC,&prev_value);
+        break;
+    case FEEDER_TASK_ONE_FEED_COMM:
+        task_notify_send(feeder_handle_id,FEEDER_TASK_ONE_FEED_COMM,&prev_value);
         break;
     default:
         break;

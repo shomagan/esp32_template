@@ -403,7 +403,7 @@ flow_control_memory_t * slip_get_buffer(){
             flow_control_memory = &flow_control_slip_memory[i];
         }
     }
-    xSemaphoreGive(flow_control_slip_mutex);
+    semaphore_release(flow_control_slip_mutex);
     return flow_control_memory;
 }
 int slip_fill_buffer(flow_control_memory_t * flow_control_memory,uint8_t * buffer,uint16_t len){
@@ -411,7 +411,7 @@ int slip_fill_buffer(flow_control_memory_t * flow_control_memory,uint8_t * buffe
         semaphore_take(flow_control_slip_mutex,1000);
         memcpy(flow_control_memory->packet,buffer,len);
         memcpy(&flow_control_memory->length,&len,sizeof(len));
-        xSemaphoreGive(flow_control_slip_mutex);
+        semaphore_release(flow_control_slip_mutex);
     }else{
         return -1;
     }

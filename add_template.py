@@ -130,7 +130,7 @@ void {component_name}_task(void *arg){{
    {component_name}_init();
    u64 task_counter = 0u;
    while(1){{
-      if(task_notify_wait(STOP_CHILD_PROCCES, &signal_value, {component_name}_TASK_PERIOD)==pdTRUE){{
+      if(task_notify_wait(STOP_CHILD_PROCCES, &signal_value, {component_name.upper()}_TASK_PERIOD)==pdTRUE){{
          /*by signal*/
          if (signal_value & STOP_CHILD_PROCCES){{
             {component_name}_deinit();
