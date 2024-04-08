@@ -100,6 +100,8 @@ void wireless_control_task(void *arg){
    u64 task_counter = 0u;
    u32 start_reset_time = 0u;/*capture time of reset command*/
    wireless_state_t wifi_state = WIFI_STATE_NOT_ACTIVATED;
+   wifi_ap_record_t ap_info;
+   
    while(1){
       wifi_state_handle(task_counter, start_reset_time, &wifi_state);
       signal_value = 0;
@@ -134,6 +136,9 @@ void wireless_control_task(void *arg){
             task_delete(task_get_id());
          }
       }
+      esp_wifi_sta_get_ap_info(&ap_info);
+      regs_global.vars.rssi_ap[0] = ap_info.rssi;/*atomic*/
+      regs_global.vars.primary_channel_ap[0] = ap_info.primary;//atomic
       task_counter++;
    }
 }
@@ -152,7 +157,9 @@ static int wifi_state_handle(u64 task_counter,u32 start_reset_time,wireless_stat
                semaphore_take(regs_access_mutex, portMAX_DELAY);{
                if(regs_global.vars.sta_connect==0){
                   main_printf(TAG, "try connect to sta");
-                  esp_wifi_connect();
+                  if (ESP_OK != esp_wifi_connect()){
+                     main_error_message(TAG, "connection to sta failed");
+                  }
                }
                }semaphore_release(regs_access_mutex);
             }

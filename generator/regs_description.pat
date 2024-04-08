@@ -54,44 +54,46 @@
 { NULL, NULL, NULL, (u8*)&regs_global.vars.flash_write_number, 146,"increments every flash write by an app","flash_write_number", U32_REGS_FLAG, 53, 338, 0x300a9, 1, 7, 0 },//!< "increments every flash write by an app" &ro &save
 { NULL, NULL, NULL, (u8*)&regs_global.vars.current_state[0], 0,"current state of proccess","current_state", U32_REGS_FLAG, 54, 342, 0x300ab, 4, 3, 0 },//!< "current state of proccess" &ro
 { NULL, NULL, NULL, (u8*)&regs_global.vars.sleep_time, 0,"sleep time in seconds","sleep_time", U16_REGS_FLAG, 55, 358, 0x300b3, 1, 1, 0 },//!< "sleep time in seconds" works with a comand SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.test_pwm_value, 150,"test pwm value [0;100]","test_pwm_value", FLOAT_REGS_FLAG, 56, 360, 0x303e8, 1, 5, 1 },//!<"test pwm value [0;100]" &def &save
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_0, 0,"touch_0","touch_0", U16_REGS_FLAG, 57, 364, 0x303ea, 1, 1, 1 },
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1, 0,"touch_1","touch_1", U16_REGS_FLAG, 58, 366, 0x303eb, 1, 1, 1 },
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2, 0,"touch_2","touch_2", U16_REGS_FLAG, 59, 368, 0x303ec, 1, 1, 1 },
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3, 0,"touch_3","touch_3", U16_REGS_FLAG, 60, 370, 0x303ed, 1, 1, 1 },
-{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.water_counter, 154,"di counter","water_counter", U64_REGS_FLAG, 61, 372, 0x303ee, 1, 7, 1 },//!< "di counter" &save &ro
-{ &def_impulse_cost, NULL, NULL, (u8*)&regs_global_part1.vars.impulse_cost, 162,"cost of di impulse in liters","impulse_cost", FLOAT_REGS_FLAG, 62, 380, 0x303f2, 1, 5, 1 },//!< "cost of di impulse in liters" &save &def
-{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.liters, 166,"liters calculated","liters", FLOAT_REGS_FLAG, 63, 384, 0x303f4, 1, 5, 1 },//!< "liters calculated" &save
-{ &def_touch_1_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_count, 170,"ms ","touch_1_count", U32_REGS_FLAG, 64, 388, 0x303f6, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_2_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_count, 174,"ms ","touch_2_count", U32_REGS_FLAG, 65, 392, 0x303f8, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_3_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_count, 178,"ms ","touch_3_count", U32_REGS_FLAG, 66, 396, 0x303fa, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_1_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_liters, 182,"ms ","touch_1_liters", FLOAT_REGS_FLAG, 67, 400, 0x303fc, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_2_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_liters, 186,"ms ","touch_2_liters", FLOAT_REGS_FLAG, 68, 404, 0x303fe, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_3_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_liters, 190,"ms ","touch_3_liters", FLOAT_REGS_FLAG, 69, 408, 0x30400, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_0_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_0_trshld, 194,"in percents","touch_0_trshld", FLOAT_REGS_FLAG, 70, 412, 0x30402, 1, 5, 1 },//!< "in percents" &save &def
-{ &def_touch_1_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_trshld, 198,"in percents","touch_1_trshld", FLOAT_REGS_FLAG, 71, 416, 0x30404, 1, 5, 1 },//!< "in percents" &save &def
-{ &def_touch_2_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_trshld, 202,"in percents","touch_2_trshld", FLOAT_REGS_FLAG, 72, 420, 0x30406, 1, 5, 1 },//!< "in percents" &save &def
-{ &def_touch_3_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_trshld, 206,"in percents","touch_3_trshld", FLOAT_REGS_FLAG, 73, 424, 0x30408, 1, 5, 1 },//!< "in percents" &save &def
-{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.filter_use, 210,"use inside filter fot touch sensors or not ","filter_use", U32_REGS_FLAG, 74, 428, 0x3040a, 1, 5, 1 },//!< "use inside filter fot touch sensors or not " &save
-{ &def_touch_handle_period, NULL, NULL, (u8*)&regs_global_part1.vars.touch_handle_period, 214,"in ms period of handle touchs","touch_handle_period", U32_REGS_FLAG, 75, 432, 0x3040c, 1, 5, 1 },//!< "in ms period of handle touchs" &save &def
-{ &def_by_time, NULL, NULL, (u8*)&regs_global_part1.vars.by_time, 218,"by time or counter","by_time", U32_REGS_FLAG, 76, 436, 0x3040e, 1, 5, 1 },//!< "by time or counter" &save &def
-{ &def_servo_0, &def_min_servo_0, &def_max_servo_0, (u8*)&servo_control_part.vars.servo_0, 0,"servo pwm value [0;100]","servo_0", FLOAT_REGS_FLAG, 77, 440, 0x307d0, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
-{ &def_servo_1, &def_min_servo_1, &def_max_servo_1, (u8*)&servo_control_part.vars.servo_1, 0,"servo pwm value [0;100]","servo_1", FLOAT_REGS_FLAG, 78, 444, 0x307d2, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
-{ &def_servo_2, &def_min_servo_2, &def_max_servo_2, (u8*)&servo_control_part.vars.servo_2, 0,"servo pwm value [0;100]","servo_2", FLOAT_REGS_FLAG, 79, 448, 0x307d4, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
-{ &def_servo_3, &def_min_servo_3, &def_max_servo_3, (u8*)&servo_control_part.vars.servo_3, 0,"servo pwm value [0;100]","servo_3", FLOAT_REGS_FLAG, 80, 452, 0x307d6, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
-{ NULL, NULL, NULL, (u8*)&di_control.vars.pin_state, 0,"current states of digital inputs","pin_state", U32_REGS_FLAG, 81, 456, 0x30bb8, 1, 1, 3 },//!<"current states of digital inputs"
-{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_sys_tick_dev, 0,"deviation between master and slave","sync_sys_tick_dev", S32_REGS_FLAG, 82, 460, 0x30fa0, 1, 3, 4 },//!< "deviation between master and slave" &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_sys_tick_slave, 0,"time read from slave","sync_sys_tick_slave", U64_REGS_FLAG, 83, 464, 0x30fa2, 1, 3, 4 },//!< "time read from slave" &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_sys_tick_master, 0,"time read from master","sync_sys_tick_master", U64_REGS_FLAG, 84, 472, 0x30fa6, 1, 3, 4 },//!< "time read from master" &ro 
-{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_average_time_ms, 0,"average send receive time ","sync_average_time_ms", U16_REGS_FLAG, 85, 480, 0x30faa, 1, 3, 4 },//!< "average send receive time " &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_last_req_time_ms, 0,"last send receive time ","sync_last_req_time_ms", U16_REGS_FLAG, 86, 482, 0x30fab, 1, 3, 4 },//!< "last send receive time " &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_active, 0,"activated measurement","sync_active", U16_REGS_FLAG, 87, 484, 0x30fac, 1, 3, 4 },//!< "activated measurement" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap_state, 0,"state sr04, bit0 - activated, bit1 - echo signal received","lap_state", U16_REGS_FLAG, 88, 486, 0x31004, 1, 3, 5 },//!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap_distance, 0,"current distance","lap_distance", FLOAT_REGS_FLAG, 89, 488, 0x31005, 1, 3, 5 },//!< "current distance" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap, 0,"when we have sharp change of a distance, save it ","lap", U64_REGS_FLAG, 90, 492, 0x31007, 1, 3, 5 },//!< "when we have sharp change of a distance, save it " &ro 
-{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap_paired_dev, 0,"lap from paired device","lap_paired_dev", U64_REGS_FLAG, 91, 500, 0x3100b, 1, 3, 5 },//!< "lap from paired device" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.distance_filtered, 0,"current distance filterd","distance_filtered", FLOAT_REGS_FLAG, 92, 508, 0x3100f, 1, 3, 5 },//!< "current distance filterd" &ro
-{ NULL, NULL, NULL, (u8*)&feeder_reg.vars.feeder_counter, 222,"how many time step motor started","feeder_counter", U32_REGS_FLAG, 93, 512, 0x31068, 1, 7, 6 },//!<"how many time step motor started" &save &ro
-{ &def_feeder_interval, &def_min_feeder_interval, NULL, (u8*)&feeder_reg.vars.feeder_interval, 226,"minutes between a feeds","feeder_interval", U16_REGS_FLAG, 94, 516, 0x3106a, 1, 69, 6 },//!< "minutes between a feeds" &save &def &min
-{ NULL, NULL, NULL, (u8*)&feeder_reg.vars.feeder_reserv0, 0,"reserved","feeder_reserv0", U16_REGS_FLAG, 95, 518, 0x3106b, 1, 1, 6 },//!< "reserved"
-{ &def_feeder_time_sec, &def_min_feeder_time_sec, &def_max_feeder_time_sec, (u8*)&feeder_reg.vars.feeder_time_sec, 228,"turn time is seconds","feeder_time_sec", FLOAT_REGS_FLAG, 96, 520, 0x3106c, 1, 197, 6 },//!< "turn time is seconds" &save &def &min &max
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.rssi_ap[0], 0,"wifi rssi of Access point","rssi_ap", I8_REGS_FLAG, 56, 360, 0x300b4, 2, 3, 0 },//!< "wifi rssi of Access point" &ro
+{ NULL, NULL, NULL, (u8*)&regs_global.vars.primary_channel_ap[0], 0,"wifi channel used","primary_channel_ap", I8_REGS_FLAG, 57, 362, 0x300b5, 2, 3, 0 },//!< "wifi channel used" &ro
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.test_pwm_value, 150,"test pwm value [0;100]","test_pwm_value", FLOAT_REGS_FLAG, 58, 364, 0x303e8, 1, 5, 1 },//!<"test pwm value [0;100]" &def &save
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_0, 0,"touch_0","touch_0", U16_REGS_FLAG, 59, 368, 0x303ea, 1, 1, 1 },
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1, 0,"touch_1","touch_1", U16_REGS_FLAG, 60, 370, 0x303eb, 1, 1, 1 },
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2, 0,"touch_2","touch_2", U16_REGS_FLAG, 61, 372, 0x303ec, 1, 1, 1 },
+{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3, 0,"touch_3","touch_3", U16_REGS_FLAG, 62, 374, 0x303ed, 1, 1, 1 },
+{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.water_counter, 154,"di counter","water_counter", U64_REGS_FLAG, 63, 376, 0x303ee, 1, 7, 1 },//!< "di counter" &save &ro
+{ &def_impulse_cost, NULL, NULL, (u8*)&regs_global_part1.vars.impulse_cost, 162,"cost of di impulse in liters","impulse_cost", FLOAT_REGS_FLAG, 64, 384, 0x303f2, 1, 5, 1 },//!< "cost of di impulse in liters" &save &def
+{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.liters, 166,"liters calculated","liters", FLOAT_REGS_FLAG, 65, 388, 0x303f4, 1, 5, 1 },//!< "liters calculated" &save
+{ &def_touch_1_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_count, 170,"ms ","touch_1_count", U32_REGS_FLAG, 66, 392, 0x303f6, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_2_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_count, 174,"ms ","touch_2_count", U32_REGS_FLAG, 67, 396, 0x303f8, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_3_count, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_count, 178,"ms ","touch_3_count", U32_REGS_FLAG, 68, 400, 0x303fa, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_1_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_liters, 182,"ms ","touch_1_liters", FLOAT_REGS_FLAG, 69, 404, 0x303fc, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_2_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_liters, 186,"ms ","touch_2_liters", FLOAT_REGS_FLAG, 70, 408, 0x303fe, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_3_liters, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_liters, 190,"ms ","touch_3_liters", FLOAT_REGS_FLAG, 71, 412, 0x30400, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_0_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_0_trshld, 194,"in percents","touch_0_trshld", FLOAT_REGS_FLAG, 72, 416, 0x30402, 1, 5, 1 },//!< "in percents" &save &def
+{ &def_touch_1_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1_trshld, 198,"in percents","touch_1_trshld", FLOAT_REGS_FLAG, 73, 420, 0x30404, 1, 5, 1 },//!< "in percents" &save &def
+{ &def_touch_2_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2_trshld, 202,"in percents","touch_2_trshld", FLOAT_REGS_FLAG, 74, 424, 0x30406, 1, 5, 1 },//!< "in percents" &save &def
+{ &def_touch_3_trshld, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3_trshld, 206,"in percents","touch_3_trshld", FLOAT_REGS_FLAG, 75, 428, 0x30408, 1, 5, 1 },//!< "in percents" &save &def
+{ NULL, NULL, NULL, (u8*)&regs_global_part1.vars.filter_use, 210,"use inside filter fot touch sensors or not ","filter_use", U32_REGS_FLAG, 76, 432, 0x3040a, 1, 5, 1 },//!< "use inside filter fot touch sensors or not " &save
+{ &def_touch_handle_period, NULL, NULL, (u8*)&regs_global_part1.vars.touch_handle_period, 214,"in ms period of handle touchs","touch_handle_period", U32_REGS_FLAG, 77, 436, 0x3040c, 1, 5, 1 },//!< "in ms period of handle touchs" &save &def
+{ &def_by_time, NULL, NULL, (u8*)&regs_global_part1.vars.by_time, 218,"by time or counter","by_time", U32_REGS_FLAG, 78, 440, 0x3040e, 1, 5, 1 },//!< "by time or counter" &save &def
+{ &def_servo_0, &def_min_servo_0, &def_max_servo_0, (u8*)&servo_control_part.vars.servo_0, 0,"servo pwm value [0;100]","servo_0", FLOAT_REGS_FLAG, 79, 444, 0x307d0, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ &def_servo_1, &def_min_servo_1, &def_max_servo_1, (u8*)&servo_control_part.vars.servo_1, 0,"servo pwm value [0;100]","servo_1", FLOAT_REGS_FLAG, 80, 448, 0x307d2, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ &def_servo_2, &def_min_servo_2, &def_max_servo_2, (u8*)&servo_control_part.vars.servo_2, 0,"servo pwm value [0;100]","servo_2", FLOAT_REGS_FLAG, 81, 452, 0x307d4, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ &def_servo_3, &def_min_servo_3, &def_max_servo_3, (u8*)&servo_control_part.vars.servo_3, 0,"servo pwm value [0;100]","servo_3", FLOAT_REGS_FLAG, 82, 456, 0x307d6, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+{ NULL, NULL, NULL, (u8*)&di_control.vars.pin_state, 0,"current states of digital inputs","pin_state", U32_REGS_FLAG, 83, 460, 0x30bb8, 1, 1, 3 },//!<"current states of digital inputs"
+{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_sys_tick_dev, 0,"deviation between master and slave","sync_sys_tick_dev", S32_REGS_FLAG, 84, 464, 0x30fa0, 1, 3, 4 },//!< "deviation between master and slave" &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_sys_tick_slave, 0,"time read from slave","sync_sys_tick_slave", U64_REGS_FLAG, 85, 468, 0x30fa2, 1, 3, 4 },//!< "time read from slave" &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_sys_tick_master, 0,"time read from master","sync_sys_tick_master", U64_REGS_FLAG, 86, 476, 0x30fa6, 1, 3, 4 },//!< "time read from master" &ro 
+{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_average_time_ms, 0,"average send receive time ","sync_average_time_ms", U16_REGS_FLAG, 87, 484, 0x30faa, 1, 3, 4 },//!< "average send receive time " &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_last_req_time_ms, 0,"last send receive time ","sync_last_req_time_ms", U16_REGS_FLAG, 88, 486, 0x30fab, 1, 3, 4 },//!< "last send receive time " &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs.vars.sync_active, 0,"activated measurement","sync_active", U16_REGS_FLAG, 89, 488, 0x30fac, 1, 3, 4 },//!< "activated measurement" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap_state, 0,"state sr04, bit0 - activated, bit1 - echo signal received","lap_state", U16_REGS_FLAG, 90, 490, 0x31004, 1, 3, 5 },//!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap_distance, 0,"current distance","lap_distance", FLOAT_REGS_FLAG, 91, 492, 0x31005, 1, 3, 5 },//!< "current distance" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap, 0,"when we have sharp change of a distance, save it ","lap", U64_REGS_FLAG, 92, 496, 0x31007, 1, 3, 5 },//!< "when we have sharp change of a distance, save it " &ro 
+{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.lap_paired_dev, 0,"lap from paired device","lap_paired_dev", U64_REGS_FLAG, 93, 504, 0x3100b, 1, 3, 5 },//!< "lap from paired device" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg.vars.distance_filtered, 0,"current distance filterd","distance_filtered", FLOAT_REGS_FLAG, 94, 512, 0x3100f, 1, 3, 5 },//!< "current distance filterd" &ro
+{ NULL, NULL, NULL, (u8*)&feeder_reg.vars.feeder_counter, 222,"how many time step motor started","feeder_counter", U32_REGS_FLAG, 95, 516, 0x31068, 1, 7, 6 },//!<"how many time step motor started" &save &ro
+{ &def_feeder_interval, &def_min_feeder_interval, NULL, (u8*)&feeder_reg.vars.feeder_interval, 226,"minutes between a feeds","feeder_interval", U16_REGS_FLAG, 96, 520, 0x3106a, 1, 69, 6 },//!< "minutes between a feeds" &save &def &min
+{ NULL, NULL, NULL, (u8*)&feeder_reg.vars.feeder_reserv0, 0,"reserved","feeder_reserv0", U16_REGS_FLAG, 97, 522, 0x3106b, 1, 1, 6 },//!< "reserved"
+{ &def_feeder_time_sec, &def_min_feeder_time_sec, &def_max_feeder_time_sec, (u8*)&feeder_reg.vars.feeder_time_sec, 228,"turn time is seconds","feeder_time_sec", FLOAT_REGS_FLAG, 98, 524, 0x3106c, 1, 197, 6 },//!< "turn time is seconds" &save &def &min &max

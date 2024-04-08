@@ -103,10 +103,10 @@ void app_main(void){
 #if SS1306_MODULE
     init_display();
 #endif
-    main_init_tasks(&esp_sleep_wakeup_cause);/*init all necessary tasks */
     httpd_init_sofi();
     modbus_tcp_init();
     udp_broadcast_init();
+    main_init_tasks(&esp_sleep_wakeup_cause);/*init all necessary tasks */
 }
 
 
@@ -158,15 +158,14 @@ static int init_display(){
  */
 int main_init_tasks(esp_sleep_wakeup_cause_t * esp_sleep_wakeup_cause){
     int res=0;
-    res = task_create(common_duty_task, "common_duty_task", 3048, NULL, (tskIDLE_PRIORITY + 2), &common_duty_task_handle);
-    if (res != pdTRUE) {
-        ESP_LOGE(TAG, "create slip to wifi flow control task failed");
-    }
     res = task_create(wireless_control_task, "wireless_control_task", 3048, NULL, (tskIDLE_PRIORITY + 2), &wireless_control_handle_id);
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create wireless_control task failed");
     }
-
+    res = task_create(common_duty_task, "common_duty_task", 3048, NULL, (tskIDLE_PRIORITY + 2), &common_duty_task_handle);
+    if (res != pdTRUE) {
+        ESP_LOGE(TAG, "create slip to wifi flow control task failed");
+    }
 #if SLIP_ENABLE    
     res = task_create(slip_flow_control_task, "wifi2slip_flow_ctl", 2048, NULL, (tskIDLE_PRIORITY + 2), &wifi_slip_config.slip_flow_control_handle);
     if (res != pdTRUE) {
