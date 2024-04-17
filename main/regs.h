@@ -280,9 +280,10 @@ typedef union{
         u32 seconds_of_the_day; //!< "seconds of the day" 
         u32 flash_write_number; //!< "increments every flash write by an app" &ro &save
         u32 current_state[4]; //!< "current state of proccess" &ro
-        u16 sleep_time;//!< "sleep time in seconds" works with a comand SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC
+        u16 sleep_time;//!< "seconds,couple with SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC"  &def &min
         s8  rssi_ap[2];//!< "wifi rssi of Access point" &ro
         s8  primary_channel_ap[2];//!< "wifi channel used" &ro
+        s32 wake_up_cause;//!< "wake up reason" &ro
     }vars;
     u8 bytes[GLOBAL_UNION_SIZE]; //for full bksram copy
 }main_vars_t;// #generator_use_description {"message":"end_struct"}

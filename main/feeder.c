@@ -23,6 +23,11 @@
 #define FEEDER_TASK_PERIOD (1000u)
 #define RMT_TX_CHANNEL RMT_CHANNEL_0
 #define SPEED_STEPS 50u
+#define MIN_STEPS_PER_SECOND 100
+#define MAX_STEPS_PER_SECOND 200
+#define AVERAGE_STEPS_PER_SECOND ((MIN_STEPS_PER_SECOND + MAX_STEPS_PER_SECOND)/2)
+
+
 
 typedef struct {
    rmt_config_t *rmt_config;
@@ -97,6 +102,7 @@ void feeder_task(void *arg){
    rmt_step_motor.rmt_config = &dev_config;  
    feeder_init(&rmt_step_motor);
    task_delay_ms(1000);
+   int feeded_minute = 0;
    while(1){
       if(task_notify_wait(FEEDER_TASK_STOP_CHILD_PROCCES, &signal_value, FEEDER_TASK_PERIOD)==pdTRUE){
          /*by signal*/
@@ -115,6 +121,40 @@ void feeder_task(void *arg){
             gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 0);/*not active*/
          }
       }
+      struct timeval tv;
+      if (gettimeofday(&tv, NULL)!= 0) {
+         main_error_message(TAG,"Failed to obtain time");
+      }else{
+         int minutes_of_the_day = tv.tv_sec/60;
+         if (minutes_of_the_day % feeder_reg.vars.feeder_interval == 0){
+            if(feeded_minute != minutes_of_the_day){
+               gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 0);    /*active*/
+               gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 1); /*active*/
+               task_delay_ms(1);
+               feeder_reg.vars.feeder_counter++;
+               u32 steps = (u32)(feeder_reg.vars.feeder_time_sec * AVERAGE_STEPS_PER_SECOND);
+               rmt_step_motor_smoothstep(&rmt_step_motor, feeder_reg.vars, MIN_STEPS_PER_SECOND, MAX_STEPS_PER_SECOND);
+               task_delay_ms(2000);
+               gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1);    /*not active*/
+               gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 0); /*not active*/
+
+            }
+            feeded_minute = minutes_of_the_day;
+
+
+         }
+         main_debug(TAG,"sec of the day %u",tv.tv_sec);
+      }
+      // if (task_counter % 10 == 0){
+      //    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 0);    /*active*/
+      //    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 1); /*active*/
+      //    task_delay_ms(1);
+      //    feeder_reg.vars.feeder_counter++;
+      //    rmt_step_motor_smoothstep(&rmt_step_motor, 1000, 350, 500);
+      //    task_delay_ms(2000);
+      //    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1);    /*not active*/
+      //    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 0); /*not active*/
+      // }
       task_counter++;
    }
 }

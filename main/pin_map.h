@@ -105,13 +105,13 @@ GP7   scl    d5    ───┤       ├───d8  sck  GP8 strapping pin
 GP21  tx     d6    ───┤       ├───d7  rx   GP20
                       └───────┘
 */
-#define CONFIG_LED_BLINK_GPIO (10)
-#define GPIO_OUTPUT_STEP_MOTOR_EN     21
+#define CONFIG_LED_BLINK_GPIO (9)
+#define GPIO_OUTPUT_STEP_MOTOR_EN     10
 #define GPIO_OUTPUT_STEP_MOTOR_DIR0     20
-#define GPIO_OUTPUT_STEP_MOTOR_STEP0     8
-#define GPIO_OUTPUT_STEP_MOTOR_DIR1     9
-#define GPIO_OUTPUT_STEP_MOTOR_SLEEP     9
-#define GPIO_OUTPUT_STEP_MOTOR_STEP1     10
+#define GPIO_OUTPUT_STEP_MOTOR_STEP0     6
+#define GPIO_OUTPUT_STEP_MOTOR_SLEEP     7
+#define GPIO_OUTPUT_STEP_MOTOR_DIR1    20
+#define GPIO_OUTPUT_STEP_MOTOR_STEP1     6
 #define EXT_WAKEUP_PIN 3
 
 #endif

@@ -52,6 +52,7 @@ void sleep_control_task(void *arg){
    u16 alive_init_value = (ALIVE_DEFAULT_S*1000) / SLEEP_CONTROL_TASK_PERIOD_MS;
    u16 alive_timer;
    TickType_t task_timer;
+   regs_global.vars.wake_up_cause = *esp_sleep_wakeup_cause;
    if (wake_up_control(*esp_sleep_wakeup_cause)==WAKE_UP_END){
       alive_timer = 0;
    }else{
@@ -70,6 +71,7 @@ void sleep_control_task(void *arg){
       if (signal_value & SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC){
          main_printf(TAG,"SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC");
          signal_in_process |= SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC;
+         sleep_time = 120u;
       }
       if (signal_value & SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC){
          main_printf(TAG,"SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC");
@@ -80,10 +82,10 @@ void sleep_control_task(void *arg){
          if (signal_in_process & SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC){
             signal_in_process &= ~((uint32_t)SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC);
          }else  if (signal_in_process & SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC){
-            sleep_time = 120u;
             signal_in_process &= ~((uint32_t)SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC);
          }
          if (sleep_time){
+            sleep_time = 0u;
             task_notify_send(wireless_control_handle_id, WIRELESS_TASK_STOP_WIFI,&prev_signal);
             task_delay_ms(100u);
             rtc_setup_wakeup(sleep_time);
@@ -155,6 +157,8 @@ static int wake_up_control(esp_sleep_wakeup_cause_t  esp_sleep_wakeup_cause){
       if (0u==deep_sleep_pin){/*dont wake up if pressed less than 1 sec*/
          result = WAKE_UP_START;
       }
+   }else if (ESP_SLEEP_WAKEUP_UNDEFINED == esp_sleep_wakeup_cause){
+      result = WAKE_UP_START;
    }
    return result;
 }

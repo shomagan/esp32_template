@@ -130,10 +130,10 @@ void common_duty_task(void *pvParameters ){
                 main_printf(TAG,"tick %u",task_tick);
                 struct timeval tv;
                 if (gettimeofday(&tv, NULL)!= 0) {
-                    main_printf(TAG,"Failed to obtain time");
+                    main_error_message(TAG,"Failed to obtain time");
                 }else{
                     regs_global.vars.seconds_of_the_day = (u32)tv.tv_sec;
-                    main_printf(TAG,"sec of the day %u",tv.tv_sec);
+                    main_debug(TAG,"sec of the day %u",tv.tv_sec);
                 }
                 time_t now;
                 now = time(0);
