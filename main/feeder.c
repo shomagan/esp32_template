@@ -18,15 +18,20 @@
 #include "soc/rtc.h"
 #include "driver/rmt.h"/*use rmt as step controller*/
 #include <math.h>
+#include "sleep_control.h"
+#include "regs_description.h"
+#include "mirror_storage.h"
 
 #define TARGET_MCPWM_UNIT MCPWM_UNIT_0
 #define FEEDER_TASK_PERIOD (1000u)
 #define RMT_TX_CHANNEL RMT_CHANNEL_0
 #define SPEED_STEPS 50u
-#define MIN_STEPS_PER_SECOND 100
-#define MAX_STEPS_PER_SECOND 200
+#define MIN_STEPS_PER_SECOND (15*32)
+#define MAX_STEPS_PER_SECOND (30*32)
 #define AVERAGE_STEPS_PER_SECOND ((MIN_STEPS_PER_SECOND + MAX_STEPS_PER_SECOND)/2)
-
+#define MIN_WORK_TIME_MINUTE 1
+#define MAX_SLEEP_TIME_MINUTE 60
+#define SLEEP_IS_ACTIVE 1
 
 
 typedef struct {
@@ -53,6 +58,9 @@ static esp_err_t rmt_step_motor_smoothstep(rmt_step_motor_t *rmt_handle, uint32_
 static IRAM_ATTR void rmt_tx_loop_intr(rmt_channel_t channel, void *args);
 esp_err_t step_motor_create_rmt(rmt_step_motor_t * rmt_step_motor);
 esp_err_t step_motor_delete_rmt(rmt_step_motor_t * rmt_step_motor);
+static int run_feeder(rmt_step_motor_t * rmt_step_motor);
+static int handle_sleeping(u32 minutes_of_the_day);
+static int handle_feeding(u32 minutes_of_the_day, int * feeded_minute, rmt_step_motor_t * rmt_step_motor);
 
 static int feeder_init(rmt_step_motor_t * rmt_step_motor){
    int result = 0;
@@ -102,7 +110,7 @@ void feeder_task(void *arg){
    rmt_step_motor.rmt_config = &dev_config;  
    feeder_init(&rmt_step_motor);
    task_delay_ms(1000);
-   int feeded_minute = 0;
+   int feeded_minute = -1;
    while(1){
       if(task_notify_wait(FEEDER_TASK_STOP_CHILD_PROCCES, &signal_value, FEEDER_TASK_PERIOD)==pdTRUE){
          /*by signal*/
@@ -111,53 +119,88 @@ void feeder_task(void *arg){
             task_delete(task_get_id());
          }
          if (signal_value & FEEDER_TASK_ONE_FEED_COMM){
-            gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 0);/*active*/
-            gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 1);/*active*/
-            task_delay_ms(1);
-            feeder_reg.vars.feeder_counter++;
-            rmt_step_motor_smoothstep(&rmt_step_motor, 300, 35, 75);
-            task_delay_ms(5000);
-            gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1);/*not active*/
-            gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 0);/*not active*/
+            run_feeder(&rmt_step_motor);
          }
       }
       struct timeval tv;
       if (gettimeofday(&tv, NULL)!= 0) {
          main_error_message(TAG,"Failed to obtain time");
       }else{
-         int minutes_of_the_day = tv.tv_sec/60;
-         if (minutes_of_the_day % feeder_reg.vars.feeder_interval == 0){
-            if(feeded_minute != minutes_of_the_day){
-               gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 0);    /*active*/
-               gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 1); /*active*/
-               task_delay_ms(1);
-               feeder_reg.vars.feeder_counter++;
-               u32 steps = (u32)(feeder_reg.vars.feeder_time_sec * AVERAGE_STEPS_PER_SECOND);
-               rmt_step_motor_smoothstep(&rmt_step_motor, feeder_reg.vars, MIN_STEPS_PER_SECOND, MAX_STEPS_PER_SECOND);
-               task_delay_ms(2000);
-               gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1);    /*not active*/
-               gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 0); /*not active*/
-
-            }
-            feeded_minute = minutes_of_the_day;
-
-
-         }
+         u32 minutes_of_the_day = tv.tv_sec/60;
+         handle_feeding(minutes_of_the_day, &feeded_minute,&rmt_step_motor);
+         handle_sleeping(minutes_of_the_day);
          main_debug(TAG,"sec of the day %u",tv.tv_sec);
       }
-      // if (task_counter % 10 == 0){
-      //    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 0);    /*active*/
-      //    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 1); /*active*/
-      //    task_delay_ms(1);
-      //    feeder_reg.vars.feeder_counter++;
-      //    rmt_step_motor_smoothstep(&rmt_step_motor, 1000, 350, 500);
-      //    task_delay_ms(2000);
-      //    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1);    /*not active*/
-      //    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 0); /*not active*/
-      // }
       task_counter++;
    }
 }
+static int handle_sleeping(u32 minutes_of_the_day){
+   int result = 0;
+   u32 interval_minute = feeder_reg.vars.feeder_interval;
+   if (interval_minute > MIN_WORK_TIME_MINUTE){
+      u32 time_without_feeding = minutes_of_the_day % interval_minute;
+      if (time_without_feeding >= MIN_WORK_TIME_MINUTE){
+         u32 sleep_time_minutes = interval_minute - time_without_feeding;
+         sleep_time_minutes = sleep_time_minutes > MAX_SLEEP_TIME_MINUTE?MAX_SLEEP_TIME_MINUTE:sleep_time_minutes;
+#if SLEEP_IS_ACTIVE
+         if (sleep_time_minutes){
+            u32 sleep_time_sec = sleep_time_minutes * 60;
+            u32 prev_value = 0;
+            u32 signal = (u32)SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC | ((sleep_time_sec << 16u)&0xffff0000);
+            task_notify_send(sleep_control_handle_id, signal, &prev_value);
+         }
+#endif
+      }//do nothing,dont sleep
+   }//do nothing,dont sleep
+   return result; 
+}
+static int handle_feeding(u32 minutes_of_the_day, int * feeded_minute, rmt_step_motor_t * rmt_step_motor){
+   int result = 0;
+   if (minutes_of_the_day % feeder_reg.vars.feeder_interval == 0){
+      if((*feeded_minute < 0) || (*feeded_minute != minutes_of_the_day)){
+         result = run_feeder(rmt_step_motor); 
+         if(result > 0){
+            feeder_reg.vars.feeder_counter++;
+            int index = regs_description_get_index_by_address(&feeder_reg.vars.feeder_counter);
+            if (index>=0){
+                regs_template_t regs_template;
+                regs_template.ind =(u16)index;
+                if(regs_description_get_by_ind(&regs_template)>=0){
+                    if (mirror_access_write(&regs_template)>=0){
+                        main_debug(TAG, "succes wrote feeder_counter to mirror");
+                    }else{
+                        main_debug(TAG, "unsucces writing feeder_counter to mirror");
+                    }
+                }
+            }
+         }
+      }
+      *feeded_minute = minutes_of_the_day;
+   }
+   return result;   
+}
+static int run_feeder(rmt_step_motor_t * rmt_step_motor){
+   int result = 0;
+   gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 0);    /*active*/
+   gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 1); /*active*/
+   task_delay_ms(1);
+   u32 steps = (u32)(feeder_reg.vars.feeder_time_sec * AVERAGE_STEPS_PER_SECOND);
+   esp_err_t rmt_result = rmt_step_motor_smoothstep(rmt_step_motor, steps, MIN_STEPS_PER_SECOND, MAX_STEPS_PER_SECOND);
+   task_delay_ms((uint32_t)(feeder_reg.vars.feeder_time_sec*1000));
+   gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1);    /*not active*/
+   gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 0); /*not active*/
+   if (rmt_result == ESP_OK){
+      if(feeder_reg.vars.feeder_time_sec > 0.0f){
+         result = 1;
+      }else{
+         result = 0;
+      }
+   }else{
+      result = -1;
+   }
+   return result;
+}
+
 static inline float helper_smootherstep_clamp(float x, float lowerlimit, float upperlimit)
 {
    if (x < lowerlimit){

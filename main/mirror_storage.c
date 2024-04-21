@@ -183,8 +183,18 @@ int internal_flash_save_mirror_to_flash(void){
         nvs_handle_t my_handle;
         res = nvs_open("storage", NVS_READWRITE, &my_handle);
         if (res == ESP_OK) {
-            nvs_set_blob(my_handle,mirror_key,global_vars_mirror,INTERNAL_FLASH_MIRROR_ITEM_SIZE);
-            res = nvs_commit(my_handle);
+            size_t len = INTERNAL_FLASH_MIRROR_ITEM_SIZE;
+            u8 temp_mirror[INTERNAL_FLASH_MIRROR_ITEM_SIZE];
+            res = nvs_get_blob(my_handle,mirror_key,temp_mirror,&len);
+            if(memcmp(temp_mirror, global_vars_mirror, INTERNAL_FLASH_MIRROR_ITEM_SIZE)!=0){
+                nvs_set_blob(my_handle,mirror_key,global_vars_mirror,INTERNAL_FLASH_MIRROR_ITEM_SIZE);
+                res = nvs_commit(my_handle);
+                if (res >= 0){
+                    main_printf(TAG, "mirror saved to flash");
+                }
+            }else{
+                main_printf(TAG, "mirror is the same, no needs to save");
+            }
             nvs_close(my_handle);
         }
     }

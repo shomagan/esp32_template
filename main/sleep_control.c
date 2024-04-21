@@ -19,7 +19,8 @@
 #include "wireless_control.h"
 
 #define SLEEP_CONTROL_TASK_PERIOD_MS 100u
-#define ALIVE_DEFAULT_S 600u
+#define ALIVE_DEFAULT_S 60u
+#define ALIVE_LONG_S 600u
 static const char *TAG = "sleep_control";
 task_handle_t sleep_control_handle_id = NULL;
 #if ENABLE_DEEP_SLEEP
@@ -54,9 +55,9 @@ void sleep_control_task(void *arg){
    TickType_t task_timer;
    regs_global.vars.wake_up_cause = *esp_sleep_wakeup_cause;
    if (wake_up_control(*esp_sleep_wakeup_cause)==WAKE_UP_END){
-      alive_timer = 0;
+      alive_timer = (ALIVE_DEFAULT_S*1000) / SLEEP_CONTROL_TASK_PERIOD_MS;
    }else{
-      alive_timer = alive_init_value;
+      alive_timer = (ALIVE_LONG_S*1000) / SLEEP_CONTROL_TASK_PERIOD_MS;
       main_printf(TAG,"start config mode");
    }
    while(1){
@@ -85,10 +86,12 @@ void sleep_control_task(void *arg){
             signal_in_process &= ~((uint32_t)SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC);
          }
          if (sleep_time){
-            sleep_time = 0u;
             task_notify_send(wireless_control_handle_id, WIRELESS_TASK_STOP_WIFI,&prev_signal);
-            task_delay_ms(100u);
+            main_printf(TAG,"set ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH");
+            regs_global.vars.async_flags |= ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
+            task_delay_ms(300u);
             rtc_setup_wakeup(sleep_time);
+            sleep_time = 0;
             display_good_bye_message();
             esp_deep_sleep_start();
          }
@@ -123,6 +126,9 @@ static void rtc_setup_wakeup_pin(void){
     const gpio_config_t config = {
         .pin_bit_mask = BIT(EXT_WAKEUP_PIN),
         .mode = GPIO_MODE_INPUT,
+        .pull_up_en = 0,
+        .pull_down_en = 1,
+        .intr_type = GPIO_INTR_DISABLE
     };
     ESP_ERROR_CHECK(gpio_config(&config));
     ESP_ERROR_CHECK(esp_deep_sleep_enable_gpio_wakeup(BIT(EXT_WAKEUP_PIN), 1u));
@@ -134,7 +140,7 @@ static void rtc_setup_wakeup_timer(u16 seconds){
 }
 
 static void display_good_bye_message(void){
-   main_printf(TAG, "deep sleep trough pin state in sleep task");
+   main_printf(TAG, "deep sleep in sleep task");
 #if SS1306_MODULE   
    char temp_buff[TEMP_BUFFER_SIZE] = {0u};
    sprintf(temp_buff,"going to sleep");

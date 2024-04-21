@@ -68,7 +68,7 @@ static const u16 def_slave_modbus_address = 3;
 static const u16 def_min_slave_modbus_address = 1;
 static const u16 def_max_slave_modbus_address = 247;
 
-static const u16 def_feeder_interval = 1440u;
+static const u16 def_feeder_interval = 721u;
 static const u16 def_min_feeder_interval = 1u;
 static const float def_feeder_time_sec = 0.5f;
 static const float def_min_feeder_time_sec = 0.1f;
