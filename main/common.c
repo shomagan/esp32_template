@@ -133,12 +133,9 @@ void common_duty_task(void *pvParameters ){
                     main_error_message(TAG,"Failed to obtain time");
                 }else{
                     regs_global.vars.seconds_of_the_day = (u32)tv.tv_sec;
-                    main_debug(TAG,"sec of the day %u",tv.tv_sec);
+                    main_debug(TAG,"seconds%u",tv.tv_sec);
                 }
-                time_t now;
-                now = time(0);
-                regs_copy_safe(&regs_global.vars.unix_time,&now,sizeof(regs_global.vars.unix_time));
-                main_printf(TAG,"unix time %u",regs_global.vars.unix_time&0xffffffff);
+                regs_copy_safe(&regs_global.vars.unix_time,&tv.tv_sec,sizeof(regs_global.vars.unix_time));
             }
             udp_broabcast_update(task_tick);
 

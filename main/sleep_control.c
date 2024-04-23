@@ -19,14 +19,14 @@
 #include "wireless_control.h"
 
 #define SLEEP_CONTROL_TASK_PERIOD_MS 100u
-#define ALIVE_DEFAULT_S 60u
-#define ALIVE_LONG_S 600u
+#define ALIVE_DEFAULT_S 50u
+#define ALIVE_LONG_S 300u
 static const char *TAG = "sleep_control";
 task_handle_t sleep_control_handle_id = NULL;
 #if ENABLE_DEEP_SLEEP
 /*set up wakeup source*/
 static void rtc_setup_wakeup_pin(void);
-static void rtc_setup_wakeup_timer(u16 sec);
+static int rtc_setup_wakeup_timer(u16 sec);
 static int wake_up_control(esp_sleep_wakeup_cause_t esp_sleep_wakeup_cause);
 static void display_good_bye_message(void);
 static int sleep_control_init(void);
@@ -75,9 +75,10 @@ void sleep_control_task(void *arg){
          sleep_time = 120u;
       }
       if (signal_value & SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC){
-         main_printf(TAG,"SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC");
+         
          signal_in_process |= SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC;
          sleep_time = (signal_value >> 16u) & 0x0000ffff;
+         main_printf(TAG,"SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC %u", sleep_time);
       }
       if (alive_timer==0){
          if (signal_in_process & SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC){
@@ -90,8 +91,9 @@ void sleep_control_task(void *arg){
             main_printf(TAG,"set ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH");
             regs_global.vars.async_flags |= ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
             task_delay_ms(300u);
-            rtc_setup_wakeup(sleep_time);
-            sleep_time = 0;
+            if (ESP_OK != rtc_setup_wakeup(sleep_time)){
+               main_error_message(TAG,"wake up seting problem");  
+            }
             display_good_bye_message();
             esp_deep_sleep_start();
          }
@@ -108,9 +110,9 @@ void sleep_control_task(void *arg){
       task_counter++;
    }
 }
-void rtc_setup_wakeup(u16 seconds){
+int rtc_setup_wakeup(u16 seconds){
    rtc_setup_wakeup_pin();
-   rtc_setup_wakeup_timer(seconds);
+   return rtc_setup_wakeup_timer(seconds);
 }
 /*set up wakeup source*/
 static void rtc_setup_wakeup_pin(void){
@@ -134,9 +136,9 @@ static void rtc_setup_wakeup_pin(void){
     ESP_ERROR_CHECK(esp_deep_sleep_enable_gpio_wakeup(BIT(EXT_WAKEUP_PIN), 1u));
 #endif    
 }
-static void rtc_setup_wakeup_timer(u16 seconds){
+static int rtc_setup_wakeup_timer(u16 seconds){
     main_printf(TAG,"Enabling timer wakeup, %ds\n", seconds);
-    esp_sleep_enable_timer_wakeup((int)seconds * 1000000);
+    return esp_sleep_enable_timer_wakeup((u64)seconds * 1000000);
 }
 
 static void display_good_bye_message(void){

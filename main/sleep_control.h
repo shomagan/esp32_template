@@ -32,7 +32,7 @@ enum sleep_task_event{
 /*add functions and variable declarations below */
 extern task_handle_t sleep_control_handle_id;
 extern void sleep_control_task(void *arg);
-void rtc_setup_wakeup(u16 seconds);
+int rtc_setup_wakeup(u16 seconds);
 
 
 /*add functions and variable declarations before */

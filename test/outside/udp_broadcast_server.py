@@ -14,6 +14,7 @@ def udp_list(sock):
     while 1:
         data, address = sock.recvfrom(1024)
         packet_number += 1
+        print(f"time - {time.time()}")
         print(address,packet_number)
         print(data, len(data))
         data_s = []
