@@ -304,7 +304,7 @@ extern main_vars_t regs_global;
 typedef union{
     struct MCU_PACK{
         // start regs struct
-        float test_pwm_value;                   //!<"test pwm value [0;100]" &def &save
+        float test_pwm_value;                   //!<"test pwm value [0;100]" &def &save &min &max
         u16 touch_0;
         u16 touch_1;
         u16 touch_2;

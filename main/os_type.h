@@ -85,7 +85,8 @@
                                 uint32_t * pulNotificationValue,
                                 TickType_t xTicksToWait )   */
 #define task_notify_wait(flags,signal,ms) xTaskNotifyWait(0,flags,signal,ms/portTICK_PERIOD_MS)
-#define task_notify_send(thread_id,signal,prev_value) xTaskGenericNotify( thread_id, 0, (uint32_t)signal, eSetBits, prev_value)
+#define task_notify_send(thread_id,signal,prev_value)\
+    if(thread_id!=NULL){ xTaskGenericNotify(thread_id, 0, (uint32_t)signal, eSetBits, prev_value);}
 /* BaseType_t xTaskGenericNotifyFromISR( TaskHandle_t xTaskToNotify,
              UBaseType_t uxIndexToNotify,
              uint32_t ulValue,

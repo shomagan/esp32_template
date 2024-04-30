@@ -19,7 +19,7 @@
 #include <stdlib.h> /* atoi */
 #include <stdio.h>
 
-static const u16 def_mdb_addr = 11;
+static const u16 def_mdb_addr = 12;
 static const u8 def_ip[4] = {192,168,1,232};
 static const u8 def_netmask[4] = {255,255,255,0};
 static const u8 def_gate[4] = {192,168,1,1};
@@ -32,13 +32,15 @@ static const u16 def_num_of_vars = NUM_OF_SELF_VARS;
 static const u16 def_client_num_of_vars = NUM_OF_CLIENT_VARS;
 static const u8 def_board_ver = (u8)BOARD_VERSION;
 static const u16 def_permission = ENABLE_HTTP_FLAG;
-static const u8 def_wifi_name[WIFI_NAME_LEN] = "sofi_plc_net";               //!<"must be strong full filled", &save &def
+static const u8 def_wifi_name[WIFI_NAME_LEN] = "sofi_plc_air";               //!<"must be strong full filled", &save &def
 static const u8 def_wifi_password[WIFI_PASSWORD_LEN] = "bricsofi";            //!<"must be strong more then 8 byte", &save &def
 static const u8 def_wifi_router_name[WIFI_ROUTER_NAME_LEN] = WIFE_STATION_SECURE_NAME;
 static const u8 def_wifi_router_password[WIFI_ROUTER_PASSWORD_LEN] = WIFE_STATION_SECURE_PASSWORD;
-static const u16 def_wifi_setting = WIFI_AP_STA;               //!<"type of wifi and settings" &save &def
-static const float def_test_pwm_value = 50.0f;
-const u32 def_table_version = 0x0007;   //!<"current version, if changed, starting from scratch"
+static const u16 def_wifi_setting = WIFI_CLIENT;               //!<"type of wifi and settings" &save &def
+static const float def_test_pwm_value = 10.0f;
+static const float def_min_test_pwm_value = 3.0f;
+static const float def_max_test_pwm_value = 30.0f;
+const u32 def_table_version = 0x0008;   //!<"current version, if changed, starting from scratch"
 static const float def_servo_0 = 10.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
 static const float def_min_servo_0 = 0.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
 static const float def_max_servo_0 = 100.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
@@ -136,11 +138,11 @@ regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { NULL, NULL, NULL, (u8*)&regs_global.vars.rssi_ap[0], 0,"wifi rssi of Access point","rssi_ap", I8_REGS_FLAG, 56, 360, 0x300b4, 2, 3, 0 },//!< "wifi rssi of Access point" &ro
 { NULL, NULL, NULL, (u8*)&regs_global.vars.primary_channel_ap[0], 0,"wifi channel used","primary_channel_ap", I8_REGS_FLAG, 57, 362, 0x300b5, 2, 3, 0 },//!< "wifi channel used" &ro
 { NULL, NULL, NULL, (u8*)&regs_global.vars.wake_up_cause, 0,"wake up reason","wake_up_cause", S32_REGS_FLAG, 58, 364, 0x300b6, 1, 3, 0 },//!< "wake up reason" &ro
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.test_pwm_value, 150,"test pwm value [0;100]","test_pwm_value", FLOAT_REGS_FLAG, 59, 368, 0x303e8, 1, 5, 1 },//!<"test pwm value [0;100]" &def &save
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_0, 0,"touch_0","touch_0", U16_REGS_FLAG, 60, 372, 0x303ea, 1, 1, 1 },
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_1, 0,"touch_1","touch_1", U16_REGS_FLAG, 61, 374, 0x303eb, 1, 1, 1 },
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_2, 0,"touch_2","touch_2", U16_REGS_FLAG, 62, 376, 0x303ec, 1, 1, 1 },
-{ &def_test_pwm_value, NULL, NULL, (u8*)&regs_global_part1.vars.touch_3, 0,"touch_3","touch_3", U16_REGS_FLAG, 63, 378, 0x303ed, 1, 1, 1 },
+{ &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&regs_global_part1.vars.test_pwm_value, 150,"test pwm value [0;100]","test_pwm_value", FLOAT_REGS_FLAG, 59, 368, 0x303e8, 1, 197, 1 },//!<"test pwm value [0;100]" &def &save &min &max
+{ &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&regs_global_part1.vars.touch_0, 0,"touch_0","touch_0", U16_REGS_FLAG, 60, 372, 0x303ea, 1, 1, 1 },
+{ &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&regs_global_part1.vars.touch_1, 0,"touch_1","touch_1", U16_REGS_FLAG, 61, 374, 0x303eb, 1, 1, 1 },
+{ &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&regs_global_part1.vars.touch_2, 0,"touch_2","touch_2", U16_REGS_FLAG, 62, 376, 0x303ec, 1, 1, 1 },
+{ &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&regs_global_part1.vars.touch_3, 0,"touch_3","touch_3", U16_REGS_FLAG, 63, 378, 0x303ed, 1, 1, 1 },
 { NULL, NULL, NULL, (u8*)&regs_global_part1.vars.water_counter, 154,"di counter","water_counter", U64_REGS_FLAG, 64, 380, 0x303ee, 1, 7, 1 },//!< "di counter" &save &ro
 { &def_impulse_cost, NULL, NULL, (u8*)&regs_global_part1.vars.impulse_cost, 162,"cost of di impulse in liters","impulse_cost", FLOAT_REGS_FLAG, 65, 388, 0x303f2, 1, 5, 1 },//!< "cost of di impulse in liters" &save &def
 { NULL, NULL, NULL, (u8*)&regs_global_part1.vars.liters, 166,"liters calculated","liters", FLOAT_REGS_FLAG, 66, 392, 0x303f4, 1, 5, 1 },//!< "liters calculated" &save

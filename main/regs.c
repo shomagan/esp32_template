@@ -642,10 +642,8 @@ static void execute_main_command(u16 command){
         ESP_LOGI(TAG, "SET_DEFAULT_VALUES_COMM");
         res = set_regs_def_values();
         if (res == 1){
-            regs_access_t reg;
-            reg.flag = U16_REGS_FLAG;
-            reg.value.op_u16 = SW_RESET_COMM;
-            regs_set(&regs_global.vars.command,reg);
+            main_printf(TAG,"task notify to prepare reset");
+            task_notify_send(common_duty_task_handle,PREPARE_TO_RESET,&prev_value);
         }
         break;
     case ENABLE_SPECIAL_HTTP_COMM:

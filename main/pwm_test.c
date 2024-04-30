@@ -112,7 +112,7 @@ void pwm_control_task(void *arg){
     uint32_t signal_value;
     pwm_test_init();
     while(1){
-        if(task_notify_wait(STOP_CHILD_PROCCES|PACKET_RECEIVED, &signal_value, 10)==pdTRUE){
+        if(task_notify_wait(STOP_CHILD_PROCCES|PACKET_RECEIVED, &signal_value, 100)==pdTRUE){
             /*by signal*/
             if (signal_value & STOP_CHILD_PROCCES){
             }else if(signal_value & PACKET_RECEIVED){

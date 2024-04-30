@@ -137,8 +137,10 @@ static void rtc_setup_wakeup_pin(void){
 #endif    
 }
 static int rtc_setup_wakeup_timer(u16 seconds){
-    main_printf(TAG,"Enabling timer wakeup, %ds\n", seconds);
-    return esp_sleep_enable_timer_wakeup((u64)seconds * 1000000);
+   u64 useconds = seconds;
+   useconds *= 1000000u;
+   main_printf(TAG,"Enabling timer wakeup, %ds\n", seconds);
+   return esp_sleep_enable_timer_wakeup(useconds);
 }
 
 static void display_good_bye_message(void){

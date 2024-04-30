@@ -48,6 +48,8 @@ typedef struct {
 task_handle_t feeder_handle_id = NULL;
 static const char *TAG = "feeder";
 feeder_reg_t feeder_reg;
+
+#if FEEDER
 static int feeder_init(rmt_step_motor_t * rmt_step_motor);
 static int feeder_deinit(rmt_step_motor_t * rmt_step_motor);
 static inline float helper_smootherstep_clamp(float x, float lowerlimit, float upperlimit);
@@ -56,8 +58,8 @@ static uint16_t helper_speed_to_duration(uint16_t speed);
 static esp_err_t helper_fill_rmt_items(rmt_item32_t *items, uint32_t speed);
 static esp_err_t rmt_step_motor_smoothstep(rmt_step_motor_t *rmt_handle, uint32_t n, uint32_t speed_min,uint32_t speed_max);
 static IRAM_ATTR void rmt_tx_loop_intr(rmt_channel_t channel, void *args);
-esp_err_t step_motor_create_rmt(rmt_step_motor_t * rmt_step_motor);
-esp_err_t step_motor_delete_rmt(rmt_step_motor_t * rmt_step_motor);
+static esp_err_t step_motor_create_rmt(rmt_step_motor_t * rmt_step_motor);
+static esp_err_t step_motor_delete_rmt(rmt_step_motor_t * rmt_step_motor);
 static int run_feeder(rmt_step_motor_t * rmt_step_motor);
 static int handle_sleeping(u32 minutes_of_the_day);
 static int handle_feeding(u32 minutes_of_the_day, int * feeded_minute, rmt_step_motor_t * rmt_step_motor);
@@ -77,7 +79,7 @@ static int feeder_init(rmt_step_motor_t * rmt_step_motor){
    io_conf.pull_up_en = 0;
    gpio_config(&io_conf);
    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1);/*not active*/
-   gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_DIR0, 1);
+   gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_DIR0, 0);
    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 0);
    regs_global.vars.current_state[0] |= CS0_TASK_ACTIVE_STEP_MOTOR;
    ESP_ERROR_CHECK(step_motor_create_rmt(rmt_step_motor));
@@ -332,7 +334,7 @@ static IRAM_ATTR void rmt_tx_loop_intr(rmt_channel_t channel, void *args)
    }
 }
 /*all args preallocated*/
-esp_err_t step_motor_create_rmt(rmt_step_motor_t * rmt_step_motor)
+static esp_err_t step_motor_create_rmt(rmt_step_motor_t * rmt_step_motor)
 {
    if (rmt_step_motor != NULL)
    {
@@ -348,7 +350,7 @@ esp_err_t step_motor_create_rmt(rmt_step_motor_t * rmt_step_motor)
       return ESP_ERR_INVALID_ARG;
    }
 }
-esp_err_t step_motor_delete_rmt(rmt_step_motor_t * rmt_step_motor)
+static esp_err_t step_motor_delete_rmt(rmt_step_motor_t * rmt_step_motor)
 {
    semaphore_delete(rmt_step_motor->notify_semphr);
    if (ESP_OK!=rmt_driver_uninstall(rmt_step_motor->rmt_config->channel)){
@@ -357,5 +359,5 @@ esp_err_t step_motor_delete_rmt(rmt_step_motor_t * rmt_step_motor)
    }
    return ESP_OK;
 }
-
+#endif //FEEDER
 #endif /*FEEDER_C*/

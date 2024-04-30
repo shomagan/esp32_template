@@ -34,11 +34,11 @@ typedef enum {
 } rmt_step_motor_running_status;
 
 
-
 /*add functions and variable declarations below */
 extern task_handle_t feeder_handle_id;
+#if FEEDER
 extern void feeder_task(void *arg);
-
+#endif
 /*add functions and variable declarations before */
 #ifdef __cplusplus
 }

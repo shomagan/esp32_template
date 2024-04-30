@@ -133,7 +133,7 @@ void common_duty_task(void *pvParameters ){
                     main_error_message(TAG,"Failed to obtain time");
                 }else{
                     regs_global.vars.seconds_of_the_day = (u32)tv.tv_sec;
-                    main_debug(TAG,"seconds%u",tv.tv_sec);
+                    main_debug(TAG,"seconds%lu",tv.tv_sec);
                 }
                 regs_copy_safe(&regs_global.vars.unix_time,&tv.tv_sec,sizeof(regs_global.vars.unix_time));
             }
