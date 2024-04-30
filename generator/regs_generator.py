@@ -119,6 +119,8 @@ def main():
     else:
         os.system("./makefsdata_l")
     os.chdir("../../generator/")
+
+
 def change_version(git_base_path):
     repo = Repo(git_base_path)
     assert not repo.bare
@@ -131,23 +133,21 @@ def change_version(git_base_path):
     version_array = re.findall(r'\d+', version)
     version = version.replace("v", "")
     version = version.replace(".", ",")
-    str_before = r"\#define\s+OS_VERSION\s+\{[\d\,]+\}"
-    str_to = "#define OS_VERSION {"+version+"}"
+    str_before = r"\#define\s+FW_VERSION\s+\{[\d\,]+\}"
+    str_to = "#define FW_VERSION {"+version+"}"
     print(str_before, str_to)
     substitute_reg_exp(REGS_H_PATH, str_before, str_to)
-    str_before = r"\#define\s+OS_VERSION_STR\s+\"[\d\.\w\-]+\""
-    str_to = "#define OS_VERSION_STR \"{}.{}.{}-beta.{}\"".format(version_array[0],
+    str_before = r"\#define\s+FW_VERSION_STR\s+\"[\d\.\w\-]+\""
+    str_to = "#define FW_VERSION_STR \"{}.{}.{}-beta.{}\"".format(version_array[0],
                                                                   version_array[1],
                                                                   version_array[2],
                                                                   version_array[3])
     print(str_before, str_to)
     substitute_reg_exp(REGS_H_PATH, str_before, str_to)
-    str_before = r"\#define\s+OS_FIRMWARE_HASH\s+\"[\d\-\w]+\""
-    str_to = "#define OS_FIRMWARE_HASH \"{}-{}\"".format(count_commits, head_commit.hexsha[:30])
+    str_before = r"\#define\s+FW_FIRMWARE_HASH\s+\"[\d\-\w]+\""
+    str_to = "#define FW_FIRMWARE_HASH \"{}-{}\"".format(count_commits, head_commit.hexsha[:30])
     print(str_before, str_to)
     substitute_reg_exp(REGS_H_PATH, str_before, str_to)
-
-    # define OS_FIRMWARE_HASH "1-abcdef"
 
 
 def get_git_version(git_base_path):
