@@ -65,7 +65,7 @@
 #define UDP_BROADCAST_UDP_REQUEST_ENABLE 1
 #define UDP_BROADCAST_INFORMATION_ENABLE 1
 #define UDP_ADVERTISMENT_PERIOD 1000u
-#define MODBUS_MASTER_ENABLE 1
+#define MODBUS_MASTER_ENABLE 0
 #define DI_HANDLING_ENABLE 0
 #define SR04_MODULE 0
 #define SS1306_MODULE 0
@@ -81,10 +81,12 @@
 #if DI_HANDLING_ENABLE && PMW_TEST_ENABLE
 #error "DI_HANDLING_ENABLE and PMW_TEST_ENABLE can't be enabled at the same time"
 #endif
-#define FEEDER 1
-#if FEEDER && STEP_MOTOR
-  #error "feeder and step_motor used simulteniosly"
+#define FEEDER 0
+#define POLISHER 1
+#if (FEEDER && STEP_MOTOR)|| (POLISHER && STEP_MOTOR)|| (FEEDER && POLISHER)
+  #error "config problem"
 #endif
+
 #define MAIN_CONFIG_WIFI_AP 0
 #define MAIN_CONFIG_WIFI_NODE 0
 #define ENABLE_DEEP_SLEEP 1

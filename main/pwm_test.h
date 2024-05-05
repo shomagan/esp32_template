@@ -51,7 +51,7 @@
    extern "C" {
 #endif
 #define PWM_STEP_CONTROL_ENABLE 0
-#define PWM_AIR_ENABLE 1
+#define PWM_AIR_ENABLE 0
 
 /*add functions and variable declarations below */
 extern task_handle_t pwm_task_handle;

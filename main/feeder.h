@@ -33,7 +33,6 @@ typedef enum {
     LIMITED_LOOP,
 } rmt_step_motor_running_status;
 
-
 /*add functions and variable declarations below */
 extern task_handle_t feeder_handle_id;
 #if FEEDER

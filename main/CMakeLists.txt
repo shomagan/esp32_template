@@ -29,6 +29,7 @@ idf_component_register(
     SRCS "sleep_control.c"
     SRCS "wireless_control.c"
     SRCS "feeder.c"
+    SRCS "polisher.c"
     INCLUDE_DIRS "."
     INCLUDE_DIRS "radar/."
     INCLUDE_DIRS "http/."

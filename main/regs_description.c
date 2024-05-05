@@ -19,7 +19,7 @@
 #include <stdlib.h> /* atoi */
 #include <stdio.h>
 
-static const u16 def_mdb_addr = 12;
+static const u16 def_mdb_addr = 13;
 static const u8 def_ip[4] = {192,168,1,232};
 static const u8 def_netmask[4] = {255,255,255,0};
 static const u8 def_gate[4] = {192,168,1,1};
@@ -40,7 +40,7 @@ static const u16 def_wifi_setting = WIFI_CLIENT;               //!<"type of wifi
 static const float def_test_pwm_value = 10.0f;
 static const float def_min_test_pwm_value = 3.0f;
 static const float def_max_test_pwm_value = 30.0f;
-const u32 def_table_version = 0x0008;   //!<"current version, if changed, starting from scratch"
+const u32 def_table_version = 0x000a;   //!<"current version, if changed, starting from scratch"
 static const float def_servo_0 = 10.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
 static const float def_min_servo_0 = 0.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
 static const float def_max_servo_0 = 100.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
@@ -77,6 +77,10 @@ static const float def_min_feeder_time_sec = 0.1f;
 static const float def_max_feeder_time_sec = 60.0f;
 static const u16 def_sleep_time = 25u;
 static const u16 def_min_sleep_time = 1u;
+static const u16 def_polisher_speed = 600;
+static const u16 def_max_polisher_speed = 10000;
+static const u16 def_polisher_direction = 0;
+static const u16 def_max_polisher_direction = 2;
 
 regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { &def_mdb_addr, NULL, NULL, (u8*)&regs_global.vars.mdb_addr, 16,"modbus address","mdb_addr", U16_REGS_FLAG, 0, 0, 0x30000, 1, 5, 0 },//!<"modbus address" &save &def
@@ -179,29 +183,33 @@ regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { &def_feeder_interval, &def_min_feeder_interval, NULL, (u8*)&feeder_reg.vars.feeder_interval, 226,"minutes between a feeds","feeder_interval", U16_REGS_FLAG, 97, 524, 0x3106a, 1, 69, 6 },//!< "minutes between a feeds" &save &def &min
 { NULL, NULL, NULL, (u8*)&feeder_reg.vars.feeder_reserv0, 0,"reserved","feeder_reserv0", U16_REGS_FLAG, 98, 526, 0x3106b, 1, 1, 6 },//!< "reserved"
 { &def_feeder_time_sec, &def_min_feeder_time_sec, &def_max_feeder_time_sec, (u8*)&feeder_reg.vars.feeder_time_sec, 228,"turn time is seconds","feeder_time_sec", FLOAT_REGS_FLAG, 99, 528, 0x3106c, 1, 197, 6 },//!< "turn time is seconds" &save &def &min &max
+{ NULL, NULL, NULL, (u8*)&polisher_reg.vars.polisher_sec, 232,"how many time in seconds it was active","polisher_sec", U32_REGS_FLAG, 100, 532, 0x310cc, 1, 7, 7 },//!<"how many time in seconds it was active" &save &ro
+{ NULL, NULL, NULL, (u8*)&polisher_reg.vars.polisher_last_sec, 0,"how many time in seconds it was active last session","polisher_last_sec", U32_REGS_FLAG, 101, 536, 0x310ce, 1, 3, 7 },//!<"how many time in seconds it was active last session" &ro
+{ &def_polisher_speed, NULL, &def_max_polisher_speed, (u8*)&polisher_reg.vars.polisher_speed, 236,"speed","polisher_speed", U16_REGS_FLAG, 102, 540, 0x310d0, 1, 133, 7 },//!< "speed" &save &def &max
+{ &def_polisher_direction, NULL, &def_max_polisher_direction, (u8*)&polisher_reg.vars.polisher_direction, 238,"direction","polisher_direction", U16_REGS_FLAG, 103, 542, 0x310d1, 1, 133, 7 },//!< "direction" &save &def &max 
 };
 regs_description_t const regs_description_user[NUM_OF_CLIENT_VARS]={
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_mdb_addr, 0,"modbus address","cli_mdb_addr", U16_REGS_FLAG, 100, 532, 0x30000, 1, 1, 0x703 },//!<"modbus address" 
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_ip[0], 0,"device ip address, warning!!! ","cli_ip", U8_REGS_FLAG, 101, 534, 0x30001, 4, 1, 0x703 },//!<"device ip address, warning!!! " 
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_netmask[0], 0,"netmask address for main wifi net","cli_netmask", U8_REGS_FLAG, 102, 538, 0x30003, 4, 1, 0x703 },//!<"netmask address for main wifi net",
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_gate[0], 0,"gateaway address, warning!!! ","cli_gate", U8_REGS_FLAG, 103, 542, 0x30005, 4, 1, 0x703 },//!<"gateaway address, warning!!! " 
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_slip_ip[0], 0,"ip address for local net","cli_slip_ip", U8_REGS_FLAG, 104, 546, 0x30007, 4, 1, 0x703 },//!<"ip address for local net",
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_slip_netmask[0], 0,"netmask address for local net","cli_slip_netmask", U8_REGS_FLAG, 105, 550, 0x30009, 4, 1, 0x703 },//!<"netmask address for local net", 
-{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_slip_gate[0], 0,"gateaway address for local net","cli_slip_gate", U8_REGS_FLAG, 106, 554, 0x3000b, 4, 1, 0x703 },//!<"gateaway address for local net", 
-{ NULL, NULL, NULL, (u8*)&client_part_1.vars.cli_num_of_vars, 0,"cli_num_of_vars","cli_num_of_vars", U16_REGS_FLAG, 107, 558, 0x30050, 1, 3, 0x803 },//!<"number of vars self + config(user) &ro 
-{ NULL, NULL, NULL, (u8*)&client_part_1.vars.cli_client_num_of_vars, 0,"number of client vars self","cli_client_num_of_vars", U16_REGS_FLAG, 108, 560, 0x30051, 1, 3, 0x803 },//!<"number of client vars self" &ro 
-{ NULL, NULL, NULL, (u8*)&sync_time_client.vars.sys_tick_slave, 0,"time read from slave","sys_tick_slave", U64_REGS_FLAG, 109, 562, 0x3003f, 1, 3, 0x903 },//!< "time read from slave" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_state, 0,"state sr04, bit0 - activated, bit1 - echo signal received","cli_state", U16_REGS_FLAG, 110, 570, 0x31004, 1, 3, 0xa03 },//!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_distance, 0,"current distance","cli_distance", FLOAT_REGS_FLAG, 111, 572, 0x31005, 1, 3, 0xa03 },//!< "current distance" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_lap, 0,"when we have sharp change of a distance, save it ","cli_lap", U64_REGS_FLAG, 112, 576, 0x31007, 1, 3, 0xa03 },//!< "when we have sharp change of a distance, save it " &ro 
-{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_lap_paired_dev, 0,"lap from paired device","cli_lap_paired_dev", U64_REGS_FLAG, 113, 584, 0x3100b, 1, 3, 0xa03 },//!< "lap from paired device" &ro
-{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_distance_filtered, 0,"current distance filterd","cli_distance_filtered", FLOAT_REGS_FLAG, 114, 592, 0x3100f, 1, 3, 0xa03 },//!< "current distance filterd" &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sys_tick_dev, 0,"deviation between master and slave","cli_sys_tick_dev", S32_REGS_FLAG, 115, 596, 0x30fa0, 1, 3, 0xb03 },//!< "deviation between master and slave" &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sys_tick_slave, 0,"time read from slave","cli_sys_tick_slave", U64_REGS_FLAG, 116, 600, 0x30fa2, 1, 3, 0xb03 },//!< "time read from slave" &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sys_tick_master, 0,"time read from master","cli_sys_tick_master", U64_REGS_FLAG, 117, 608, 0x30fa6, 1, 3, 0xb03 },//!< "time read from master" &ro 
-{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_average_time_ms, 0,"average send receive time ","cli_average_time_ms", U16_REGS_FLAG, 118, 616, 0x30faa, 1, 3, 0xb03 },//!< "average send receive time " &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_last_req_time_ms, 0,"last send receive time ","cli_last_req_time_ms", U16_REGS_FLAG, 119, 618, 0x30fab, 1, 3, 0xb03 },//!< "last send receive time " &ro
-{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sync_state, 0,"activated measurement","cli_sync_state", U16_REGS_FLAG, 120, 620, 0x30fac, 1, 3, 0xb03 },//!< "activated measurement" &ro
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_mdb_addr, 0,"modbus address","cli_mdb_addr", U16_REGS_FLAG, 104, 544, 0x30000, 1, 1, 0x803 },//!<"modbus address" 
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_ip[0], 0,"device ip address, warning!!! ","cli_ip", U8_REGS_FLAG, 105, 546, 0x30001, 4, 1, 0x803 },//!<"device ip address, warning!!! " 
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_netmask[0], 0,"netmask address for main wifi net","cli_netmask", U8_REGS_FLAG, 106, 550, 0x30003, 4, 1, 0x803 },//!<"netmask address for main wifi net",
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_gate[0], 0,"gateaway address, warning!!! ","cli_gate", U8_REGS_FLAG, 107, 554, 0x30005, 4, 1, 0x803 },//!<"gateaway address, warning!!! " 
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_slip_ip[0], 0,"ip address for local net","cli_slip_ip", U8_REGS_FLAG, 108, 558, 0x30007, 4, 1, 0x803 },//!<"ip address for local net",
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_slip_netmask[0], 0,"netmask address for local net","cli_slip_netmask", U8_REGS_FLAG, 109, 562, 0x30009, 4, 1, 0x803 },//!<"netmask address for local net", 
+{ NULL, NULL, NULL, (u8*)&client_part_0.vars.cli_slip_gate[0], 0,"gateaway address for local net","cli_slip_gate", U8_REGS_FLAG, 110, 566, 0x3000b, 4, 1, 0x803 },//!<"gateaway address for local net", 
+{ NULL, NULL, NULL, (u8*)&client_part_1.vars.cli_num_of_vars, 0,"cli_num_of_vars","cli_num_of_vars", U16_REGS_FLAG, 111, 570, 0x30050, 1, 3, 0x903 },//!<"number of vars self + config(user) &ro 
+{ NULL, NULL, NULL, (u8*)&client_part_1.vars.cli_client_num_of_vars, 0,"number of client vars self","cli_client_num_of_vars", U16_REGS_FLAG, 112, 572, 0x30051, 1, 3, 0x903 },//!<"number of client vars self" &ro 
+{ NULL, NULL, NULL, (u8*)&sync_time_client.vars.sys_tick_slave, 0,"time read from slave","sys_tick_slave", U64_REGS_FLAG, 113, 574, 0x3003f, 1, 3, 0xa03 },//!< "time read from slave" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_state, 0,"state sr04, bit0 - activated, bit1 - echo signal received","cli_state", U16_REGS_FLAG, 114, 582, 0x31004, 1, 3, 0xb03 },//!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_distance, 0,"current distance","cli_distance", FLOAT_REGS_FLAG, 115, 584, 0x31005, 1, 3, 0xb03 },//!< "current distance" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_lap, 0,"when we have sharp change of a distance, save it ","cli_lap", U64_REGS_FLAG, 116, 588, 0x31007, 1, 3, 0xb03 },//!< "when we have sharp change of a distance, save it " &ro 
+{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_lap_paired_dev, 0,"lap from paired device","cli_lap_paired_dev", U64_REGS_FLAG, 117, 596, 0x3100b, 1, 3, 0xb03 },//!< "lap from paired device" &ro
+{ NULL, NULL, NULL, (u8*)&sr04_reg_client.vars.cli_distance_filtered, 0,"current distance filterd","cli_distance_filtered", FLOAT_REGS_FLAG, 118, 604, 0x3100f, 1, 3, 0xb03 },//!< "current distance filterd" &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sys_tick_dev, 0,"deviation between master and slave","cli_sys_tick_dev", S32_REGS_FLAG, 119, 608, 0x30fa0, 1, 3, 0xc03 },//!< "deviation between master and slave" &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sys_tick_slave, 0,"time read from slave","cli_sys_tick_slave", U64_REGS_FLAG, 120, 612, 0x30fa2, 1, 3, 0xc03 },//!< "time read from slave" &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sys_tick_master, 0,"time read from master","cli_sys_tick_master", U64_REGS_FLAG, 121, 620, 0x30fa6, 1, 3, 0xc03 },//!< "time read from master" &ro 
+{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_average_time_ms, 0,"average send receive time ","cli_average_time_ms", U16_REGS_FLAG, 122, 628, 0x30faa, 1, 3, 0xc03 },//!< "average send receive time " &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_last_req_time_ms, 0,"last send receive time ","cli_last_req_time_ms", U16_REGS_FLAG, 123, 630, 0x30fab, 1, 3, 0xc03 },//!< "last send receive time " &ro
+{ NULL, NULL, NULL, (u8*)&sync_time_regs_from_client.vars.cli_sync_state, 0,"activated measurement","cli_sync_state", U16_REGS_FLAG, 124, 632, 0x30fac, 1, 3, 0xc03 },//!< "activated measurement" &ro
 };
 const regs_description_t * regs_description_client = regs_description_user;
 /**

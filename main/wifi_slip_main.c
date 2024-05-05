@@ -39,6 +39,7 @@
 #include "sleep_control.h"
 #include "wireless_control.h"
 #include "feeder.h"
+#include "polisher.h"
 /* The examples use WiFi configuration that you can set via project configuration menu.
    If you'd rather not, just change the below entries to strings with
    the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
@@ -225,6 +226,12 @@ int main_init_tasks(esp_sleep_wakeup_cause_t * esp_sleep_wakeup_cause){
     }
 #endif
 
+#if POLISHER
+    res = task_create(polisher_task, "polisher_task", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &polisher_handle_id);
+    if(res != pdTRUE){
+        main_printf(TAG,"polisher_task inited success\n");
+    }
+#endif
     return res;
 }
 /**
