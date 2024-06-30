@@ -58,6 +58,8 @@
 #else
 #define MAIN_DEBUG_ASSERT(message, assertion)
 #endif  //main_noassert
+/*task config start */
+#define ENABLE_DEEP_SLEEP 1
 #define SLIP_ENABLE 0
 #define PWM_TEST_ENABLE 0
 #define TOUCH_HANDLE_ENABLE 0
@@ -70,6 +72,10 @@
 #define SR04_MODULE 0
 #define SS1306_MODULE 0
 #define TIME_SYNC_MEASUREMENT_ENABLE 1
+#define STEP_MOTOR 0
+#define FEEDER 0
+#define POLISHER 0
+#define TEST_INT 1
 #if TIME_SYNC_MEASUREMENT_ENABLE
 #define TIME_SYNC_DEVIATION_THRESHOLD 10
 #define TIME_SYNC_BUFFER_SIZE 100u
@@ -77,19 +83,18 @@
 #define MAX_TRANSMISSION_TIME 1000u
 #define DISPLAY_TIME_DIFF 1
 #endif
-#define STEP_MOTOR 0
 #if DI_HANDLING_ENABLE && PMW_TEST_ENABLE
 #error "DI_HANDLING_ENABLE and PMW_TEST_ENABLE can't be enabled at the same time"
 #endif
-#define FEEDER 0
-#define POLISHER 1
 #if (FEEDER && STEP_MOTOR)|| (POLISHER && STEP_MOTOR)|| (FEEDER && POLISHER)
   #error "config problem"
 #endif
+/*task config end */
+
 
 #define MAIN_CONFIG_WIFI_AP 0
 #define MAIN_CONFIG_WIFI_NODE 0
-#define ENABLE_DEEP_SLEEP 1
+
 
 /*add functions and variable declarations before */
 #ifdef __cplusplus

@@ -51,7 +51,7 @@ void sleep_control_task(void *arg){
    u32 prev_signal=0;
    u64 task_counter=0;
    u16 alive_init_value = (ALIVE_DEFAULT_S*1000) / SLEEP_CONTROL_TASK_PERIOD_MS;
-   u16 alive_timer;
+   u16 alive_timer;/*represents time only after which we can start the sleep process*/
    TickType_t task_timer;
    regs_global.vars.wake_up_cause = *esp_sleep_wakeup_cause;
    if (wake_up_control(*esp_sleep_wakeup_cause)==WAKE_UP_END){
@@ -86,7 +86,7 @@ void sleep_control_task(void *arg){
          }else  if (signal_in_process & SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC){
             signal_in_process &= ~((uint32_t)SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC);
          }
-         if (sleep_time){
+         if (sleep_time){/*sleep time should be set by side component*/
             task_notify_send(wireless_control_handle_id, WIRELESS_TASK_STOP_WIFI,&prev_signal);
             main_printf(TAG,"set ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH");
             regs_global.vars.async_flags |= ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;

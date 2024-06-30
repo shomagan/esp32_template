@@ -86,6 +86,7 @@ typedef enum{
     CS0_TASK_ACTIVE_WIRELESS_CONTROL    = BIT(13),/*!< wireless conrol task must be work on*/
     CS0_TASK_ACTIVE_FEEDER              = BIT(14),/*!< feeder task must be work on*/
     CS0_TASK_ACTIVE_POLISHER            = BIT(15),/*!< polisher task must be work on*/
+    CS0_TASK_ACTIVE_TEST_INT            = BIT(16),/*!< test int task must be work on*/
 } current_state_0;
 /**
   * @brief structures for u32 current_state[4]; //!< "current state of proccess" &ro description above contain flags
@@ -193,7 +194,7 @@ typedef struct {
 #define FW_VERSION_SIZE 4
 #define FW_VERSION {0,10,0,0}
 #define FW_VERSION_STR "0.10.0-beta.0"
-#define FW_FIRMWARE_HASH "60-e720f0a5eed2e29196905a1fc06f12"
+#define FW_FIRMWARE_HASH "61-3597010bb4184f724794e7bd6439ff"
 #define FW_HASH 0x00000000
 #define REGS_MAX_NAME_SIZE 32
 #define DEVICE_NAME_SIZE 40
@@ -210,7 +211,7 @@ typedef struct {
 /**
   * @}
   */
-/**
+/** \union main_vars_t  
  * @brief main struct
  * name variables uses for generate name in description file and then in get value by name
  * and therefore use max size len name is 16 charackter \n
@@ -482,7 +483,24 @@ typedef union{
     u32 bytes[4]; //for full bksram copy
 }polisher_reg_t;// #generator_use_description {"message":"end_struct"}
 extern polisher_reg_t polisher_reg;
-
+/** \union  
+ * @brief test struct for internal tests 
+ * @see main_vars_t
+ * @ingroup regs
+ */
+/** #generator_use_description {"space_name" :"test_int_reg_t",  "address_space" :8, "modbus_type" :"server", "modbus_function" :"holding_registers", "register_start_address" 4400}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        u32 test_int_state;         //!<"current state" &ro
+        u32 test_int_command;         //!<"command" &ro
+        u32 test_int_component;         //!<"component to be tested" 
+        u32 test_int_type;         //!<"test type - check, stress, performance" 
+        u32 test_int_result;         //!<"overall result" &ro
+    }vars;
+    u32 bytes[4]; //for full bksram copy
+}test_int_reg_t;// #generator_use_description {"message":"end_struct"}
+extern test_int_reg_t test_int_reg;
 /**
  * @brief struct for reading modbus data from another device maximume bytes - 240
  * name variables uses for generate name in description file and then in get value by name
@@ -513,6 +531,30 @@ typedef union{
 }client_part_0_t;// #generator_use_description {"message":"end_struct"}
 extern client_part_0_t client_part_0;
 /**
+ * @brief client part2 to read sys_tick_counter from salve
+ * struct for reading modbus data from another device maximume bytes - 240
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * will be in struct regs_description_client
+ * additional space modbus_address, specific space read_holding_registers
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *                  regs_description \n
+ *
+ * @ingroup regs
+ */
+/** #generator_use_description {"space_name" :"sync_time_client_t",  "address_space" :2, "modbus_type" :"client", "modbus_function" :"holding_registers", "modbus_address" :3,"register_start_address" :63}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        u64 sys_tick_slave;        //!< "time read from slave" &ro
+    }vars;
+    u8 bytes[8]; //for full bksram copy
+}sync_time_client_t;// #generator_use_description {"message":"end_struct"}
+extern sync_time_client_t sync_time_client;
+/**
  * @brief struct for reading modbus data from another device maximume bytes - 240
  * name variables uses for generate name in description file and then in get value by name
  * and therefore use max size len name is 16 charackter \n
@@ -537,56 +579,6 @@ typedef union{
 }client_part_1_t;// #generator_use_description {"message":"end_struct"}
 extern client_part_1_t client_part_1;
 
-/**
- * @brief client part2 to read sys_tick_counter from salve
- * struct for reading modbus data from another device maximume bytes - 240
- * name variables uses for generate name in description file and then in get value by name
- * and therefore use max size len name is 16 charackter \n
- * will be in struct regs_description_client
- * additional space modbus_address, specific space read_holding_registers
- * coment style :   "" - description, \n
- *                  &ro  - read only, \n
- *                  &def -> have const varibale with struct like def_name, \n
- *                  &save- will have saved in bkram, \n
- *                  regs_description \n
- *
- * @ingroup regs
- */
-/** #generator_use_description {"space_name" :"sync_time_client_t",  "address_space" :2, "modbus_type" :"client", "modbus_function" :"holding_registers", "modbus_address" :3,"register_start_address" :63}*/
-typedef union{
-    struct MCU_PACK{
-        // start regs struct
-        u64 sys_tick_slave;        //!< "time read from slave" &ro
-    }vars;
-    u8 bytes[8]; //for full bksram copy
-}sync_time_client_t;// #generator_use_description {"message":"end_struct"}
-extern sync_time_client_t sync_time_client;
-
-/**
- * @brief sr04 measurements struct for distance control and time laps
- * name variables uses for generate name in description file and then in get value by name
- * and therefore use max size len name is 16 charackter \n
- * coment style :   "" - description, \n
- *                  &ro  - read only, \n
- *                  &def -> have const varibale with struct like def_name, \n
- *                  &save- will have saved in bkram, \n
- *                  &crtcl- restart after change value, \n
- *
- * @ingroup regs
- */
-/** #generator_use_description {"space_name" :"sr04_reg_client_t",  "address_space" :3, "modbus_type" :"client", "modbus_function" :"holding_registers", "modbus_address" :3, "register_start_address" :4100}*/
-typedef union{
-    struct MCU_PACK{
-        // start regs struct
-        u16 cli_state;         //!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
-        float cli_distance;        //!< "current distance" &ro
-        u64 cli_lap;       //!< "when we have sharp change of a distance, save it " &ro 
-        u64 cli_lap_paired_dev;    //!< "lap from paired device" &ro
-        float cli_distance_filtered;      //!< "current distance filterd" &ro
-    }vars;
-    u8 bytes[32]; //for full bksram copy
-}sr04_reg_client_t;// #generator_use_description {"message":"end_struct"}
-extern sr04_reg_client_t sr04_reg_client;
 /**
  * @brief time sync struct for read time from another device
  * name variables uses for generate name in description file and then in get value by name
@@ -614,6 +606,32 @@ typedef union{
     u8 bytes[32]; //for full bksram copy
 }sync_data_client_t;// #generator_use_description {"message":"end_struct"}
 extern sync_data_client_t sync_time_regs_from_client;
+/**
+ * @brief sr04 measurements struct for distance control and time laps
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *                  &crtcl- restart after change value, \n
+ *
+ * @ingroup regs
+ */
+/** #generator_use_description {"space_name" :"sr04_reg_client_t",  "address_space" :3, "modbus_type" :"client", "modbus_function" :"holding_registers", "modbus_address" :3, "register_start_address" :4100}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        u16 cli_state;         //!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
+        float cli_distance;        //!< "current distance" &ro
+        u64 cli_lap;       //!< "when we have sharp change of a distance, save it " &ro 
+        u64 cli_lap_paired_dev;    //!< "lap from paired device" &ro
+        float cli_distance_filtered;      //!< "current distance filterd" &ro
+    }vars;
+    u8 bytes[32]; //for full bksram copy
+}sr04_reg_client_t;// #generator_use_description {"message":"end_struct"}
+extern sr04_reg_client_t sr04_reg_client;
+
 /**
   * @brief registers for regs_event_handler
   * @ingroup regs

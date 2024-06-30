@@ -17,7 +17,7 @@
 			function print(message){
 				console.log(message);
 			}
-            function get_all_client_regs(){
+         function get_all_client_regs(){
                 by_id("get_client_vars").style = "display: none";
                 by_id("table_client").style = "display: inline";
 				max_regs_num = get_regs_num();
@@ -44,14 +44,14 @@
 					add_data_to_table(response, "table_client");
 				}
 
-            }
+         }
 			function get_all_regs(){
                 by_id("get_vars").style = "display: none";
                 by_id("table").style = "display: inline";
 				max_regs_num = get_regs_num();
 				print("will be request "+max_regs_num+" registers");
 				let i = 0;
-                let pack = {
+            let pack = {
 					"request":"regs",
 					"reg_num":"1",
 					"get_type":"full",

@@ -106,7 +106,8 @@ class RegsHand(base_object.Base):
         self.modbus_structures_description = []
         self.current_struct_json = {}
         self.modbus_areas = {}
-
+        self.last_modbus_address = -1 #all modbus adresses should be in an upraising order 
+        self.last_modbus_address_client = -1 #all modbus adresses should be in an upraising order
     def regs_file_handling(self, path_to_file, regs_description, regs_description_client):
         regs_file = open(path_to_file, 'r', errors='ignore')
         struct_started = 0
@@ -416,14 +417,18 @@ class RegsHand(base_object.Base):
         start_address = reg_description["register_start_address"] & 0xffff
         last_address = reg_description["register_start_address"] & 0xffff +\
                        (reg_description["size_value"] * REGS_SIZE[reg_description["type"]]) // 2
-        for area in self.modbus_areas:
-            if area != reg_description["space_name"]:
-                if ((self.modbus_areas[area]["mdb_base"] <= start_address < self.modbus_areas[area]["modbus_last"]) or\
-                    (self.modbus_areas[area]["mdb_base"] <= last_address < self.modbus_areas[area]["modbus_last"])) and\
-                    (reg_description["modbus_type"] == self.modbus_areas[area]["modbus_type"]):
-                    self.print_error("modbus address space intersections "
-                                     "reg - {} with area - {}".format(reg_description["internal_name"],
-                                                                      self.modbus_areas[area]))
+        if reg_description["modbus_type"] == "client":
+            if  start_address > self.last_modbus_address_client:
+                self.last_modbus_address_client = last_address
+            else:
+                self.print_error(f"modbus address should be uprising "
+                                f"last - {self.last_modbus_address_client} with current - {start_address}: {last_address}")
+        else:
+            if  start_address > self.last_modbus_address:
+                self.last_modbus_address = last_address
+            else:
+                self.print_error(f"modbus address should be uprising "
+                                f"last - {self.last_modbus_address} with current - {start_address}: {last_address}")
         self.modbus_areas[reg_description["space_name"]] = modbus_area
 
     def __del__(self):

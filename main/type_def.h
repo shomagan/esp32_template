@@ -43,7 +43,8 @@ typedef volatile unsigned char const vuc8;
 #ifndef FALSE
   #define FALSE 0
 #endif
-
+#define RES_OK    0
+#define RES_ERROR (-1)
 #define asm __asm
 
 #if defined __MINGW32__

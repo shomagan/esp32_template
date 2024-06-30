@@ -30,6 +30,7 @@ idf_component_register(
     SRCS "wireless_control.c"
     SRCS "feeder.c"
     SRCS "polisher.c"
+    SRCS "test_int.c"
     INCLUDE_DIRS "."
     INCLUDE_DIRS "radar/."
     INCLUDE_DIRS "http/."
