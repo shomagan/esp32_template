@@ -77,23 +77,23 @@ static int pwm_test_init(void){
 #if (PWM_AIR_ENABLE && CONFIG_IDF_TARGET_ESP32)
     mcpwm_config_t pwm_config = {0};
     pwm_config.frequency = 22000;    //frequency =22000Hz,
-    pwm_config.cmpr_a = regs_global_part1.vars.test_pwm_value;    //duty cycle of PWMxA = 0
-    pwm_config.cmpr_b = regs_global_part1.vars.test_pwm_value;    //duty cycle of PWMxb = 0
+    pwm_config.cmpr_a = regs_global_part1->vars.test_pwm_value;    //duty cycle of PWMxA = 0
+    pwm_config.cmpr_b = regs_global_part1->vars.test_pwm_value;    //duty cycle of PWMxb = 0
     pwm_config.counter_mode = MCPWM_UP_COUNTER;
     pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
     mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config);    //Configure PWM0A & PWM0B with above settings
-    pwm_test_set(regs_global_part1.vars.test_pwm_value);
+    pwm_test_set(regs_global_part1->vars.test_pwm_value);
 #elif (PWM_STEP_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32)
     mcpwm_config_t pwm_config = {0};
     pwm_config.frequency = 50;    //frequency = 50Hz,
-    pwm_config.cmpr_a = servo_control_part.vars.servo_0;    //duty cycle of PWMxA = 0
-    pwm_config.cmpr_b = servo_control_part.vars.servo_1;    //duty cycle of PWMxb = 0
+    pwm_config.cmpr_a = servo_control_part->vars.servo_0;    //duty cycle of PWMxA = 0
+    pwm_config.cmpr_b = servo_control_part->vars.servo_1;    //duty cycle of PWMxb = 0
     pwm_config.counter_mode = MCPWM_UP_COUNTER;
     pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
     mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config);    //Configure PWM0A & PWM0B with above settings
     pwm_config.frequency = 50;    //frequency = 50Hz,
-    pwm_config.cmpr_a = servo_control_part.vars.servo_2;    //duty cycle of PWMxA = 0
-    pwm_config.cmpr_b = servo_control_part.vars.servo_3;    //duty cycle of PWMxb = 0
+    pwm_config.cmpr_a = servo_control_part->vars.servo_2;    //duty cycle of PWMxA = 0
+    pwm_config.cmpr_b = servo_control_part->vars.servo_3;    //duty cycle of PWMxb = 0
     pwm_config.counter_mode = MCPWM_UP_COUNTER;
     pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
     mcpwm_init(MCPWM_UNIT_1, MCPWM_TIMER_1, &pwm_config);    //Configure PWM0A & PWM0B with above settings
@@ -119,23 +119,23 @@ void pwm_control_task(void *arg){
             }
         }
 #if (PWM_STEP_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32)
-        if (!compare_float_value(servo0, servo_control_part.vars.servo_0, 0.01f)){
-            servo0=servo_control_part.vars.servo_0;
+        if (!compare_float_value(servo0, servo_control_part->vars.servo_0, 0.01f)){
+            servo0=servo_control_part->vars.servo_0;
             mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, servo0);
             mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
         }
-        if (!compare_float_value(servo1, servo_control_part.vars.servo_1, 0.01f)){
-            servo1=servo_control_part.vars.servo_1;
+        if (!compare_float_value(servo1, servo_control_part->vars.servo_1, 0.01f)){
+            servo1=servo_control_part->vars.servo_1;
             mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, servo1);
             mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
         }
-        if (!compare_float_value(servo2, servo_control_part.vars.servo_2, 0.01f)){
-            servo2=servo_control_part.vars.servo_2;
+        if (!compare_float_value(servo2, servo_control_part->vars.servo_2, 0.01f)){
+            servo2=servo_control_part->vars.servo_2;
             mcpwm_set_duty(MCPWM_UNIT_1, MCPWM_TIMER_1, MCPWM_OPR_A, servo2);
             mcpwm_set_duty_type(MCPWM_UNIT_1, MCPWM_TIMER_1, MCPWM_OPR_A, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
         }
-        if (!compare_float_value(servo3, servo_control_part.vars.servo_3, 0.01f)){
-            servo3=servo_control_part.vars.servo_3;
+        if (!compare_float_value(servo3, servo_control_part->vars.servo_3, 0.01f)){
+            servo3=servo_control_part->vars.servo_3;
             mcpwm_set_duty(MCPWM_UNIT_1, MCPWM_TIMER_1, MCPWM_OPR_B, servo3);
             mcpwm_set_duty_type(MCPWM_UNIT_1, MCPWM_TIMER_1, MCPWM_OPR_B, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
         }

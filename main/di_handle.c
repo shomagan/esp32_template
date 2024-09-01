@@ -122,9 +122,9 @@ void di_handle_task(void *arg){
             }
             
         }                
-        di_control.vars.pin_state = pin_states_debug;
+        di_control->vars.pin_state = pin_states_debug;
 #else
-        di_control.vars.pin_state = pin_states;
+        di_control->vars.pin_state = pin_states;
 #endif        
         }semaphore_release(regs_access_mutex);
         task_counter++;

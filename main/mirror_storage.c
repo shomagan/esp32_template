@@ -93,7 +93,7 @@ int mirror_access_write(regs_template_t * regs_template){
         mirror_recalc_crc();
         if (regs_description_flag_check(regs_template->ind, SAVING)){
             main_printf(TAG,"set ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH");
-            regs_global.vars.async_flags |= ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
+            regs_global->vars.async_flags |= ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
         }
     }
     return  res;
@@ -179,7 +179,7 @@ int internal_flash_save_mirror_to_flash(void){
         semaphore_take(global_vars_mirror_mutex, portMAX_DELAY );
     }
     {
-        regs_global.vars.flash_write_number = (regs_global.vars.flash_write_number<0xffffffff)?(regs_global.vars.flash_write_number+1):regs_global.vars.flash_write_number;
+        regs_global->vars.flash_write_number = (regs_global->vars.flash_write_number<0xffffffff)?(regs_global->vars.flash_write_number+1):regs_global->vars.flash_write_number;
         nvs_handle_t my_handle;
         res = nvs_open("storage", NVS_READWRITE, &my_handle);
         if (res == ESP_OK) {
@@ -257,12 +257,12 @@ void preinit_global_vars(){
             }
         }
     }
-    regs_global.vars.reset_num++;
-    if ((is_ascii_symbol_or_digital((u8*)&regs_global.vars.wifi_name,WIFI_NAME_LEN)<=0)||
-        (is_ascii_symbol_or_digital((u8*)&regs_global.vars.wifi_password,WIFI_PASSWORD_LEN)<=0)||
-        (strlen((char*)&regs_global.vars.wifi_router_name)==0)||
-        (strlen((char*)&regs_global.vars.wifi_router_password)==0)||
-            (regs_global.vars.table_version!=def_table_version)){
+    regs_global->vars.reset_num++;
+    if ((is_ascii_symbol_or_digital((u8*)&regs_global->vars.wifi_name,WIFI_NAME_LEN)<=0)||
+        (is_ascii_symbol_or_digital((u8*)&regs_global->vars.wifi_password,WIFI_PASSWORD_LEN)<=0)||
+        (strlen((char*)&regs_global->vars.wifi_router_name)==0)||
+        (strlen((char*)&regs_global->vars.wifi_router_password)==0)||
+            (regs_global->vars.table_version!=def_table_version)){
         set_regs_def_values();
         for (u16 i=0; i<NUM_OF_SELF_VARS; i++){
             reg_template.ind = i;
@@ -273,7 +273,7 @@ void preinit_global_vars(){
             }
         }
     }
-    int index = regs_description_get_index_by_address(&regs_global.vars.reset_num);
+    int index = regs_description_get_index_by_address(&regs_global->vars.reset_num);
     if (index>=0){
         reg_template.ind = (u16)index;
         if (regs_description_get_by_ind(&reg_template)==0){

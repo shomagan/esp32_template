@@ -31,6 +31,7 @@ idf_component_register(
     SRCS "feeder.c"
     SRCS "polisher.c"
     SRCS "test_int.c"
+    SRCS "morse.c"
     INCLUDE_DIRS "."
     INCLUDE_DIRS "radar/."
     INCLUDE_DIRS "http/."

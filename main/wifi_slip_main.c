@@ -41,6 +41,9 @@
 #include "feeder.h"
 #include "polisher.h"
 #include "test_int.h"
+#include "morse.h"
+#include "u8g2_esp32_hal.h"
+
 /* The examples use WiFi configuration that you can set via project configuration menu.
    If you'd rather not, just change the below entries to strings with
    the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
@@ -54,12 +57,9 @@
 
 static const char *TAG = "wifi_slip_main";
 slip_handle_config_t wifi_slip_config;
-u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
-u8g2_t u8g2; // a structure which will contain all the data for one display
+
 /*ssd1306*/
-#if SS1306_MODULE
-static int init_display(void);
-#endif
+
 int main_init_tasks(esp_sleep_wakeup_cause_t * esp_sleep_wakeup_cause);
 static int common_init_gpio(void);
 static esp_sleep_wakeup_cause_t esp_sleep_wakeup_cause;
@@ -102,7 +102,7 @@ void app_main(void){
 #endif
     common_init_gpio();
     esp_sleep_wakeup_cause = esp_sleep_get_wakeup_cause(); 
-#if SS1306_MODULE
+#if DISPLAY
     init_display();
 #endif
     httpd_init_sofi();
@@ -111,49 +111,6 @@ void app_main(void){
     main_init_tasks(&esp_sleep_wakeup_cause);/*init all necessary tasks */
 }
 
-
-#if SS1306_MODULE
-static int init_display(){
-    int res=0;
-    gpio_config_t io_conf = {0};
-    //disable interrupt
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-    //set as output mode
-    io_conf.mode = GPIO_MODE_OUTPUT;
-    //bit mask of the pins that you want to set,e.g.GPIO18/19
-    io_conf.pin_bit_mask = 1<<PIN_RESET;
-    //disable pull-down mode
-    io_conf.pull_down_en = 0;
-    //disable pull-up mode
-    io_conf.pull_up_en = 0;
-    //configure GPIO with the given settings
-    gpio_config(&io_conf);
-    gpio_set_level(PIN_RESET, 0);
-    gpio_set_level(PIN_RESET, 1);
-    u8g2_esp32_hal.sda   = PIN_SDA;
-    u8g2_esp32_hal.scl  = PIN_SCL;
-    u8g2_esp32_hal_init(u8g2_esp32_hal);
-    u8g2_Setup_ssd1306_i2c_128x32_univision_f(
-        &u8g2,
-        U8G2_R0,
-        //u8x8_byte_sw_i2c,
-        u8g2_esp32_i2c_byte_cb,
-        u8g2_esp32_gpio_and_delay_cb);  // init u8g2 structure
-    u8x8_SetI2CAddress(&u8g2.u8x8,0x78);
-    regs_global.vars.i2c_display_address = 0x78>>1;
-    u8g2_InitDisplay(&u8g2); // send init sequence to the display, display is in sleep mode after this,
-    main_printf(TAG, "init display passed");
-    u8g2_SetPowerSave(&u8g2, 0); // wake up display
-    main_printf(TAG, "set power save passed");
-    u8g2_ClearBuffer(&u8g2);
-    char address[64] = {0};
-    sprintf(address,"mdb: %u, ip: %u.%u.%u.%u",regs_global.vars.mdb_addr,regs_global.vars.sta_ip[0],regs_global.vars.sta_ip[1],regs_global.vars.sta_ip[2],regs_global.vars.sta_ip[3]);
-    u8g2_SetFont(&u8g2, u8g2_font_5x8_tf);
-    u8g2_DrawStr(&u8g2, 0,7, address);
-    u8g2_SendBuffer(&u8g2);
-    return res;
-}
-#endif
 /**
  * @brief main_init_tasks - all task must starting here
  * @return
@@ -238,6 +195,13 @@ int main_init_tasks(esp_sleep_wakeup_cause_t * esp_sleep_wakeup_cause){
     res = task_create(test_int_task, "test_int_task", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &test_int_handle_id);
     if(res != pdTRUE){
         main_printf(TAG,"test_int_task inited success\n");
+    }
+#endif
+
+#if MORSE
+    res = task_create(morse_task, "morse_task", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &morse_handle_id);
+    if(res != pdTRUE){
+        main_printf(TAG,"morse_task inited success\n");
     }
 #endif
     return res;

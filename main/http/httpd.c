@@ -2237,8 +2237,8 @@ http_find_file(struct http_state *hs, const char *uri, int is_09)
         #endif /* !LWIP_HTTPD_SSI */
             /* By default, assume we will not be processing server-side-includes tags */
             u8_t tag_check = 0;
-    if((regs_global.vars.permission & ENABLE_HTTP_FLAG) &&
-            ((strcmp(uri, "/credential.html") != 0)||(regs_global.vars.permission & ENABLE_CREDENTIAL_FLAG))){
+    if((regs_global->vars.permission & ENABLE_HTTP_FLAG) &&
+            ((strcmp(uri, "/credential.html") != 0)||(regs_global->vars.permission & ENABLE_CREDENTIAL_FLAG))){
         /* Have we been asked for the default file (in root or a directory) ? */
 
 #if LWIP_HTTPD_MAX_REQUEST_URI_LEN
@@ -3342,7 +3342,7 @@ static const char* command_handle(int iIndex, int iNumParams, char *pcParam[],
         }else {
             return incorrect_command;
         }
-        regs_set(&regs_global.vars.command, reg);
+        regs_set(&regs_global->vars.command, reg);
         os_yield();
         return os_change_applyed;
     }

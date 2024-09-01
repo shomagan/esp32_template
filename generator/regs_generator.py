@@ -8,6 +8,7 @@ import platform
 import base_object
 from git import Repo
 import hashlib
+import json
 try:
     import msvcrt
     PLATFORM = "win"
@@ -27,7 +28,8 @@ REGS_H_PATH = "../main/regs.h"
 
 
 def generate(type_module):
-    regs_file_path = '../main/regs.h'
+    regs_h_file_path = '../main/regs.h'
+    regs_c_file_path = '../main/regs.c'
     user_describe_rst = open('address_space_' + type_module + '.rst', 'w', encoding='UTF-8')
     regs_description = open('regs_description.pat', 'w', encoding='UTF-8')
     regs_description_client = open('regs_description_client.pat', 'w', encoding='UTF-8')
@@ -38,7 +40,7 @@ def generate(type_module):
                           "   :widths: 3, 5, 3, 5, 5, 12, 10, 30\n\n"
     user_describe_rst.write(rst_desc_table_head)
     regs_hand = regs_handl.RegsHand(os_type=platform.system())
-    regs_hand.regs_file_handling(regs_file_path, regs_description, regs_description_client)
+    regs_hand.regs_file_handling(regs_h_file_path, regs_description, regs_description_client)
     user_describe_rst.write(regs_hand.user_describe_rst)
     user_describe_rst.close()
     regs_description.close()
@@ -52,6 +54,9 @@ def generate(type_module):
     print("last bkram address " + str(regs_hand.saved_address))
     # rewrite exist file with new network variable settings
     write_exist_file()
+    fill_up_regs_h_main_structure(regs_h_file_path, regs_hand.modbus_structures_description)
+    fill_up_regs_c_main_pointers(regs_c_file_path, regs_hand.modbus_structures_description)
+
     fs_save_file = open('../main/http/fs.c', 'a')
     fs_save_file.write(' ')
     fs_save_file.close()
@@ -223,13 +228,12 @@ def write_exist_file():
             print(line, end='')
         elif replace:
             cancel = re.compile(r'^\s*\}\;', re.ASCII)
-            test = cancel.match(line)
-            if test:
+            if cancel.match(line):
                 replace = 0
                 for own_line in template_file:
                     print(own_line, end='')
                     number += 1
-                print('};')
+                print(line, end='')
         else:
             print(line, end='')
     fileinput.close()
@@ -249,13 +253,12 @@ def write_exist_file():
             print(line, end='')
         elif replace:
             cancel = re.compile(r'^\s*\}\;', re.ASCII)
-            test = cancel.match(line)
-            if test:
+            if cancel.match(line):
                 replace = 0
                 for own_line in template_file:
                     print(own_line, end='')
                     number += 1
-                print('};')
+                print(line, end='')
         else:
             print(line, end='')
     fileinput.close()
@@ -265,6 +268,51 @@ def write_exist_file():
     else:
         print("warning!!! did't find regs_description_user struct in file" + file_path)
 
+def fill_up_regs_h_main_structure(file_path, struct_descriptions):
+    '''fill up regs_main_t in regs.h file, uses {"regs_main":"start_struct"}'''
+    replace = 0
+    number = 0
+    for line in fileinput.input(file_path, inplace=1):
+        if replace:
+            cancel = re.compile(r'^\s*\}\s*regs_main_t\;', re.ASCII)
+            if cancel.match(line):
+                replace = 0
+                print('typedef struct{\n', end='')
+                for description in struct_descriptions:
+                    #keep it for future print(f'#if USE_{description["regs_global_name"].upper()}\n', end='')
+                    print(f'    {description["struct_type"]} {description["regs_global_name"]}; //!< "{description["struct_type"]}"\n', end='')
+                    #keep it for future print('#endif\n', end='')
+                    number += 1
+                print(line, end='')
+        else:
+            print(line, end='')
+            json_str = regs_handl.RegsHand.check_generator_descriptions(line)
+            if len(json_str):
+                json_description = json.loads(json_str)
+                if "regs_main" in json_description:
+                    replace = 1
+    print(f'number of structures {number}')
+
+def fill_up_regs_c_main_pointers(regs_c_file_path, struct_descriptions):
+    '''fill up global pointer to be used by user tasks in regs.c file, uses {"regs_pointers":"start_struct"}'''
+    replace = 0
+    for line in fileinput.input(regs_c_file_path, inplace=1):
+        if replace:
+            cancel = re.compile(r'\/\*\s*\#generator_use_description\s+\{\"regs_pointers\"\:\"end_struct\"\}', re.ASCII)
+            if cancel.match(line):
+                replace = 0
+                for description in struct_descriptions:
+                    #TODO print(f'#if USE_{description["regs_global_name"].upper()}\n', end='')
+                    print(f'{description["struct_type"]} * const {description["regs_global_name"]} = &regs_main.{description["regs_global_name"]}; //!< "{description["struct_type"]}"\n', end='')
+                    #TODO it for future print('#endif\n', end='')
+                print(line, end='')
+        else:
+            print(line, end='')
+            json_str = regs_handl.RegsHand.check_generator_descriptions(line)
+            if len(json_str):
+                json_description = json.loads(json_str)
+                if "regs_pointers" in json_description:
+                    replace = 1
 
 if __name__ == "__main__":
     main()

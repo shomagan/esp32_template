@@ -135,14 +135,14 @@ static int {component_name}_deinit();
    file_template.write(f"""
 static int {component_name}_init(){{
    int result = 0;
-   regs_global.vars.current_state[0] |= CS0_TASK_ACTIVE_{component_name.upper()};
+   regs_global->vars.current_state[0] |= CS0_TASK_ACTIVE_{component_name.upper()};
    return result;
 }}""")
 
    file_template.write(f"""  
 static int {component_name}_deinit(){{
    int result = 0;
-   regs_global.vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_{component_name.upper()});
+   regs_global->vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_{component_name.upper()});
    return result;
 }}
 void {component_name}_task(void *arg){{

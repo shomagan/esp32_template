@@ -231,17 +231,17 @@ static bool rx_filter(uint8_t *data, uint32_t len){
         crc_sended |= (u16)data[handle_len++]<<8;
         if(check_crc16(data,handle_len)){
             int writed=0;
-            writed = regs_set_buffer(&regs_global.vars.wifi_setting,(u8*)&wifi_setting,sizeof(wifi_setting))==1?1:writed ;
+            writed = regs_set_buffer(&regs_global->vars.wifi_setting,(u8*)&wifi_setting,sizeof(wifi_setting))==1?1:writed ;
             if (wifi_setting==WIFI_ACCESS_POINT || wifi_setting==WIFI_AP_STA){
-                writed = regs_set_buffer(regs_global.vars.wifi_name,wifi_name,WIFI_NAME_LEN)==1?1:writed ;
-                writed = regs_set_buffer(regs_global.vars.wifi_password,wifi_pass,WIFI_PASSWORD_LEN)==1?1:writed ;
+                writed = regs_set_buffer(regs_global->vars.wifi_name,wifi_name,WIFI_NAME_LEN)==1?1:writed ;
+                writed = regs_set_buffer(regs_global->vars.wifi_password,wifi_pass,WIFI_PASSWORD_LEN)==1?1:writed ;
             }
-            writed = regs_set_buffer(regs_global.vars.slip_ip,ip_local_gate,4)==1?1:writed ;
-            writed = regs_set_buffer(regs_global.vars.slip_netmask,ip_local_mask,4)==1?1:writed;
-            writed = regs_set_buffer(regs_global.vars.slip_gate,ip_local,4)==1?1:writed ;
+            writed = regs_set_buffer(regs_global->vars.slip_ip,ip_local_gate,4)==1?1:writed ;
+            writed = regs_set_buffer(regs_global->vars.slip_netmask,ip_local_mask,4)==1?1:writed;
+            writed = regs_set_buffer(regs_global->vars.slip_gate,ip_local,4)==1?1:writed ;
             if (wifi_setting==WIFI_CLIENT || wifi_setting==WIFI_AP_STA){
-                writed = regs_set_buffer(regs_global.vars.wifi_router_name,wifi_router_name,WIFI_ROUTER_NAME_LEN)==1?1:writed ;
-                writed = regs_set_buffer(regs_global.vars.wifi_router_password,wifi_router_pass,WIFI_ROUTER_PASSWORD_LEN)==1?1:writed ;
+                writed = regs_set_buffer(regs_global->vars.wifi_router_name,wifi_router_name,WIFI_ROUTER_NAME_LEN)==1?1:writed ;
+                writed = regs_set_buffer(regs_global->vars.wifi_router_password,wifi_router_pass,WIFI_ROUTER_PASSWORD_LEN)==1?1:writed ;
             }
             if (writed){
                 u32 prev_value = 0;
@@ -283,14 +283,12 @@ void slip_flow_control_task(void *args){
     flow_control_msg_t msg;
     (void)(args);
     int res = 0;
-    uint32_t timeout = 0;
     for (uint8_t i=0; i < SLIP_FLOW_CONTROL_QUEUE_LENGTH; i++){
         flow_control_slip_memory[i].length = 0;
     }
     main_printf(TAG, "slip_flow_control_task start");
     while (1) {
         if (queue_receive(slip_flow_control_queue, &msg, SLIP_FLOW_CONTROL_QUEUE_TIMEOUT_MS) == pdTRUE) {
-            timeout = 0;
             if (*msg.length) {
                 res = uart_write_bytes(wifi_slip_config.uart_dev, msg.packet, *msg.length);
                 if (res != *msg.length) {
@@ -308,17 +306,17 @@ void slip_handle_uart_rx_task(void *arg){
     ESP_LOGD(TAG, "Start SLIP modem RX task (slip_modem %p)", (void*)slip_handle);
     ESP_LOGD(TAG, "Uart: %d, buffer: %p (%d bytes)", slip_handle->uart_dev, (void*)slip_handle->rx_buffer, SLIP_HANDLE_RX_BUFFER_LEN);
     slipif_recv_state_t recv_state = SLIP_RECV_NORMAL;
-    main_printf(TAG,"slip ip %d %d %d %d", regs_global.vars.slip_ip[0], regs_global.vars.slip_ip[1], regs_global.vars.slip_ip[2], regs_global.vars.slip_ip[3]);
-    IP4_ADDR(&local_ipaddr, regs_global.vars.slip_ip[0], regs_global.vars.slip_ip[1], regs_global.vars.slip_ip[2], regs_global.vars.slip_ip[3]);
-    IP4_ADDR(&local_netmask, regs_global.vars.slip_netmask[0], regs_global.vars.slip_netmask[1], regs_global.vars.slip_netmask[2], regs_global.vars.slip_netmask[3]);
-    IP4_ADDR(&local_gw, regs_global.vars.slip_gate[0], regs_global.vars.slip_gate[1], regs_global.vars.slip_gate[2], regs_global.vars.slip_gate[3]);
+    main_printf(TAG,"slip ip %d %d %d %d", regs_global->vars.slip_ip[0], regs_global->vars.slip_ip[1], regs_global->vars.slip_ip[2], regs_global->vars.slip_ip[3]);
+    IP4_ADDR(&local_ipaddr, regs_global->vars.slip_ip[0], regs_global->vars.slip_ip[1], regs_global->vars.slip_ip[2], regs_global->vars.slip_ip[3]);
+    IP4_ADDR(&local_netmask, regs_global->vars.slip_netmask[0], regs_global->vars.slip_netmask[1], regs_global->vars.slip_netmask[2], regs_global->vars.slip_netmask[3]);
+    IP4_ADDR(&local_gw, regs_global->vars.slip_gate[0], regs_global->vars.slip_gate[1], regs_global->vars.slip_gate[2], regs_global->vars.slip_gate[3]);
     netif_add(&slipif, &local_ipaddr, &local_netmask, &local_gw, NULL, &slip_netif_init, &ip_input);
 
     slip_handle->recv_buffer_len = 0;
     uint8_t temp_buff[SLIP_HANDLE_RX_BUFFER_LEN];
     main_printf(TAG, "slip_handle_uart_rx_task start");
     uint32_t tick=0;
-    u32 tick_count_ms = pdTICKS_TO_MS(task_get_tick_count());
+    u32 tick_count_ms = task_get_time_ms();
     slip_handle_request_parameters();
     while (slip_handle->running == true){
         // Read data from the UART
@@ -387,8 +385,8 @@ void slip_handle_uart_rx_task(void *arg){
             }
             // Pass received bytes in to slip interface
         }
-        if ((pdTICKS_TO_MS(task_get_tick_count()) - tick_count_ms) >TIME_BETWEEN_CHECK_PARAMETERS_MS){
-            tick_count_ms = pdTICKS_TO_MS(task_get_tick_count());
+        if ((task_get_time_ms() - tick_count_ms) >TIME_BETWEEN_CHECK_PARAMETERS_MS){
+            tick_count_ms = task_get_time_ms();
             main_printf(TAG,"slip send request to connect %u",(uint32_t)tick_count_ms);
             slip_handle_request_parameters();
         }

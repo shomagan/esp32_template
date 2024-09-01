@@ -70,13 +70,14 @@ FLAG_TYPE_STRING = {
     MAX_VALUE_FLAG: "HAVE_MAX_VALUE"
 }
 
+GENERATOR_MARKER = "#generator_use_description"
 
 def short_name(name):
     return REGS_SHORT_NAME[name]
 
 
 class RegsHand(base_object.Base):
-    GENERATOR_MARKER = "#generator_use_description"
+    
     REGS_DESCRIPTION_SETTINGS = MIN_VALUE_FLAG | MAX_VALUE_FLAG
 
     def __init__(self, os_type):
@@ -108,6 +109,7 @@ class RegsHand(base_object.Base):
         self.modbus_areas = {}
         self.last_modbus_address = -1 #all modbus adresses should be in an upraising order 
         self.last_modbus_address_client = -1 #all modbus adresses should be in an upraising order
+        
     def regs_file_handling(self, path_to_file, regs_description, regs_description_client):
         regs_file = open(path_to_file, 'r', errors='ignore')
         struct_started = 0
@@ -258,8 +260,7 @@ class RegsHand(base_object.Base):
                     self.size_value = 28
                     self.reg_opt_is_struct = 1
                 else:
-                    print("invalidate type for variable" + self.internal_name + "description "
-                          + self.temp_description)
+                    self.print_error(f"invalidate type for variable {self.internal_name} description self.temp_description")
                     self.type = "INT_REGS_FLAG"
                     self.size_array = 0
 
@@ -347,9 +348,9 @@ class RegsHand(base_object.Base):
         else:
             name = self.internal_name
         if self.size_array > 1 and self.is_reduced == 0:
-            p_value = "(u8*)&{}.vars.{}[{}]".format(mdb_regs_global_name, self.internal_name, number)
+            p_value = f"(u8*)&regs_main.{mdb_regs_global_name}.vars.{self.internal_name}[{number}]"
         else:
-            p_value = "(u8*)&{}.vars.{}".format(mdb_regs_global_name, self.internal_name)
+            p_value = "(u8*)&regs_main.{}.vars.{}".format(mdb_regs_global_name, self.internal_name)
         if modbus_type == "client":
             clien_space_number = int(self.modbus_structures_description[self.structure_number - 1]["modbus_address"])
             clien_space_number |= ((self.structure_number - 1)<<8)&0xff00
@@ -450,8 +451,9 @@ class RegsHand(base_object.Base):
         print("did't find  define", name)
         return 0
 
-    def check_generator_descriptions(self, line):
-        if self.GENERATOR_MARKER in line and "{" in line and "}" in line:
+    @staticmethod
+    def check_generator_descriptions(line):
+        if GENERATOR_MARKER in line and "{" in line and "}" in line:
             last_str = [pos for pos, char in enumerate(line) if char == "}"]
             json_part = line[line.index("{"):last_str[-1]+1]
             return json_part
@@ -495,6 +497,7 @@ class RegsHand(base_object.Base):
                             search = define_temp.search(lines[line_number])
                             if search.group('STRUCT_TYPE'):
                                 struct_type = search.group('STRUCT_TYPE')
+                                print(f"struct {struct_type}")
                                 break
         return struct_type
 
@@ -504,7 +507,7 @@ def find_global_register(path_to_file, struct_type):
     regs_file_temp = open(path_to_file, 'r', errors='ignore')
     lines = regs_file_temp.readlines()
     for line_number in range(len(lines)):
-        define_temp = re.compile("^\s*extern\s+"+ struct_type + "\s+(?P<GLOBAL_REG>[\w\d]+)\s*;\s*", re.UNICODE)
+        define_temp = re.compile("^\s*extern\s+"+ struct_type + "\s+\*\s+const\s+(?P<GLOBAL_REG>[\w\d]+)\s*;\s*", re.UNICODE)
         match = define_temp.match(lines[line_number])
         if match:
             search = define_temp.search(lines[line_number])

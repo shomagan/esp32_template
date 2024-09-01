@@ -17,6 +17,7 @@
 #include "driver/rtc_io.h"
 #include "common.h"
 #include "wireless_control.h"
+#include "u8g2_esp32_hal.h"
 
 #define SLEEP_CONTROL_TASK_PERIOD_MS 100u
 #define ALIVE_DEFAULT_S 50u
@@ -34,12 +35,12 @@ static int sleep_control_deinit();
 
 static int sleep_control_init(){
    int result = 0;
-   regs_global.vars.current_state[0] |= CS0_TASK_ACTIVE_SLEEP_CONTROL;
+   regs_global->vars.current_state[0] |= CS0_TASK_ACTIVE_SLEEP_CONTROL;
    return result;
 }  
 static int sleep_control_deinit(){
    int result = 0;
-   regs_global.vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_SLEEP_CONTROL);
+   regs_global->vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_SLEEP_CONTROL);
    return result;
 }
 void sleep_control_task(void *arg){
@@ -53,7 +54,7 @@ void sleep_control_task(void *arg){
    u16 alive_init_value = (ALIVE_DEFAULT_S*1000) / SLEEP_CONTROL_TASK_PERIOD_MS;
    u16 alive_timer;/*represents time only after which we can start the sleep process*/
    TickType_t task_timer;
-   regs_global.vars.wake_up_cause = *esp_sleep_wakeup_cause;
+   regs_global->vars.wake_up_cause = *esp_sleep_wakeup_cause;
    if (wake_up_control(*esp_sleep_wakeup_cause)==WAKE_UP_END){
       alive_timer = (ALIVE_DEFAULT_S*1000) / SLEEP_CONTROL_TASK_PERIOD_MS;
    }else{
@@ -89,7 +90,7 @@ void sleep_control_task(void *arg){
          if (sleep_time){/*sleep time should be set by side component*/
             task_notify_send(wireless_control_handle_id, WIRELESS_TASK_STOP_WIFI,&prev_signal);
             main_printf(TAG,"set ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH");
-            regs_global.vars.async_flags |= ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
+            regs_global->vars.async_flags |= ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
             task_delay_ms(300u);
             if (ESP_OK != rtc_setup_wakeup(sleep_time)){
                main_error_message(TAG,"wake up seting problem");  
@@ -145,13 +146,16 @@ static int rtc_setup_wakeup_timer(u16 seconds){
 
 static void display_good_bye_message(void){
    main_printf(TAG, "deep sleep in sleep task");
-#if SS1306_MODULE   
-   char temp_buff[TEMP_BUFFER_SIZE] = {0u};
+#if DISPLAY   
+   char temp_buff[64] = {0u};
    sprintf(temp_buff,"going to sleep");
    u8g2_ClearBuffer(&u8g2);
    u8g2_SetFont(&u8g2, u8g2_font_9x15B_mf);
    u8g2_DrawStr(&u8g2, 0,22u, temp_buff);
    u8g2_SendBuffer(&u8g2);
+   u8g2_SetPowerSave(&u8g2, 1/*power save on*/); // wake down display
+   gpio_set_level(NOKIA_PIN_BL, 0u);
+
 #endif
 }
 /*

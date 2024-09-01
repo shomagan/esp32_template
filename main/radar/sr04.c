@@ -19,7 +19,6 @@
 #include "os_type.h"
 #define ESP_INTR_FLAG_DEFAULT 0
 task_handle_t sr04_handle_id = NULL;
-sr04_reg_t sr04_reg;
 static portMUX_TYPE sr04_mux = portMUX_INITIALIZER_UNLOCKED;
 /*regs used in interrupts start*/
 u64 time_rising_edge = 0;
@@ -32,10 +31,10 @@ static int sr04_deinit();
 static void sr04_trigger();
 static u8 distance_is_in_range(float first,float second,float range);
 static void copy_regs(){
-    /*regs_copy_safe(&sr04_reg.vars.state,&state,sizeof(sr04_reg.vars.state));
-    regs_copy_safe(&sr04_reg.vars.distance,&distance,sizeof(sr04_reg.vars.distance));
-    regs_copy_safe(&sr04_reg.vars.lap,&lap,sizeof(sr04_reg.vars.lap));
-    regs_copy_safe(&sr04_reg.vars.lap_paired_dev,&lap_paired_dev,sizeof(sr04_reg.vars.lap_paired_dev));*/
+    /*regs_copy_safe(&sr04_reg->vars.state,&state,sizeof(sr04_reg->vars.state));
+    regs_copy_safe(&sr04_reg->vars.distance,&distance,sizeof(sr04_reg->vars.distance));
+    regs_copy_safe(&sr04_reg->vars.lap,&lap,sizeof(sr04_reg->vars.lap));
+    regs_copy_safe(&sr04_reg->vars.lap_paired_dev,&lap_paired_dev,sizeof(sr04_reg->vars.lap_paired_dev));*/
 }
 
 static int sr04_init(){
@@ -91,12 +90,12 @@ void sr04_task(void *arg){
     u64 task_counter = 0;
     state |= BIT(SR04_STATE_ACTIVE);
     sr04_step_t sr04_step = 0;
-    regs_global.vars.current_state[0] |= CS0_TASK_ACTIVE_SR04;
+    regs_global->vars.current_state[0] |= CS0_TASK_ACTIVE_SR04;
     while(1){
         if(task_notify_wait(STOP_CHILD_PROCCES|ECHO_FALING_EDGE, &signal_value, 5u)==pdTRUE){
             /*by signal*/
             if (signal_value & STOP_CHILD_PROCCES){
-                regs_global.vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_SR04);
+                regs_global->vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_SR04);
                 sr04_deinit();
                 task_delete(task_get_id());
             }else if (signal_value & ECHO_FALING_EDGE){
@@ -105,14 +104,14 @@ void sr04_task(void *arg){
                 distance = (float)(time_faling_edge*10 - time_rising_edge*10) / 58.0f;
                 os_exit_critical(&sr04_mux);
                 state |= SR04_STATE_ECHO;
-                regs_copy_safe(&sr04_reg.vars.lap_state,&state,sizeof(sr04_reg.vars.lap_state));                    
+                regs_copy_safe(&sr04_reg->vars.lap_state,&state,sizeof(sr04_reg->vars.lap_state));                    
                 if (distance < 15.5f){
-                    regs_copy_safe(&lap,&regs_global.vars.sys_tick_counter,sizeof(regs_global.vars.sys_tick_counter));
-                    regs_copy_safe(&sr04_reg.vars.lap,&lap,sizeof(sr04_reg.vars.lap));
-                    regs_copy_safe(&sr04_reg.vars.lap_distance,&distance,sizeof(sr04_reg.vars.lap_distance));
+                    regs_copy_safe(&lap,&regs_global->vars.sys_tick_counter,sizeof(regs_global->vars.sys_tick_counter));
+                    regs_copy_safe(&sr04_reg->vars.lap,&lap,sizeof(sr04_reg->vars.lap));
+                    regs_copy_safe(&sr04_reg->vars.lap_distance,&distance,sizeof(sr04_reg->vars.lap_distance));
                 }
                 if (distance_is_in_range(distance,preview_distance,1.0f)){
-                    regs_copy_safe(&sr04_reg.vars.distance_filtered,&distance,sizeof(sr04_reg.vars.distance_filtered));
+                    regs_copy_safe(&sr04_reg->vars.distance_filtered,&distance,sizeof(sr04_reg->vars.distance_filtered));
                 }
                 preview_distance = distance;
             }

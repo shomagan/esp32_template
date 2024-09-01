@@ -22,7 +22,7 @@ void IRAM_ATTR gpio_isr_handler(void* arg){
 #if    TOUCH_HANDLE_ENABLE/*need to rename!!!*/
     if (gpio_num == GPIO_WATER_COUNTER_INPUT)
     {
-        regs_global_part1.vars.water_counter++;
+        regs_global_part1->vars.water_counter++;
     }else
 #endif
 #if SR04_MODULE 

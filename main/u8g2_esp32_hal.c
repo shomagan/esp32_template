@@ -6,16 +6,95 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-
+#include "main_config.h"
 #include "u8g2_esp32_hal.h"
+#include "regs.h"
+#include "pin_map.h"
+
 
 static const char *TAG = "u8g2_hal";
 static const unsigned int I2C_TIMEOUT_MS = 1000;
-
+u8g2_t u8g2; // a structure which will contain all the data for one display
 static spi_device_handle_t handle_spi;      // SPI handle.
 static i2c_cmd_handle_t    handle_i2c;      // I2C handle.
 static u8g2_esp32_hal_t    u8g2_esp32_hal;  // HAL state data.
 
+#if DISPLAY
+int init_display(void){
+    u8g2_esp32_hal_t esp32_hal = U8G2_ESP32_HAL_DEFAULT;
+#if NOKIA_5110
+    int res=0;
+    gpio_config_t io_conf = {0};
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pin_bit_mask = (1<<NOKIA_PIN_RESET)| (1<<NOKIA_PIN_BL);
+    io_conf.pull_down_en = 0;
+    io_conf.pull_up_en = 0;
+    gpio_config(&io_conf);
+    gpio_set_level(NOKIA_PIN_RESET, 0);
+	 int itt =1000;
+	 while(itt--){	};
+    gpio_set_level(NOKIA_PIN_RESET, 1);
+    gpio_set_level(NOKIA_PIN_BL, 1);
+
+    esp32_hal.mosi  = NOKIA_PIN_SDA;
+    esp32_hal.clk  = NOKIA_PIN_SCK;
+	 esp32_hal.reset = NOKIA_PIN_RESET;
+	 esp32_hal.dc   = NOKIA_PIN_DC;
+	 esp32_hal.cs   = NOKIA_PIN_CS;
+    u8g2_esp32_hal_init(esp32_hal);
+	 u8g2_Setup_pcd8544_84x48_f(
+		  &u8g2,
+        U8G2_R0,
+        u8g2_esp32_spi_byte_cb,
+        u8g2_esp32_gpio_and_delay_cb);  // init u8g2 structure
+    u8g2_InitDisplay(&u8g2); // send init sequence to the display, display is in sleep mode after this,
+    main_printf(TAG, "init display passed");
+    u8g2_SetPowerSave(&u8g2, 0); // wake up display
+    main_printf(TAG, "set power save passed");
+    u8g2_ClearBuffer(&u8g2);
+    char address[64] = {0};
+    sprintf(address,"mdb: %u, ip: %u.%u.%u.%u",regs_global->vars.mdb_addr,regs_global->vars.sta_ip[0],regs_global->vars.sta_ip[1],regs_global->vars.sta_ip[2],regs_global->vars.sta_ip[3]);
+    u8g2_SetFont(&u8g2, u8g2_font_5x8_tf);
+    u8g2_DrawStr(&u8g2, 0,7, address);
+    u8g2_SendBuffer(&u8g2);
+    return res;
+#else
+    int res=0;
+    gpio_config_t io_conf = {0};
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pin_bit_mask = 1<<PIN_RESET;
+    io_conf.pull_down_en = 0;
+    io_conf.pull_up_en = 0;
+    gpio_config(&io_conf);
+    gpio_set_level(PIN_RESET, 0);
+    gpio_set_level(PIN_RESET, 1);
+    esp32_hal.sda   = PIN_SDA;
+    esp32_hal.scl  = PIN_SCL;
+    u8g2_esp32_hal_init(esp32_hal);
+    u8g2_Setup_ssd1306_i2c_128x32_univision_f(
+        &u8g2,
+        U8G2_R0,
+        //u8x8_byte_sw_i2c,
+        u8g2_esp32_i2c_byte_cb,
+        u8g2_esp32_gpio_and_delay_cb);  // init u8g2 structure
+    u8x8_SetI2CAddress(&u8g2.u8x8,0x78);
+    regs_global->vars.i2c_display_address = 0x78>>1;
+    u8g2_InitDisplay(&u8g2); // send init sequence to the display, display is in sleep mode after this,
+    main_printf(TAG, "init display passed");
+    u8g2_SetPowerSave(&u8g2, 0); // wake up display
+    main_printf(TAG, "set power save passed");
+    u8g2_ClearBuffer(&u8g2);
+    char address[64] = {0};
+    sprintf(address,"mdb: %u, ip: %u.%u.%u.%u",regs_global->vars.mdb_addr,regs_global->vars.sta_ip[0],regs_global->vars.sta_ip[1],regs_global->vars.sta_ip[2],regs_global->vars.sta_ip[3]);
+    u8g2_SetFont(&u8g2, u8g2_font_5x8_tf);
+    u8g2_DrawStr(&u8g2, 0,7, address);
+    u8g2_SendBuffer(&u8g2);
+    return res;
+#endif
+}
+#endif
 
 /*
  * Initialze the ESP32 HAL.
@@ -29,14 +108,26 @@ void u8g2_esp32_hal_init(u8g2_esp32_hal_t u8g2_esp32_hal_param) {
  * to handle SPI communications.
  */
 uint8_t u8g2_esp32_spi_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr) {
-	ESP_LOGD(TAG, "spi_byte_cb: Received a msg: %d, arg_int: %d, arg_ptr: %p", msg, arg_int, arg_ptr);
+	main_debug(TAG, "spi_byte_cb: Received a msg: %d, arg_int: %d, arg_ptr: %p", msg, arg_int, arg_ptr);
 	switch(msg) {
 		case U8X8_MSG_BYTE_SET_DC:
 			if (u8g2_esp32_hal.dc != U8G2_ESP32_HAL_UNDEFINED) {
 				gpio_set_level(u8g2_esp32_hal.dc, arg_int);
 			}
 			break;
-
+/* arg_int: expected cs level after processing this msg */
+		case U8X8_MSG_CAD_START_TRANSFER: {
+			if (u8g2_esp32_hal.cs != U8G2_ESP32_HAL_UNDEFINED) {
+				gpio_set_level(u8g2_esp32_hal.cs, 0);
+			}
+			break;
+		}
+/* arg_int: expected cs level after processing this msg */
+		case U8X8_MSG_CAD_END_TRANSFER:
+			if (u8g2_esp32_hal.cs != U8G2_ESP32_HAL_UNDEFINED) {
+				gpio_set_level(u8g2_esp32_hal.cs, 1);
+			}
+			break;
 		case U8X8_MSG_BYTE_INIT: {
 			if (u8g2_esp32_hal.clk == U8G2_ESP32_HAL_UNDEFINED ||
 					u8g2_esp32_hal.mosi == U8G2_ESP32_HAL_UNDEFINED ||
@@ -55,7 +146,7 @@ uint8_t u8g2_esp32_spi_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void 
 #if CONFIG_IDF_TARGET_ESP32
 		  ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &bus_config, 1));
 #elif CONFIG_IDF_TARGET_ESP32C3
-		  ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &bus_config, 1));
+		  ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &bus_config, SPI_DMA_CH_AUTO));
 #endif
 
 		  spi_device_interface_config_t dev_config;
@@ -66,7 +157,7 @@ uint8_t u8g2_esp32_spi_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void 
 		  dev_config.duty_cycle_pos   = 0;
 		  dev_config.cs_ena_posttrans = 0;
 		  dev_config.cs_ena_pretrans  = 0;
-		  dev_config.clock_speed_hz   = 10000;
+		  dev_config.clock_speed_hz   = 100000;
 		  dev_config.spics_io_num     = u8g2_esp32_hal.cs;
 		  dev_config.flags            = 0;
 		  dev_config.queue_size       = 200;

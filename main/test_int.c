@@ -26,12 +26,12 @@ static int test_int_regs_description(void);
 
 static int test_int_init(){
    int result = 0;
-   regs_global.vars.current_state[0] |= CS0_TASK_ACTIVE_TEST_INT;
+   regs_global->vars.current_state[0] |= CS0_TASK_ACTIVE_TEST_INT;
    return result;
 }  
 static int test_int_deinit(){
    int result = 0;
-   regs_global.vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_TEST_INT);
+   regs_global->vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_TEST_INT);
    return result;
 }
 void test_int_task(void *arg){
@@ -66,7 +66,7 @@ static int test_int_regs_description(void){
       result += RES_ERROR;
       main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
    }
-   regs_template.guid = 630;
+   regs_template.guid = 762;
    result += regs_description_get_by_guid(&regs_template);
    if (regs_template.type != FLOAT_REGS_FLAG){
       result += RES_ERROR;
@@ -75,6 +75,67 @@ static int test_int_regs_description(void){
    if(result == RES_OK){
       main_printf(TAG,"regs_description_get_by_guid passed %i",result);
    }
+   result = 0;
+   int index = regs_description_get_index_by_address(NULL);
+   if(index >=0){
+      main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+      result += RES_ERROR;
+   }
+   index = regs_description_get_index_by_address(&regs_global->vars.mdb_addr);
+   if(index != 0){
+      main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+      result += RES_ERROR;
+   }
+   index = regs_description_get_index_by_address(&regs_global->vars.netmask[0]);
+   if(index != 2){
+      main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+      result += RES_ERROR;
+   }
+   index = regs_description_get_index_by_address(&regs_global->vars.netmask[1]);
+   if(index != 2){
+      main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+      result += RES_ERROR;
+   }  
+   index = regs_description_get_index_by_address(&polisher_reg->vars.polisher_direction);
+   if(index != 103){
+      main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+      result += RES_ERROR;
+   }  
+   index = regs_description_get_index_by_address(&sync_time_client->vars.sys_tick_slave);
+   if(index != 118){
+      main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+      result += RES_ERROR;
+   }  
+   index = regs_description_get_index_by_address(&client_part_0->vars.cli_mdb_addr);
+   if(index != 111){
+      main_error_message(TAG,"Failed %p\n",regs_description_user[0].p_value);
+      result += RES_ERROR;
+   } 
+   index = regs_description_get_index_by_address(&client_part_0->vars.cli_gate[0]);
+   if(index != 114){
+      main_error_message(TAG,"Failed %s:%d:%i\n",__FILE__,__LINE__, index);
+      result += RES_ERROR;
+   }  
+   index = regs_description_get_index_by_address(&client_part_0->vars.cli_gate[1]);
+   if(index != 114){
+      main_error_message(TAG,"Failed %s:%d:%i\n",__FILE__,__LINE__, index);
+      result += RES_ERROR;
+   }  
+   index = regs_description_get_index_by_address(&client_part_0->vars.cli_slip_gate[0]);
+   if(index != 117){
+      main_error_message(TAG,"Failed %s:%d:%i\n",__FILE__,__LINE__, index);
+      result += RES_ERROR;
+   }  
+
+   index = regs_description_get_index_by_address(&sync_time_regs_from_client->vars.cli_average_time_ms);
+   if(index != 124){
+      main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
+      result += RES_ERROR;
+   }  
+   if(result == RES_OK){
+      main_printf(TAG,"regs_description_get_index_by_address passed %i",result);
+   }
+
    return result;
 }
 #endif //TEST_INT

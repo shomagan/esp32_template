@@ -33,7 +33,7 @@ static int step_motor_init(){
     io_conf.pull_up_en = 0;
     gpio_config(&io_conf);
     gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1);/*not active*/
-    regs_global.vars.current_state[0] |= CS0_TASK_ACTIVE_STEP_MOTOR;
+    regs_global->vars.current_state[0] |= CS0_TASK_ACTIVE_STEP_MOTOR;
     return result;
 }
 /*GPIO deinit*/
@@ -51,7 +51,7 @@ static int step_motor_deinit(){
     io_conf.pull_down_en = 0;
     io_conf.pull_up_en = 0;
     gpio_config(&io_conf);
-    regs_global.vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_STEP_MOTOR);
+    regs_global->vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_STEP_MOTOR);
     return result;
 }
 

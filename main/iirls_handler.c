@@ -42,9 +42,9 @@ void isimfw400_task(void *pvParameters ){
                 /*u8g2_ClearBuffer(&u8g2);
                 u8g2_SetFont(&u8g2, u8g2_font_ncenB08_tr);
                 char temp[30];
-                sprintf(temp,"tx/rx - %lu",regs_global.vars.modbus_master_succ_transactions_number);
+                sprintf(temp,"tx/rx - %lu",regs_global->vars.modbus_master_succ_transactions_number);
                 u8g2_DrawStr(&u8g2, 2,10,temp);
-                sprintf(temp,"err - %lu",regs_global.vars.modbus_master_error_transactions_number);
+                sprintf(temp,"err - %lu",regs_global->vars.modbus_master_error_transactions_number);
                 u8g2_DrawStr(&u8g2, 2,25,temp);
                 u8g2_SendBuffer(&u8g2);*/
             }
@@ -67,7 +67,7 @@ void isimfw400_task(void *pvParameters ){
                 }
             }else{
                 //real input parameters calibration and data format coefficients.
-                if (regs_global.vars.iirls_state){
+                if (regs_global->vars.iirls_state){
                     if (init_time==0){
                         if(device_config == DEVICE_IIRLS_MASTER){
                             /*start procedure*/
@@ -75,7 +75,7 @@ void isimfw400_task(void *pvParameters ){
                             u8 paired;
                             memset(slave_adc_buffer,0,IIRLSCALC_DATA_BUFFER_LENGTH*2);
                             semaphore_take(regs_access_mutex, portMAX_DELAY );{
-                                paired = (u8)regs_global.vars.iirls_pairing_status;
+                                paired = (u8)regs_global->vars.iirls_pairing_status;
                             }semaphore_release(regs_access_mutex);
                             if (paired!=IIRLS_PAIRED){
                                 continue;
@@ -118,7 +118,7 @@ void isimfw400_task(void *pvParameters ){
                         init_time=0;
                        //memcpy(iirls_real_time_data_end.vars.iirls_receiver2_data,adc1_buffer,IIRLSCALC_DATA_BUFFER_LENGTH*2);
                         if(device_config == DEVICE_IIRLS_SLAVE){
-                            regs_global.vars.iirls_state = 0;
+                            regs_global->vars.iirls_state = 0;
                         }else{
                             //step 3 read adc buffer from slave
                             task_notify_send(modbus_master_id, MODBUS_MASTER_READ_0_SIGNAL,&prev_signal);

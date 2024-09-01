@@ -60,17 +60,17 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
     receive_len = receive_len>UDP_BROADCAST_MAX_PACKET_SIZE?UDP_BROADCAST_MAX_PACKET_SIZE:receive_len;
     pbuf_copy_partial(p, receive_buff, receive_len, 0);
     if (strncmp(ADVERTISMENT_REQUEST, &receive_buff[0], sizeof(ADVERTISMENT_REQUEST))==0){
-        len += sprintf(answer_buff,"{\"modbus_address\": %u,",regs_global.vars.mdb_addr);
+        len += sprintf(answer_buff,"{\"modbus_address\": %u,",regs_global->vars.mdb_addr);
         len += sprintf(&answer_buff[len],"\"name\": \"chili\",");
         len += sprintf(&answer_buff[len],"\"serial\": \"0000\",");
         len += sprintf(&answer_buff[len],"\"model\": \"son\",");
         len += sprintf(&answer_buff[len],"\"firmware\": \"0.0.1\",");
-        len += sprintf(&answer_buff[len],",\"ip\": \"%u.%u.%u.%u\",",regs_global.vars.ip[0],regs_global.vars.ip[1],
-                       regs_global.vars.ip[2],regs_global.vars.ip[3]);
-        len += sprintf(&answer_buff[len],"\"netmask\": [%u.%u.%u.%u],",regs_global.vars.netmask[0],regs_global.vars.netmask[1],
-                regs_global.vars.netmask[2],regs_global.vars.netmask[3]);
-        len += sprintf(&answer_buff[len],"\"gateway\": [%u.%u.%u.%u],",regs_global.vars.gate[0],regs_global.vars.gate[1],
-                regs_global.vars.gate[2],regs_global.vars.gate[3]);
+        len += sprintf(&answer_buff[len],",\"ip\": \"%u.%u.%u.%u\",",regs_global->vars.ip[0],regs_global->vars.ip[1],
+                       regs_global->vars.ip[2],regs_global->vars.ip[3]);
+        len += sprintf(&answer_buff[len],"\"netmask\": [%u.%u.%u.%u],",regs_global->vars.netmask[0],regs_global->vars.netmask[1],
+                regs_global->vars.netmask[2],regs_global->vars.netmask[3]);
+        len += sprintf(&answer_buff[len],"\"gateway\": [%u.%u.%u.%u],",regs_global->vars.gate[0],regs_global->vars.gate[1],
+                regs_global->vars.gate[2],regs_global->vars.gate[3]);
         len += sprintf(&answer_buff[len],",\"port\": 502,}");
     }else {
         int position_modbus_id = -1;
@@ -81,8 +81,8 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
             }
         }
         if (position_modbus_id>=0){
-            u8 modbus_id = (u8)atoi(&receive_buff[position_modbus_id+MODBUS_FIELD_SIZE  +3]);
-#if MODBUS_MASTER_ENABLE            
+#if MODBUS_MASTER_ENABLE
+            u8 modbus_id = (u8)atoi(&receive_buff[position_modbus_id+MODBUS_FIELD_SIZE  +3]);            
             if(add_ip_to_slave_table((uc8*)addr,modbus_id)){
                 main_printf(TAG, "new modbus device found\n");
             }
@@ -111,7 +111,7 @@ int udp_broadcast_advertisement(udp_broadcast_option_t option){
         if(option == UDP_BROADCAST_OPTION_INFORMATION){
             u32 pin_states = 0;
             semaphore_take(regs_access_mutex, portMAX_DELAY);{
-            pin_states = di_control.vars.pin_state;
+            pin_states = di_control->vars.pin_state;
             }semaphore_release(regs_access_mutex);
             len += sprintf(&temp_buff[len],"{\"name\": \"digital_input_states\",");
             for (u8 i =0;i<DI_COUNT;i++){

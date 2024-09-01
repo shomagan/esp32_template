@@ -343,7 +343,7 @@ const char* get_json_handle(char *json_pack){
                 *(p_databuf + dynamic_json_file.file.len) = '[';
                 dynamic_json_file.file.len++;
                 for(u8 i = 0; i < FW_VERSION_SIZE; i++){
-                    itoa(regs_global.vars.fw_version[i], temp, 10);
+                    itoa(regs_global->vars.fw_version[i], temp, 10);
                     strcpy(p_databuf + dynamic_json_file.file.len, temp);
                     dynamic_json_file.file.len += strlen(temp);
                     *(p_databuf + dynamic_json_file.file.len) = ',';
@@ -493,7 +493,7 @@ const char* get_json_handle(char *json_pack){
                 break;
             case REGS_NUM_REQUEST:
                 dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"regs_num\":");
-                itoa((int)regs_global.vars.num_of_vars, temp,10);
+                itoa((int)regs_global->vars.num_of_vars, temp,10);
                 strcpy(p_databuf + dynamic_json_file.file.len, temp);
                 dynamic_json_file.file.len += strlen(temp);
                 *(p_databuf + dynamic_json_file.file.len) = ',';
@@ -501,7 +501,7 @@ const char* get_json_handle(char *json_pack){
                 break;
             case CLIENT_REGS_NUM_REQUEST:
                 dynamic_json_file.file.len+=sprintf(p_databuf + dynamic_json_file.file.len, "\"client_regs_num\":");
-                itoa((int)regs_global.vars.client_num_of_vars, temp,10);
+                itoa((int)regs_global->vars.client_num_of_vars, temp,10);
                 strcpy(p_databuf + dynamic_json_file.file.len, temp);
                 dynamic_json_file.file.len += strlen(temp);
                 *(p_databuf + dynamic_json_file.file.len) = ',';

@@ -31,7 +31,6 @@
 
 task_handle_t polisher_handle_id = NULL;
 static const char *TAG = "polisher";
-polisher_reg_t polisher_reg;
 typedef enum {
     STOPPED = 0,
     SMOOTH_SPEED_UP,
@@ -70,7 +69,7 @@ static esp_err_t rmt_step_motor_step(rmt_step_motor_t *rmt_handle, uint32_t n, u
 
 static int polisher_init(rmt_step_motor_t * rmt_step_motor){
    int result = 0;
-   regs_global.vars.current_state[0] |= CS0_TASK_ACTIVE_POLISHER;
+   regs_global->vars.current_state[0] |= CS0_TASK_ACTIVE_POLISHER;
    gpio_config_t io_conf = {};
    io_conf.intr_type = GPIO_INTR_DISABLE;
    io_conf.mode = GPIO_MODE_OUTPUT;
@@ -102,7 +101,7 @@ static int polisher_deinit(rmt_step_motor_t * rmt_step_motor){
    io_conf.pull_up_en = 0;
    gpio_config(&io_conf);
    step_motor_delete_rmt(rmt_step_motor);
-   regs_global.vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_POLISHER);
+   regs_global->vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_POLISHER);
    return result;
 }
 void polisher_task(void *arg){
@@ -123,8 +122,8 @@ void polisher_task(void *arg){
             task_delete(task_get_id());
          }
       }
-      regs_copy_safe(&polisher_speed,&polisher_reg.vars.polisher_speed,sizeof(polisher_speed));
-      regs_copy_safe(&polisher_direction,&polisher_reg.vars.polisher_direction,sizeof(polisher_direction));
+      regs_copy_safe(&polisher_speed,&polisher_reg->vars.polisher_speed,sizeof(polisher_speed));
+      regs_copy_safe(&polisher_direction,&polisher_reg->vars.polisher_direction,sizeof(polisher_direction));
       esp_err_t step_result;
       if (polisher_speed){
          if (polisher_direction){
@@ -136,8 +135,8 @@ void polisher_task(void *arg){
          gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 1); /*active*/
          task_delay_ms(1);
          step_result = rmt_step_motor_step(&rmt_step_motor, UINT32_MAX, polisher_speed);
-         polisher_reg.vars.polisher_sec += 1;
-         polisher_reg.vars.polisher_last_sec += 1;
+         polisher_reg->vars.polisher_sec += 1;
+         polisher_reg->vars.polisher_last_sec += 1;
       }else{
          gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1);    /*not active*/
          gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 0); /*not active*/

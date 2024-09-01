@@ -46,7 +46,7 @@ typedef struct {
 
 task_handle_t feeder_handle_id = NULL;
 static const char *TAG = "feeder";
-feeder_reg_t feeder_reg;
+
 
 #if FEEDER
 static int feeder_init(rmt_step_motor_t * rmt_step_motor);
@@ -67,7 +67,7 @@ static esp_err_t rmt_step_motor_step(rmt_step_motor_t *rmt_handle, uint32_t n, u
 
 static int feeder_init(rmt_step_motor_t * rmt_step_motor){
    int result = 0;
-   regs_global.vars.current_state[0] |= CS0_TASK_ACTIVE_FEEDER;
+   regs_global->vars.current_state[0] |= CS0_TASK_ACTIVE_FEEDER;
    gpio_config_t io_conf = {};
    io_conf.intr_type = GPIO_INTR_DISABLE;
    io_conf.mode = GPIO_MODE_OUTPUT;
@@ -99,7 +99,7 @@ static int feeder_deinit(rmt_step_motor_t * rmt_step_motor){
    io_conf.pull_down_en = 0;
    io_conf.pull_up_en = 0;
    gpio_config(&io_conf);
-   regs_global.vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_FEEDER);
+   regs_global->vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_FEEDER);
    step_motor_delete_rmt(rmt_step_motor);
    return result;
 }
@@ -138,7 +138,7 @@ void feeder_task(void *arg){
 }
 static int handle_sleeping(u32 minutes_of_the_day){
    int result = 0;
-   u32 interval_minute = feeder_reg.vars.feeder_interval;
+   u32 interval_minute = feeder_reg->vars.feeder_interval;
    if (interval_minute > MIN_WORK_TIME_MINUTE){
       u32 time_without_feeding = minutes_of_the_day % interval_minute;
       if (time_without_feeding >= MIN_WORK_TIME_MINUTE){
@@ -158,12 +158,12 @@ static int handle_sleeping(u32 minutes_of_the_day){
 }
 static int handle_feeding(u32 minutes_of_the_day, int * feeded_minute, rmt_step_motor_t * rmt_step_motor){
    int result = 0;
-   if (minutes_of_the_day % feeder_reg.vars.feeder_interval == 0){
+   if (minutes_of_the_day % feeder_reg->vars.feeder_interval == 0){
       if((*feeded_minute < 0) || (*feeded_minute != minutes_of_the_day)){
          result = run_feeder(rmt_step_motor); 
          if(result > 0){
-            feeder_reg.vars.feeder_counter++;
-            int index = regs_description_get_index_by_address(&feeder_reg.vars.feeder_counter);
+            feeder_reg->vars.feeder_counter++;
+            int index = regs_description_get_index_by_address(&feeder_reg->vars.feeder_counter);
             if (index>=0){
                 regs_template_t regs_template;
                 regs_template.ind =(u16)index;
@@ -186,13 +186,13 @@ static int run_feeder(rmt_step_motor_t * rmt_step_motor){
    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 0);    /*active*/
    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 1); /*active*/
    task_delay_ms(1);
-   u32 steps = (u32)(feeder_reg.vars.feeder_time_sec * AVERAGE_STEPS_PER_SECOND);
+   u32 steps = (u32)(feeder_reg->vars.feeder_time_sec * AVERAGE_STEPS_PER_SECOND);
    esp_err_t rmt_result = rmt_step_motor_smoothstep(rmt_step_motor, steps, MIN_STEPS_PER_SECOND, MAX_STEPS_PER_SECOND);
-   task_delay_ms((uint32_t)(feeder_reg.vars.feeder_time_sec*1000));
+   task_delay_ms((uint32_t)(feeder_reg->vars.feeder_time_sec*1000));
    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1);    /*not active*/
    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 0); /*not active*/
    if (rmt_result == ESP_OK){
-      if(feeder_reg.vars.feeder_time_sec > 0.0f){
+      if(feeder_reg->vars.feeder_time_sec > 0.0f){
          result = 1;
       }else{
          result = 0;

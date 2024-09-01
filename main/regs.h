@@ -87,6 +87,7 @@ typedef enum{
     CS0_TASK_ACTIVE_FEEDER              = BIT(14),/*!< feeder task must be work on*/
     CS0_TASK_ACTIVE_POLISHER            = BIT(15),/*!< polisher task must be work on*/
     CS0_TASK_ACTIVE_TEST_INT            = BIT(16),/*!< test int task must be work on*/
+    CS0_TASK_ACTIVE_MORSE               = BIT(17),/*!< morse task must be work on*/
 } current_state_0;
 /**
   * @brief structures for u32 current_state[4]; //!< "current state of proccess" &ro description above contain flags
@@ -194,7 +195,7 @@ typedef struct {
 #define FW_VERSION_SIZE 4
 #define FW_VERSION {0,10,0,0}
 #define FW_VERSION_STR "0.10.0-beta.0"
-#define FW_FIRMWARE_HASH "61-3597010bb4184f724794e7bd6439ff"
+#define FW_FIRMWARE_HASH "62-b8c4237eb29e0360d65846470c352f"
 #define FW_HASH 0x00000000
 #define REGS_MAX_NAME_SIZE 32
 #define DEVICE_NAME_SIZE 40
@@ -207,6 +208,7 @@ typedef struct {
 #define WIFI_ROUTER_PASSWORD_LEN 32
 
 #define BOARD_VERSION 0
+#define USE_REGS_GLOBAL 1
 
 /**
   * @}
@@ -289,7 +291,7 @@ typedef union{
     }vars;
     u8 bytes[GLOBAL_UNION_SIZE]; //for full bksram copy
 }main_vars_t;// #generator_use_description {"message":"end_struct"}
-extern main_vars_t regs_global;
+extern main_vars_t * const regs_global;
 /**
  * @brief main struct
  * name variables uses for generate name in description file and then in get value by name
@@ -330,7 +332,7 @@ typedef union{
     }vars;
     u8 bytes[32]; //for full bksram copy
 }main_vars_part_1_t;// #generator_use_description {"message":"end_struct"}
-extern main_vars_part_1_t regs_global_part1;
+extern main_vars_part_1_t * const regs_global_part1;
 /**
  * @brief main struct
  * name variables uses for generate name in description file and then in get value by name
@@ -354,7 +356,7 @@ typedef union{
     }vars;
     u8 bytes[32]; //for full bksram copy
 }servo_control_part_t;// #generator_use_description {"message":"end_struct"}
-extern servo_control_part_t servo_control_part;
+extern servo_control_part_t * const servo_control_part;
 /**
  * @brief main struct
  * name variables uses for generate name in description file and then in get value by name
@@ -375,7 +377,7 @@ typedef union{
     }vars;
     u8 bytes[4]; //for full bksram copy
 }di_control_t;// #generator_use_description {"message":"end_struct"}
-extern di_control_t di_control;
+extern di_control_t * const di_control;
 typedef enum{
   SYNC_STATE_ACTIVE = BIT(0),
   SYNC_STATE_SYNCRONIZED = BIT(1),
@@ -405,7 +407,7 @@ typedef union{
     }vars;
     u8 bytes[32]; //for full bksram copy
 }sync_time_regs_t;// #generator_use_description {"message":"end_struct"}
-extern sync_time_regs_t sync_time_regs;
+extern sync_time_regs_t * const sync_time_regs;
 typedef enum{
     SR04_STATE_ACTIVE = BIT(0),
     SR04_STATE_ECHO = BIT(1),
@@ -434,7 +436,7 @@ typedef union{
     }vars;
     u8 bytes[32]; //for full bksram copy
 }sr04_reg_t;// #generator_use_description {"message":"end_struct"}
-extern sr04_reg_t sr04_reg;
+extern sr04_reg_t * const sr04_reg;
 
 /**
  * @brief feeders struct for feed control
@@ -458,7 +460,7 @@ typedef union{
     }vars;
     u32 bytes[4]; //for full bksram copy
 }feeder_reg_t;// #generator_use_description {"message":"end_struct"}
-extern feeder_reg_t feeder_reg;
+extern feeder_reg_t * const feeder_reg;
 
 /**
  * @brief polisher struct for speed control
@@ -482,13 +484,18 @@ typedef union{
     }vars;
     u32 bytes[4]; //for full bksram copy
 }polisher_reg_t;// #generator_use_description {"message":"end_struct"}
-extern polisher_reg_t polisher_reg;
-/** \union  
+extern polisher_reg_t * const polisher_reg;
+/**   
  * @brief test struct for internal tests 
- * @see main_vars_t
- * @ingroup regs
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *  @ingroup regs
  */
-/** #generator_use_description {"space_name" :"test_int_reg_t",  "address_space" :8, "modbus_type" :"server", "modbus_function" :"holding_registers", "register_start_address" 4400}*/
+/** #generator_use_description {"space_name" :"test_int_reg_t",  "address_space" :8, "modbus_type" :"server", "modbus_function" :"holding_registers", "register_start_address" :4400}*/
 typedef union{
     struct MCU_PACK{
         // start regs struct
@@ -500,7 +507,27 @@ typedef union{
     }vars;
     u32 bytes[4]; //for full bksram copy
 }test_int_reg_t;// #generator_use_description {"message":"end_struct"}
-extern test_int_reg_t test_int_reg;
+extern test_int_reg_t * const test_int_reg;
+/**   
+ * @brief struct for morse component 
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *  @ingroup regs
+ */
+/** #generator_use_description {"space_name" :"morse_reg_t",  "address_space" :9, "modbus_type" :"server", "modbus_function" :"holding_registers", "register_start_address" :4500}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        u32 morse_unit_time_ms;         //!<"morse time ms" &save &def &min &max
+        u8 morse_message[128];         //!<"morse message" &ro 
+    }vars;
+    u32 bytes[132]; //for full bksram copy
+}morse_reg_t;// #generator_use_description {"message":"end_struct"}
+extern morse_reg_t * const morse_reg;
 /**
  * @brief struct for reading modbus data from another device maximume bytes - 240
  * name variables uses for generate name in description file and then in get value by name
@@ -529,7 +556,7 @@ typedef union{
     }vars;
     u8 bytes[32]; //for full bksram copy
 }client_part_0_t;// #generator_use_description {"message":"end_struct"}
-extern client_part_0_t client_part_0;
+extern client_part_0_t * const client_part_0;
 /**
  * @brief client part2 to read sys_tick_counter from salve
  * struct for reading modbus data from another device maximume bytes - 240
@@ -553,7 +580,7 @@ typedef union{
     }vars;
     u8 bytes[8]; //for full bksram copy
 }sync_time_client_t;// #generator_use_description {"message":"end_struct"}
-extern sync_time_client_t sync_time_client;
+extern sync_time_client_t * const sync_time_client;
 /**
  * @brief struct for reading modbus data from another device maximume bytes - 240
  * name variables uses for generate name in description file and then in get value by name
@@ -577,7 +604,7 @@ typedef union{
     }vars;
     u8 bytes[8]; //for full bksram copy
 }client_part_1_t;// #generator_use_description {"message":"end_struct"}
-extern client_part_1_t client_part_1;
+extern client_part_1_t * const client_part_1;
 
 /**
  * @brief time sync struct for read time from another device
@@ -605,7 +632,7 @@ typedef union{
     }vars;
     u8 bytes[32]; //for full bksram copy
 }sync_data_client_t;// #generator_use_description {"message":"end_struct"}
-extern sync_data_client_t sync_time_regs_from_client;
+extern sync_data_client_t * const sync_time_regs_from_client;
 /**
  * @brief sr04 measurements struct for distance control and time laps
  * name variables uses for generate name in description file and then in get value by name
@@ -630,8 +657,30 @@ typedef union{
     }vars;
     u8 bytes[32]; //for full bksram copy
 }sr04_reg_client_t;// #generator_use_description {"message":"end_struct"}
-extern sr04_reg_client_t sr04_reg_client;
+extern sr04_reg_client_t * const sr04_reg_client;
 
+/**
+ * @brief main struct to unite all generated structs and keep it in one place and sorted by address space
+ */
+/** #generator_use_description {"regs_main":"start_struct"} */
+typedef struct{
+    main_vars_t regs_global; //!< "main_vars_t"
+    main_vars_part_1_t regs_global_part1; //!< "main_vars_part_1_t"
+    servo_control_part_t servo_control_part; //!< "servo_control_part_t"
+    di_control_t di_control; //!< "di_control_t"
+    sync_time_regs_t sync_time_regs; //!< "sync_time_regs_t"
+    sr04_reg_t sr04_reg; //!< "sr04_reg_t"
+    feeder_reg_t feeder_reg; //!< "feeder_reg_t"
+    polisher_reg_t polisher_reg; //!< "polisher_reg_t"
+    test_int_reg_t test_int_reg; //!< "test_int_reg_t"
+    morse_reg_t morse_reg; //!< "morse_reg_t"
+    client_part_0_t client_part_0; //!< "client_part_0_t"
+    sync_time_client_t sync_time_client; //!< "sync_time_client_t"
+    client_part_1_t client_part_1; //!< "client_part_1_t"
+    sync_data_client_t sync_time_regs_from_client; //!< "sync_data_client_t"
+    sr04_reg_client_t sr04_reg_client; //!< "sr04_reg_client_t"
+}regs_main_t;// #generator_use_description {"message":"end_struct"}
+extern regs_main_t regs_main;
 /**
   * @brief registers for regs_event_handler
   * @ingroup regs

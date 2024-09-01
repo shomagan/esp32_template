@@ -54,7 +54,7 @@
    extern "C" {
 #endif
 /*add functions and variable declarations below */
-#define main_debug ESP_LOGI
+#define main_debug ESP_LOGD
 #define main_printf ESP_LOGI
 #define main_error_message ESP_LOGE
 #define task_handle_t TaskHandle_t
@@ -62,6 +62,7 @@
    vTaskDelayUntil(timer, pdMS_TO_TICKS(ms))
 #define task_delay_ms(ms)   vTaskDelay(ms/portTICK_PERIOD_MS)
 #define task_get_tick_count() xTaskGetTickCount()
+#define task_get_time_ms() pdTICKS_TO_MS(task_get_tick_count())
 #define semaphore_handle_t SemaphoreHandle_t
 #define semaphore_create_binary vSemaphoreCreateBinary
 #define semaphore_delete     vSemaphoreDelete

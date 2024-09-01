@@ -85,7 +85,7 @@ static int touch_handle_init(void){
     ESP_ERROR_CHECK(touch_pad_init());
     touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
     touch_gpio_initialize();
-    if (regs_global_part1.vars.filter_use){
+    if (regs_global_part1->vars.filter_use){
         touch_pad_filter_start(TOUCHPAD_FILTER_TOUCH_PERIOD);
     }
 #endif //CONFIG_IDF_TARGET_ESP32    
@@ -100,9 +100,9 @@ void touch_task(void *arg){
     uint32_t signal_value;
     touch_handle_init();
     u32 enable_period=0;
-    float enable_period_float = regs_global_part1.vars.liters;
+    float enable_period_float = regs_global_part1->vars.liters;
     u32 driver_enabled_tick_os = task_get_tick_count();
-    float driver_enabled_liters = regs_global_part1.vars.liters;
+    float driver_enabled_liters = regs_global_part1->vars.liters;
     u8 drive_enable = 0;
     u64 ticks=0;
     u16 touch_temp;
@@ -111,29 +111,29 @@ void touch_task(void *arg){
     u16 touch_0,touch_1,touch_2,touch_3;
     touch_pad_read_raw_data(GPIO_TOUCH_0, &touch_value);
     touch_pad_read_filtered(GPIO_TOUCH_0, &touch_temp);
-    regs_global_part1.vars.touch_0 = touch_temp;
+    regs_global_part1->vars.touch_0 = touch_temp;
     touch_0 = touch_temp;
     touch_pad_read_raw_data(GPIO_TOUCH_1, &touch_value);
     touch_pad_read_filtered(GPIO_TOUCH_1, &touch_temp);
-    regs_global_part1.vars.touch_1 = touch_temp;
+    regs_global_part1->vars.touch_1 = touch_temp;
     touch_1 = touch_temp;
     touch_pad_read_raw_data(GPIO_TOUCH_2, &touch_value);
     touch_pad_read_filtered(GPIO_TOUCH_2, &touch_temp);
-    regs_global_part1.vars.touch_2 = touch_temp;
+    regs_global_part1->vars.touch_2 = touch_temp;
     touch_2 = touch_temp;
     touch_pad_read_raw_data(GPIO_TOUCH_3, &touch_value);
     touch_pad_read_filtered(GPIO_TOUCH_3, &touch_temp);
-    regs_global_part1.vars.touch_3 = touch_temp;
+    regs_global_part1->vars.touch_3 = touch_temp;
     touch_3 = touch_temp;
 #endif    
-    u32 filter_use = regs_global_part1.vars.filter_use;
+    u32 filter_use = regs_global_part1->vars.filter_use;
     while(1){
 #if CONFIG_IDF_TARGET_ESP32        
-        if (regs_global_part1.vars.filter_use && !filter_use){
-            filter_use = regs_global_part1.vars.filter_use;
+        if (regs_global_part1->vars.filter_use && !filter_use){
+            filter_use = regs_global_part1->vars.filter_use;
             touch_pad_filter_start(TOUCHPAD_FILTER_TOUCH_PERIOD);
-        }else if (!regs_global_part1.vars.filter_use && filter_use){
-            filter_use = regs_global_part1.vars.filter_use;
+        }else if (!regs_global_part1->vars.filter_use && filter_use){
+            filter_use = regs_global_part1->vars.filter_use;
             touch_pad_filter_stop();
         }
 #endif //CONFIG_IDF_TARGET_ESP32        
@@ -149,62 +149,62 @@ void touch_task(void *arg){
         if (filter_use){
             touch_pad_read_raw_data(GPIO_TOUCH_0, &touch_value);
             touch_pad_read_filtered(GPIO_TOUCH_0, &touch_temp);
-            regs_global_part1.vars.touch_0 = touch_temp;
+            regs_global_part1->vars.touch_0 = touch_temp;
             touch_pad_read_raw_data(GPIO_TOUCH_1, &touch_value);
             touch_pad_read_filtered(GPIO_TOUCH_1, &touch_temp);
-            regs_global_part1.vars.touch_1 = touch_temp;
+            regs_global_part1->vars.touch_1 = touch_temp;
             touch_pad_read_raw_data(GPIO_TOUCH_2, &touch_value);
             touch_pad_read_filtered(GPIO_TOUCH_2, &touch_temp);
-            regs_global_part1.vars.touch_2 = touch_temp;
+            regs_global_part1->vars.touch_2 = touch_temp;
             touch_pad_read_raw_data(GPIO_TOUCH_3, &touch_value);
             touch_pad_read_filtered(GPIO_TOUCH_3, &touch_temp);
-            regs_global_part1.vars.touch_3 = touch_temp;
+            regs_global_part1->vars.touch_3 = touch_temp;
         }else{
             touch_pad_read(GPIO_TOUCH_0, &touch_temp);
-            regs_global_part1.vars.touch_0 = touch_temp;
+            regs_global_part1->vars.touch_0 = touch_temp;
             touch_pad_read(GPIO_TOUCH_1, &touch_temp);
-            regs_global_part1.vars.touch_1 = touch_temp;
+            regs_global_part1->vars.touch_1 = touch_temp;
             touch_pad_read(GPIO_TOUCH_2, &touch_temp);
-            regs_global_part1.vars.touch_2 = touch_temp;
+            regs_global_part1->vars.touch_2 = touch_temp;
             touch_pad_read(GPIO_TOUCH_3, &touch_temp);
-            regs_global_part1.vars.touch_3 = touch_temp;
+            regs_global_part1->vars.touch_3 = touch_temp;
         }
-        if(ticks%(regs_global_part1.vars.touch_handle_period/10)==0){
-            float part_0 = (float)regs_global_part1.vars.touch_0/(float)touch_0;
-            float part_1 = (float)regs_global_part1.vars.touch_1/(float)touch_1;
-            float part_2 = (float)regs_global_part1.vars.touch_2/(float)touch_2;
-            float part_3 = (float)regs_global_part1.vars.touch_3/(float)touch_3;
-            if (part_0<regs_global_part1.vars.touch_0_trshld){
+        if(ticks%(regs_global_part1->vars.touch_handle_period/10)==0){
+            float part_0 = (float)regs_global_part1->vars.touch_0/(float)touch_0;
+            float part_1 = (float)regs_global_part1->vars.touch_1/(float)touch_1;
+            float part_2 = (float)regs_global_part1->vars.touch_2/(float)touch_2;
+            float part_3 = (float)regs_global_part1->vars.touch_3/(float)touch_3;
+            if (part_0<regs_global_part1->vars.touch_0_trshld){
                 touch_states |= TOUCH_0_STATE;
             }else{
                 touch_states &= ~TOUCH_0_STATE;
             }
-            if (part_1<regs_global_part1.vars.touch_1_trshld){
+            if (part_1<regs_global_part1->vars.touch_1_trshld){
                 touch_states |= TOUCH_1_STATE;
             }else{
                 touch_states &= ~TOUCH_1_STATE;
             }
-            if (part_2<regs_global_part1.vars.touch_2_trshld){
+            if (part_2<regs_global_part1->vars.touch_2_trshld){
                 touch_states |= TOUCH_2_STATE;
             }else{
                 touch_states &= ~TOUCH_2_STATE;
             }
-            if (part_3<regs_global_part1.vars.touch_3_trshld){
+            if (part_3<regs_global_part1->vars.touch_3_trshld){
                 touch_states |= TOUCH_3_STATE;
             }else{
                 touch_states &= ~TOUCH_3_STATE;
             }
-            touch_0 = regs_global_part1.vars.touch_0;
-            touch_1 = regs_global_part1.vars.touch_1;
-            touch_2 = regs_global_part1.vars.touch_2;
-            touch_3 = regs_global_part1.vars.touch_3;
+            touch_0 = regs_global_part1->vars.touch_0;
+            touch_1 = regs_global_part1->vars.touch_1;
+            touch_2 = regs_global_part1->vars.touch_2;
+            touch_3 = regs_global_part1->vars.touch_3;
         }
 #endif
         if(ticks%10==0){
-            regs_global_part1.vars.liters = regs_global_part1.vars.water_counter*regs_global_part1.vars.impulse_cost;
+            regs_global_part1->vars.liters = regs_global_part1->vars.water_counter*regs_global_part1->vars.impulse_cost;
         }
         if(ticks%360000==0){
-            int index = regs_description_get_index_by_address(&regs_global_part1.vars.liters);
+            int index = regs_description_get_index_by_address(&regs_global_part1->vars.liters);
             if (index>=0){
                 regs_template_t regs_template;
                 regs_template.ind =(u16)index;
@@ -216,7 +216,7 @@ void touch_task(void *arg){
                     }
                 }
             }
-            index = regs_description_get_index_by_address(&regs_global_part1.vars.water_counter);
+            index = regs_description_get_index_by_address(&regs_global_part1->vars.water_counter);
             if (index>=0){
                 regs_template_t regs_template;
                 regs_template.ind =(u16)index;
@@ -231,51 +231,51 @@ void touch_task(void *arg){
 
         }
         if ((touch_states & TOUCH_1_STATE) &&(drive_enable==0)){
-            if(regs_global_part1.vars.by_time){
-                enable_period = regs_global_part1.vars.touch_1_count;
+            if(regs_global_part1->vars.by_time){
+                enable_period = regs_global_part1->vars.touch_1_count;
             }else{
-                enable_period_float = regs_global_part1.vars.touch_1_liters;
+                enable_period_float = regs_global_part1->vars.touch_1_liters;
             }
             driver_enabled_tick_os = task_get_tick_count();
             drive_enable = 1;
         }
         if ((touch_states & TOUCH_2_STATE) &&(drive_enable==0)){
-            if(regs_global_part1.vars.by_time){
-                enable_period = regs_global_part1.vars.touch_2_count;
+            if(regs_global_part1->vars.by_time){
+                enable_period = regs_global_part1->vars.touch_2_count;
             }else{
-                enable_period_float = regs_global_part1.vars.touch_2_liters;
+                enable_period_float = regs_global_part1->vars.touch_2_liters;
             }
-            driver_enabled_liters = regs_global_part1.vars.liters;
+            driver_enabled_liters = regs_global_part1->vars.liters;
             driver_enabled_tick_os = task_get_tick_count();
             drive_enable = 1;
         }
         if ((touch_states & TOUCH_3_STATE) &&(drive_enable==0)){
-            if(regs_global_part1.vars.by_time){
-                enable_period = regs_global_part1.vars.touch_3_count;
+            if(regs_global_part1->vars.by_time){
+                enable_period = regs_global_part1->vars.touch_3_count;
             }else{
-                enable_period_float = regs_global_part1.vars.touch_3_liters;
+                enable_period_float = regs_global_part1->vars.touch_3_liters;
             }
-            driver_enabled_liters = regs_global_part1.vars.liters;
+            driver_enabled_liters = regs_global_part1->vars.liters;
             driver_enabled_tick_os = task_get_tick_count();
             drive_enable = 1;
         }
         if ((touch_states & TOUCH_0_STATE) &&(drive_enable==1)){
-            if(regs_global_part1.vars.by_time){
+            if(regs_global_part1->vars.by_time){
                 enable_period = 0;
             }
-            driver_enabled_liters = regs_global_part1.vars.liters;
+            driver_enabled_liters = regs_global_part1->vars.liters;
             driver_enabled_tick_os = task_get_tick_count();
             drive_enable = 0;
         }
 
         if (drive_enable){
             gpio_set_level(DRIVE_PIN, 1);
-            if(regs_global_part1.vars.by_time){
+            if(regs_global_part1->vars.by_time){
                 if (task_get_tick_count()-driver_enabled_tick_os>enable_period){
                     drive_enable = 0;
                 }
             }else{
-                if (regs_global_part1.vars.liters-driver_enabled_liters>enable_period_float){
+                if (regs_global_part1->vars.liters-driver_enabled_liters>enable_period_float){
                     drive_enable = 0;
                 }
             }

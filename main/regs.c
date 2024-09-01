@@ -29,21 +29,26 @@
 #endif
 static const char *TAG = "regs_c";
 /*global objects mapped in modbus and http memory*/
-main_vars_t regs_global;
-main_vars_part_1_t regs_global_part1;
-servo_control_part_t servo_control_part;
-di_control_t di_control;
-sync_time_regs_t sync_time_regs;
-/*client part 0*/
-client_part_0_t client_part_0;
-/*client part 1*/
-client_part_1_t client_part_1;
-/*client part 2*/
-sync_time_client_t sync_time_client;
-/*client part 3*/
-sr04_reg_client_t sr04_reg_client;/*where we got last lap/snap from paired device?*/
-/*client part 4*/
-sync_data_client_t sync_time_regs_from_client;/*do we have the same deviation?*/
+regs_main_t regs_main;
+/*pointers to be used as a reference to global registers 
+usef in main regs_description structure */
+/*#generator_use_description {"regs_pointers":"start_struct"}*/
+main_vars_t * const regs_global = &regs_main.regs_global; //!< "main_vars_t"
+main_vars_part_1_t * const regs_global_part1 = &regs_main.regs_global_part1; //!< "main_vars_part_1_t"
+servo_control_part_t * const servo_control_part = &regs_main.servo_control_part; //!< "servo_control_part_t"
+di_control_t * const di_control = &regs_main.di_control; //!< "di_control_t"
+sync_time_regs_t * const sync_time_regs = &regs_main.sync_time_regs; //!< "sync_time_regs_t"
+sr04_reg_t * const sr04_reg = &regs_main.sr04_reg; //!< "sr04_reg_t"
+feeder_reg_t * const feeder_reg = &regs_main.feeder_reg; //!< "feeder_reg_t"
+polisher_reg_t * const polisher_reg = &regs_main.polisher_reg; //!< "polisher_reg_t"
+test_int_reg_t * const test_int_reg = &regs_main.test_int_reg; //!< "test_int_reg_t"
+morse_reg_t * const morse_reg = &regs_main.morse_reg; //!< "morse_reg_t"
+client_part_0_t * const client_part_0 = &regs_main.client_part_0; //!< "client_part_0_t"
+sync_time_client_t * const sync_time_client = &regs_main.sync_time_client; //!< "sync_time_client_t"
+client_part_1_t * const client_part_1 = &regs_main.client_part_1; //!< "client_part_1_t"
+sync_data_client_t * const sync_time_regs_from_client = &regs_main.sync_time_regs_from_client; //!< "sync_data_client_t"
+sr04_reg_client_t * const sr04_reg_client = &regs_main.sr04_reg_client; //!< "sr04_reg_client_t"
+/*#generator_use_description {"regs_pointers":"end_struct"}*/
 /**
  * @brief mutex for access to global regs
  * @ingroup regs
@@ -141,7 +146,7 @@ static int regs_write_access(void * reg_address){
     if (index>=0){
         if (regs_description_is_writable((u16)index)||
             (regs_description_is_credential((u16)index)==1 &&
-             (regs_global.vars.permission & ENABLE_CREDENTIAL_FLAG))){
+             (regs_global->vars.permission & ENABLE_CREDENTIAL_FLAG))){
             res = index;
         }
     }else{
@@ -335,10 +340,10 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             }
         }
-        if (regs_template.p_value == regs_global.vars.wifi_name ||
-            regs_template.p_value == regs_global.vars.wifi_password||
-            regs_template.p_value == regs_global.vars.wifi_router_password||
-            regs_template.p_value == regs_global.vars.wifi_router_name){
+        if (regs_template.p_value == regs_global->vars.wifi_name ||
+            regs_template.p_value == regs_global->vars.wifi_password||
+            regs_template.p_value == regs_global->vars.wifi_router_password||
+            regs_template.p_value == regs_global->vars.wifi_router_name){
             if (is_ascii_symbol_or_digital((u8*)&temp_data_buffering->data.operand.op_u64, regs_size_in_byte(regs_template.type))==1){
                 result = 1;
             }else{
@@ -507,14 +512,14 @@ static int regs_hadle_sets(void * reg_address,regs_access_t reg,u16 reg_index){
         main_printf(TAG,"\n register is not saved %u reg_index", reg_index);
     }
     /*special*/
-    if ((end_addr == end_of_reg_addr(&regs_global.vars.ip))||
-        (end_addr == end_of_reg_addr(&regs_global.vars.gate))||
-        (end_addr == end_of_reg_addr(&regs_global.vars.netmask))){
+    if ((end_addr == end_of_reg_addr(&regs_global->vars.ip))||
+        (end_addr == end_of_reg_addr(&regs_global->vars.gate))||
+        (end_addr == end_of_reg_addr(&regs_global->vars.netmask))){
         ESP_LOGI(TAG, "ip has changed");
-    } else if (end_addr == end_of_reg_addr(&regs_global.vars.command)){
-        execute_main_command(regs_global.vars.command);
-    }else if(end_addr == end_of_reg_addr(&regs_global_part1.vars.test_pwm_value)){
-        pwm_test_set(regs_global_part1.vars.test_pwm_value);
+    } else if (end_addr == end_of_reg_addr(&regs_global->vars.command)){
+        execute_main_command(regs_global->vars.command);
+    }else if(end_addr == end_of_reg_addr(&regs_global_part1->vars.test_pwm_value)){
+        pwm_test_set(regs_global_part1->vars.test_pwm_value);
     }
     return result;
 }
@@ -647,23 +652,23 @@ static void execute_main_command(u16 command){
         }
         break;
     case ENABLE_SPECIAL_HTTP_COMM:
-        regs_global.vars.permission |= ENABLE_CREDENTIAL_FLAG;
+        regs_global->vars.permission |= ENABLE_CREDENTIAL_FLAG;
         break;
     case DISABLE_SPECIAL_HTTP_COMM:
-        regs_global.vars.permission &= ~ENABLE_CREDENTIAL_FLAG;
+        regs_global->vars.permission &= ~ENABLE_CREDENTIAL_FLAG;
         break;
     case ENABLE_HTTP_COMM:
-        regs_global.vars.permission |= ENABLE_HTTP_FLAG;
+        regs_global->vars.permission |= ENABLE_HTTP_FLAG;
         break;
     case DISABLE_HTTP_COMM:
-        regs_global.vars.permission &= ~ENABLE_HTTP_FLAG;
+        regs_global->vars.permission &= ~ENABLE_HTTP_FLAG;
         break;
     case DEEP_SLEEP_FOR_120_SEC_COMM:
         task_notify_send(sleep_control_handle_id,SLEEP_TASK_DEEP_SLEEP_FOR_120_SEC,&prev_value);
         break;
     case DEEP_SLEEP_FOR_N_SEC_COMM:
     {
-        u32 signal = (u32)SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC | (((u32)regs_global.vars.sleep_time << 16u)&0xffff0000);
+        u32 signal = (u32)SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC | (((u32)regs_global->vars.sleep_time << 16u)&0xffff0000);
         task_notify_send(sleep_control_handle_id, signal, &prev_value);
         break;
     }

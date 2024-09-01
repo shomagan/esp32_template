@@ -117,7 +117,7 @@ u8 modbus_crc16_check(u8* pckt,u16 lenght){
  * */
 u8 modbus_packet_for_me(u8* pckt,u16 lenght){
     if (lenght){
-        if ((pckt[0] != (u8)regs_global.vars.mdb_addr)  &&
+        if ((pckt[0] != (u8)regs_global->vars.mdb_addr)  &&
             (pckt[0] != MODBUS_BROADCAST_ADDRESS)){
             return 0;
         }else{
@@ -412,7 +412,7 @@ u16 modbus_rtu_packet (u8* pckt,u16 len_in){
     return len_reply;
 }
 u8 genenerate_error_packet(u8* packet,u8 error_code){
-    packet[0] = (u8)regs_global.vars.mdb_addr;
+    packet[0] = (u8)regs_global->vars.mdb_addr;
     packet[1] |=0x80;
     packet[2] = error_code;
     *(u16 *)(void*)(&packet[3]) = modbus_crc16 (packet, 3);
@@ -901,19 +901,19 @@ int modbus_master_execute_request(client_request_t * client_requests,int socket_
     }
 
     semaphore_take(regs_access_mutex, portMAX_DELAY );{
-    regs_global.vars.modbus_master_comm_period_current = (u16)(task_get_tick_count()-timer);
-    if (regs_global.vars.modbus_master_comm_period_current>
-            regs_global.vars.modbus_master_comm_period_max){
-        regs_global.vars.modbus_master_comm_period_max = regs_global.vars.modbus_master_comm_period_current;
+    regs_global->vars.modbus_master_comm_period_current = (u16)(task_get_tick_count()-timer);
+    if (regs_global->vars.modbus_master_comm_period_current>
+            regs_global->vars.modbus_master_comm_period_max){
+        regs_global->vars.modbus_master_comm_period_max = regs_global->vars.modbus_master_comm_period_current;
     }
-    if (regs_global.vars.modbus_master_comm_period_current<
-            regs_global.vars.modbus_master_comm_period_min){
-        regs_global.vars.modbus_master_comm_period_min = regs_global.vars.modbus_master_comm_period_current;
+    if (regs_global->vars.modbus_master_comm_period_current<
+            regs_global->vars.modbus_master_comm_period_min){
+        regs_global->vars.modbus_master_comm_period_min = regs_global->vars.modbus_master_comm_period_current;
     }
     if (result>=0){
-        regs_global.vars.modbus_master_succ_transactions_number++;
+        regs_global->vars.modbus_master_succ_transactions_number++;
     }else{
-        regs_global.vars.modbus_master_error_transactions_number++;
+        regs_global->vars.modbus_master_error_transactions_number++;
     }
     }semaphore_release(regs_access_mutex);
     return result;

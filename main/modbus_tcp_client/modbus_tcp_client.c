@@ -278,7 +278,7 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                 client_requests.count = slave_connection->size_in_words;
 #if TIME_SYNC_MEASUREMENT_ENABLE                
                 if (time_sync_active == MDB_CLIENT_GROUP_SYS_TICK_COUNTER){
-                    regs_copy_safe(&start_transsmition_time,&regs_global.vars.sys_tick_counter,sizeof(start_transsmition_time));
+                    regs_copy_safe(&start_transsmition_time,&regs_global->vars.sys_tick_counter,sizeof(start_transsmition_time));
                 }
 #endif
                 int res = modbus_master_execute_request(&client_requests,client_socket_fd,file_desc_set);
@@ -288,16 +288,16 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                 }else{
 #if TIME_SYNC_MEASUREMENT_ENABLE                            
                     if (time_sync_active == MDB_CLIENT_GROUP_SYS_TICK_COUNTER){
-                        regs_copy_safe(&end_transsmition_time,&regs_global.vars.sys_tick_counter,sizeof(end_transsmition_time));
+                        regs_copy_safe(&end_transsmition_time,&regs_global->vars.sys_tick_counter,sizeof(end_transsmition_time));
                         if ((end_transsmition_time - start_transsmition_time) < MAX_TRANSMISSION_TIME){
                             u16 transmition_time = end_transsmition_time - start_transsmition_time;
                             u64 sync_time_from_client;
                             u64 sync_time_own = end_transsmition_time;
                             s32 sync_deviation;
-                            regs_copy_safe(&sync_time_from_client,&sync_time_client.vars.sys_tick_slave,sizeof(sync_time_from_client));
+                            regs_copy_safe(&sync_time_from_client,&sync_time_client->vars.sys_tick_slave,sizeof(sync_time_from_client));
                             sync_deviation = (s32)(sync_time_own - sync_time_from_client)-transmition_time/2;
-                            regs_copy_safe(&sync_time_regs.vars.sync_last_req_time_ms,&transmition_time,sizeof(transmition_time));
-                            regs_copy_safe(&sync_time_regs.vars.sync_sys_tick_slave,&sync_time_client.vars.sys_tick_slave,sizeof(sync_time_client.vars.sys_tick_slave));
+                            regs_copy_safe(&sync_time_regs->vars.sync_last_req_time_ms,&transmition_time,sizeof(transmition_time));
+                            regs_copy_safe(&sync_time_regs->vars.sync_sys_tick_slave,&sync_time_client->vars.sys_tick_slave,sizeof(sync_time_client->vars.sys_tick_slave));
                             time_sync_buffer[time_sync_buffer_index] = sync_deviation;
                             time_sync_buffer_index++;
                             if (time_sync_buffer_index>=TIME_SYNC_BUFFER_SIZE){
@@ -329,25 +329,25 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                                     time_sync_sum-=maximum_values_in_buffer[j];
                                 }
                                 s32 time_sync_average = time_sync_sum/(TIME_SYNC_BUFFER_SIZE-TIME_SYNC_EXPEL_BUFFER_SIZE);
-                                regs_copy_safe(&sync_time_regs.vars.sync_sys_tick_dev,&time_sync_average,sizeof(time_sync_average));
+                                regs_copy_safe(&sync_time_regs->vars.sync_sys_tick_dev,&time_sync_average,sizeof(time_sync_average));
                                 u16 sync_active_temp;
-                                regs_copy_safe(&sync_active_temp,&sync_time_regs.vars.sync_active,sizeof(sync_active_temp));
+                                regs_copy_safe(&sync_active_temp,&sync_time_regs->vars.sync_active,sizeof(sync_active_temp));
                                 sync_active_temp |= SYNC_STATE_ACTIVE;
-                                regs_copy_safe(&sync_time_regs.vars.sync_active,&sync_active_temp,sizeof(sync_active_temp));
+                                regs_copy_safe(&sync_time_regs->vars.sync_active,&sync_active_temp,sizeof(sync_active_temp));
                                 time_sync_buffer_index = 0;
                             }
                         }
                     }else if(time_sync_active == MDB_CLIENT_GROUP_TIME_SYNC){
                         u16 sync_active_temp;
-                        regs_copy_safe(&sync_active_temp,&sync_time_regs.vars.sync_active,sizeof(sync_active_temp));
+                        regs_copy_safe(&sync_active_temp,&sync_time_regs->vars.sync_active,sizeof(sync_active_temp));
                         if (sync_active_temp & SYNC_STATE_ACTIVE){
                             s32 sync_sys_tick_dev_own;         //deviation between master and slave on our side
                             s32 sync_sys_tick_dev_client;      //deviation between master and slave on client side
-                            regs_copy_safe(&sync_sys_tick_dev_own,&sync_time_regs.vars.sync_sys_tick_dev,sizeof(sync_sys_tick_dev_own));
-                            regs_copy_safe(&sync_sys_tick_dev_client,&sync_time_regs_from_client.vars.cli_sys_tick_dev,sizeof(sync_sys_tick_dev_client));
+                            regs_copy_safe(&sync_sys_tick_dev_own,&sync_time_regs->vars.sync_sys_tick_dev,sizeof(sync_sys_tick_dev_own));
+                            regs_copy_safe(&sync_sys_tick_dev_client,&sync_time_regs_from_client->vars.cli_sys_tick_dev,sizeof(sync_sys_tick_dev_client));
                             if((sync_sys_tick_dev_own + sync_sys_tick_dev_client)< TIME_SYNC_DEVIATION_THRESHOLD){
                                 sync_active_temp |= SYNC_STATE_SYNCRONIZED;
-                                regs_copy_safe(&sync_time_regs.vars.sync_active,&sync_active_temp,sizeof(sync_active_temp));
+                                regs_copy_safe(&sync_time_regs->vars.sync_active,&sync_active_temp,sizeof(sync_active_temp));
                             }
                         }
                     }
@@ -589,9 +589,9 @@ static inline int ip_addresses_were_changed(u8 * server_ip_arg,u8 * own_ip_arg,u
     }
     /*check own ip address*/
     semaphore_take(regs_access_mutex, portMAX_DELAY );{
-        if(memcmp(regs_global.vars.ip,own_ip_arg,sizeof(in_addr_t))!=0){
+        if(memcmp(regs_global->vars.ip,own_ip_arg,sizeof(in_addr_t))!=0){
             /*own ip was changed*/
-            memcpy(own_ip_arg,regs_global.vars.ip,sizeof(in_addr_t));
+            memcpy(own_ip_arg,regs_global->vars.ip,sizeof(in_addr_t));
             res =1;
         }
     }semaphore_release(regs_access_mutex);
