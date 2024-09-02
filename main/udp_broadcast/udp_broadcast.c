@@ -43,12 +43,41 @@ answer example
 static struct udp_pcb * udp_broadcast_pcb;
 static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbuf *p,\
                                const ip_addr_t *addr, u16_t port);
+static u32 add_string_from_regs(u8 * dest, u8 * from,u32 max_size);
+static int get_di_info(char * temp_buff);
+
+
+int udp_broadcast_init(){
+    int res = 0;
+    /* LWIP_ASSERT_CORE_LOCKED(); is checked by udp_new() */
+    udp_broadcast_pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
+    if (udp_broadcast_pcb == NULL) {
+        return ERR_MEM;
+    }
+    ip_set_option(udp_broadcast_pcb, SOF_BROADCAST);
+    res = udp_bind(udp_broadcast_pcb, IP_ANY_TYPE, UDP_BROADCAST_SELF_PORT);
+
+    if (res != ERR_OK) {
+        udp_remove(udp_broadcast_pcb);
+        return res;
+    }
+    udp_recv(udp_broadcast_pcb, udp_broadcast_server_recv, NULL);
+    return res;
+}
+int udp_broadcast_deinit(){
+    int res = 0;
+    if(udp_broadcast_pcb!=NULL){
+        udp_remove(udp_broadcast_pcb);
+    }
+    return res;
+}
 
 static u32 add_string_from_regs(u8 * dest, u8 * from,u32 max_size){
     u32 size = strnlen((char*)from, max_size);
     memcpy(dest,from,size);
     return size;
 }
+
 static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbuf *p,\
                                const ip_addr_t *addr, u16_t port){
     LWIP_UNUSED_ARG(arg);
@@ -60,6 +89,7 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
     receive_len = receive_len>UDP_BROADCAST_MAX_PACKET_SIZE?UDP_BROADCAST_MAX_PACKET_SIZE:receive_len;
     pbuf_copy_partial(p, receive_buff, receive_len, 0);
     if (strncmp(ADVERTISMENT_REQUEST, &receive_buff[0], sizeof(ADVERTISMENT_REQUEST))==0){
+        len += sprintf(answer_buff,"{\"device_name\": \"%s\",", DEVICE_NAME);
         len += sprintf(answer_buff,"{\"modbus_address\": %u,",regs_global->vars.mdb_addr);
         len += sprintf(&answer_buff[len],"\"name\": \"chili\",");
         len += sprintf(&answer_buff[len],"\"serial\": \"0000\",");
@@ -109,22 +139,15 @@ int udp_broadcast_advertisement(udp_broadcast_option_t option){
     if(udp_broadcast_pcb!=NULL){
         int len = 0;
         if(option == UDP_BROADCAST_OPTION_INFORMATION){
-            u32 pin_states = 0;
-            semaphore_take(regs_access_mutex, portMAX_DELAY);{
-            pin_states = di_control->vars.pin_state;
-            }semaphore_release(regs_access_mutex);
-            len += sprintf(&temp_buff[len],"{\"name\": \"digital_input_states\",");
-            for (u8 i =0;i<DI_COUNT;i++){
-                len += sprintf(&temp_buff[len],"\"di_state_%u\": ",i);
-                if (pin_states & (1<<i)){
-                    len += sprintf(&temp_buff[len],"1");
-                }else{
-                    len += sprintf(&temp_buff[len],"0");
-                }
-                if(i<(DI_COUNT-1)){
-                    len += sprintf(&temp_buff[len],",");
-                }
-            }
+            len += sprintf(&temp_buff[len],"{\"device_name\": \"%s\",", DEVICE_NAME);
+#if MORSE
+#elif FEEDER
+#elif POLISHER
+#elif TEST_INT
+#elif STEP_MOTOR
+#elif DI_HANDLING_ENABLE
+            len += get_di_info(&temp_buff[len]);
+#endif
             len += sprintf(&temp_buff[len],"}");
         }else{
             len += sprintf(temp_buff,ADVERTISMENT_REQUEST);
@@ -143,32 +166,27 @@ int udp_broadcast_advertisement(udp_broadcast_option_t option){
     }
     return res;
 }
-
-int udp_broadcast_init(){
-    int res = 0;
-    /* LWIP_ASSERT_CORE_LOCKED(); is checked by udp_new() */
-    udp_broadcast_pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
-    if (udp_broadcast_pcb == NULL) {
-        return ERR_MEM;
+static int get_di_info(char * temp_buff){
+    int len = 0;
+    if(temp_buff == NULL){
+        return 0;
+    }else{
+        u32 pin_states = 0;
+        pin_states = di_control->vars.pin_state;
+        for (u8 i =0;i<DI_COUNT;i++){
+            len += sprintf(&temp_buff[len],"\"di_state_%u\": ",i);
+            if (pin_states & (1<<i)){
+                len += sprintf(&temp_buff[len],"1");
+            }else{
+                len += sprintf(&temp_buff[len],"0");
+            }
+            if(i<(DI_COUNT-1)){
+                len += sprintf(&temp_buff[len],",");
+            }
+        }
     }
-    ip_set_option(udp_broadcast_pcb, SOF_BROADCAST);
-    res = udp_bind(udp_broadcast_pcb, IP_ANY_TYPE, UDP_BROADCAST_SELF_PORT);
-
-    if (res != ERR_OK) {
-        udp_remove(udp_broadcast_pcb);
-        return res;
-    }
-    udp_recv(udp_broadcast_pcb, udp_broadcast_server_recv, NULL);
-    return res;
+    return len;
 }
-int udp_broadcast_deinit(){
-    int res = 0;
-    if(udp_broadcast_pcb!=NULL){
-        udp_remove(udp_broadcast_pcb);
-    }
-    return res;
-}
-
 #endif //UDP_BROADCAST_ENABLE
 #endif //LWIP_UDP
 #endif  //UDP_BROADCAST_C

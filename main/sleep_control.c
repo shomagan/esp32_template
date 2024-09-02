@@ -55,8 +55,11 @@ void sleep_control_task(void *arg){
    u16 alive_timer;/*represents time only after which we can start the sleep process*/
    TickType_t task_timer;
    regs_global->vars.wake_up_cause = *esp_sleep_wakeup_cause;
-   if (wake_up_control(*esp_sleep_wakeup_cause)==WAKE_UP_END){
-      alive_timer = (ALIVE_DEFAULT_S*1000) / SLEEP_CONTROL_TASK_PERIOD_MS;
+   if (wake_up_control(*esp_sleep_wakeup_cause)==WAKE_UP_CANCELED){
+      alive_timer = 0;
+#if MORSE
+      signal_in_process |= SLEEP_TASK_DEEP_SLEEP;
+#endif
    }else{
       alive_timer = (ALIVE_LONG_S*1000) / SLEEP_CONTROL_TASK_PERIOD_MS;
       main_printf(TAG,"start config mode");
@@ -76,10 +79,13 @@ void sleep_control_task(void *arg){
          sleep_time = 120u;
       }
       if (signal_value & SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC){
-         
          signal_in_process |= SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC;
          sleep_time = (signal_value >> 16u) & 0x0000ffff;
          main_printf(TAG,"SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC %u", sleep_time);
+      }
+      if (signal_value & SLEEP_TASK_DEEP_SLEEP){
+         signal_in_process |= SLEEP_TASK_DEEP_SLEEP;
+         main_printf(TAG,"SLEEP_TASK_DEEP_SLEEP");
       }
       if (alive_timer==0){
          if (signal_in_process & SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC){
@@ -92,17 +98,28 @@ void sleep_control_task(void *arg){
             main_printf(TAG,"set ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH");
             regs_global->vars.async_flags |= ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
             task_delay_ms(300u);
-            if (ESP_OK != rtc_setup_wakeup(sleep_time)){
+            rtc_setup_wakeup_pin();
+            if (ESP_OK != rtc_setup_wakeup_timer(sleep_time)){
                main_error_message(TAG,"wake up seting problem");  
             }
             display_good_bye_message();
             esp_deep_sleep_start();
          }
-      }else{
+      }else {
          alive_timer--;
          if (alive_timer%10==0u){
             main_printf(TAG,"non sleep timer %d ",alive_timer);
          }
+      }
+      if (signal_in_process & SLEEP_TASK_DEEP_SLEEP){
+         signal_in_process &= ~((uint32_t)SLEEP_TASK_DEEP_SLEEP);
+         task_notify_send(wireless_control_handle_id, WIRELESS_TASK_STOP_WIFI,&prev_signal);
+         main_printf(TAG,"set ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH");
+         regs_global->vars.async_flags |= ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
+         task_delay_ms(300u);
+         rtc_setup_wakeup_pin();
+         display_good_bye_message();
+         esp_deep_sleep_start();
       }
       if (1u==gpio_get_level(EXT_WAKEUP_PIN)){
          main_printf(TAG,"prolongation");
@@ -110,10 +127,6 @@ void sleep_control_task(void *arg){
       }
       task_counter++;
    }
-}
-int rtc_setup_wakeup(u16 seconds){
-   rtc_setup_wakeup_pin();
-   return rtc_setup_wakeup_timer(seconds);
 }
 /*set up wakeup source*/
 static void rtc_setup_wakeup_pin(void){
@@ -163,15 +176,19 @@ static void display_good_bye_message(void){
 * @return   
 */
 static int wake_up_control(esp_sleep_wakeup_cause_t  esp_sleep_wakeup_cause){
-   int result = WAKE_UP_END;
+   int result = WAKE_UP_CANCELED;
    u32 deep_sleep_pin = 0;
-   if (ESP_SLEEP_WAKEUP_EXT0 == esp_sleep_wakeup_cause){
-      task_delay_ms(5000 / portTICK_PERIOD_MS);
+   if (ESP_SLEEP_WAKEUP_EXT0 == esp_sleep_wakeup_cause ||
+       ESP_SLEEP_WAKEUP_EXT1 == esp_sleep_wakeup_cause ||
+       ESP_SLEEP_WAKEUP_GPIO == esp_sleep_wakeup_cause){
+      task_delay_ms(2000 / portTICK_PERIOD_MS);
       deep_sleep_pin = gpio_get_level(EXT_WAKEUP_PIN);
-      if (0u==deep_sleep_pin){/*dont wake up if pressed less than 1 sec*/
+      if (1u==deep_sleep_pin){/*dont wake up if pressed less than 1 sec*/
          result = WAKE_UP_START;
       }
-   }else if (ESP_SLEEP_WAKEUP_UNDEFINED == esp_sleep_wakeup_cause){
+   }else{
+      gpio_set_level(NOKIA_PIN_BL, 1);
+
       result = WAKE_UP_START;
    }
    return result;

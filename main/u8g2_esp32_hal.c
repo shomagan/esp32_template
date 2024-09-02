@@ -35,8 +35,6 @@ int init_display(void){
 	 int itt =1000;
 	 while(itt--){	};
     gpio_set_level(NOKIA_PIN_RESET, 1);
-    gpio_set_level(NOKIA_PIN_BL, 1);
-
     esp32_hal.mosi  = NOKIA_PIN_SDA;
     esp32_hal.clk  = NOKIA_PIN_SCK;
 	 esp32_hal.reset = NOKIA_PIN_RESET;

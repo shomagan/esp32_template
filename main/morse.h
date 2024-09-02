@@ -34,6 +34,10 @@ extern const struct morse_node i_letter ;
 extern const struct morse_node s_letter ;
 extern const struct morse_node h_letter ;
 extern const struct morse_node d5_digit ;
+extern const struct morse_node bl_enable_command;
+extern const struct morse_node bl_disable_command;
+extern const struct morse_node morse_sleep_command;
+
 extern const struct morse_node d4_digit ;
 extern const struct morse_node v_letter ;
 extern const struct morse_node d3_digit ;

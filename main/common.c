@@ -93,6 +93,9 @@ static void example_tg_timer_deinit(int group, int timer);
 static int common_duty_init(void);
 static void display_update(uint32_t task_tick);
 static void udp_broabcast_update(uint32_t task_tick);
+static void display_time_diff(void);
+static void display_statistic(void);
+static void display_morse(void);
 /**
  * @brief duty_task - do several common functions
  * @param pvParameters
@@ -221,29 +224,28 @@ static void udp_broabcast_update(uint32_t task_tick){
 }
 static void display_update(uint32_t task_tick){
 #if DISPLAY
-    s32 deviation;
-    u8 position = BOX_SHIFT;
-    u8 const box_side = 10;
-    u64 slave_tick_calculated;
-    u64 sys_tick_own;
-    regs_copy_safe(&sys_tick_own,&regs_global->vars.sys_tick_counter,sizeof(deviation));
-    regs_copy_safe(&deviation,&sync_time_regs->vars.sync_sys_tick_dev,sizeof(deviation));
-    slave_tick_calculated = sys_tick_own - deviation;
-    char temp_buff[TEMP_BUFFER_SIZE] = {0u};
-    u16 sync_active_temp;
-    regs_copy_safe(&sync_active_temp,&sync_time_regs->vars.sync_active,sizeof(sync_active_temp));
     u8g2_ClearBuffer(&u8g2);
 #if DISPLAY_TIME_DIFF
+    display_time_diff();
+#elif MORSE
+    display_morse();
+#else   // DISPLAY_TIME_DIFF
+    display_statistic();
+#endif  // DISPLAY_TIME_DIFF
+#endif
+}
+static void display_time_diff(void){
+    char temp_buff[TEMP_BUFFER_SIZE] = {0u}; 
+    u8 position = BOX_SHIFT;
+    u8 const box_side = 10;
     s32 time_div_slave = 0;
     s32 time_div_own = 0;
-    u8 synchronized = 0;
     semaphore_take(regs_access_mutex, portMAX_DELAY);{
         time_div_slave = sync_time_regs_from_client->vars.cli_sys_tick_dev;
         time_div_own = sync_time_regs->vars.sync_sys_tick_dev;
     }semaphore_release(regs_access_mutex);    
     if ((time_div_slave != 0) && (time_div_own != 0) ){
         if ((time_div_slave + time_div_own) < 10){
-            synchronized = 1u;
             u8g2_DrawBox(&u8g2, BOX_SHIFT, 0, box_side, box_side/2);
         }else{
             u8g2_DrawFrame(&u8g2, position, 0, box_side, box_side/2);
@@ -295,21 +297,23 @@ static void display_update(uint32_t task_tick){
     sprintf(temp_buff,"%i sm %i",distance_own,distance_slave);
     u8g2_DrawStr(&u8g2, 0,32u, temp_buff);
     u8g2_SendBuffer(&u8g2);
-#else   // DISPLAY_TIME_DIFF
+}
+static void display_statistic(void){
+    char temp_buff[TEMP_BUFFER_SIZE] = {0u};
+    u16 sync_active_temp;
+    regs_copy_safe(&sync_active_temp,&sync_time_regs->vars.sync_active,sizeof(sync_active_temp));
     semaphore_take(regs_access_mutex, portMAX_DELAY);{
         sprintf(temp_buff,"m %u;%u.%u.%u.%u;S-%u",regs_global->vars.mdb_addr,regs_global->vars.sta_ip[0],regs_global->vars.sta_ip[1],regs_global->vars.sta_ip[2],regs_global->vars.sta_ip[3],sync_active_temp & SYNC_STATE_SYNCRONIZED);
     }semaphore_release(regs_access_mutex);
-    u8g2_SetFont(&u8g2, u8g2_font_5x8_tf);
+    u8g2_SetFont(&u8g2, u8g2_font_u8glib_4_tf);
     u8g2_DrawStr(&u8g2, 0,6u, temp_buff);
-    memset(temp_buff,0,TEMP_BUFFER_SIZE);
     memset(temp_buff,0,TEMP_BUFFER_SIZE);
     u32 success_requests = 0;
     u32 failed_requests = 0;
-    for (int i = 0;i < MAX_NUMBER_OF_SLAVES_CONNECTIONS;i++){
+    for (int i = 0; i < MAX_NUMBER_OF_SLAVES_CONNECTIONS; i++){
         success_requests += modbus_tcp_client_slave_connections[i].success_requests;
         failed_requests += modbus_tcp_client_slave_connections[i].failed_requests;
     }
-    //sprintf(temp_buff,"OT%llu;SC%llu",sys_tick_own,slave_tick_calculated);
     sprintf(temp_buff,"%f %llu",sr04_reg->vars.lap_distance,sr04_reg->vars.lap);
     u8g2_DrawStr(&u8g2, 0,14u, temp_buff);
     semaphore_take(regs_access_mutex, portMAX_DELAY);{
@@ -319,14 +323,20 @@ static void display_update(uint32_t task_tick){
     s32 sync_sys_tick_dev_own;         //deviation between master and slave on our side
     s32 sync_sys_tick_dev_client;      //deviation between master and slave on client side
     regs_copy_safe(&sync_sys_tick_dev_own,&sync_time_regs->vars.sync_sys_tick_dev,sizeof(sync_sys_tick_dev_own));
-    regs_copy_safe(&sync_sys_tick_dev_client,&sync_time_regs_from_client.vars.cli_sys_tick_dev,sizeof(sync_sys_tick_dev_client));
-    sprintf(temp_buff,"dev %li %li",sync_sys_tick_dev_own,sync_sys_tick_dev_client);
+    regs_copy_safe(&sync_sys_tick_dev_client,&sync_time_regs_from_client->vars.cli_sys_tick_dev,sizeof(sync_sys_tick_dev_client));
+    sprintf(temp_buff,"dev %li %li", sync_sys_tick_dev_own, sync_sys_tick_dev_client);
     u8g2_DrawStr(&u8g2, 0,30u, temp_buff);
     u8g2_SendBuffer(&u8g2);
-#endif  // DISPLAY_TIME_DIFF
-#endif
 }
-
+static void display_morse(void){
+    char temp_buff[TEMP_BUFFER_SIZE] = {0u};
+    semaphore_take(regs_access_mutex, portMAX_DELAY);{
+        strlcpy(temp_buff, (const char *)&morse_reg->vars.morse_message[0], TEMP_BUFFER_SIZE);
+    }semaphore_release(regs_access_mutex);
+    u8g2_SetFont(&u8g2, u8g2_font_u8glib_4_tf);
+    u8g2_DrawStr(&u8g2, 0,6u, temp_buff);
+    u8g2_SendBuffer(&u8g2);
+}
 /**
  * @brief led_blink_on enable the led on ms
  * @param time_ms

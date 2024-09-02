@@ -17,22 +17,41 @@
 #include "regs_description.h"
 #include "driver/gpio.h"
 #include <string.h>
+#include "sleep_control.h"
 
 task_handle_t morse_handle_id = NULL;
 static const char *TAG = "morse";
 #define MORSE_TASK_PERIOD (5u)
 #if MORSE
+typedef enum{
+   MORSE_LETTER,
+   MORSE_DIGIT,
+   MORSE_SIGN,
+   MORSE_SPACE,
+   MORSE_NEW_LINE,
+   MORSE_COMMAND_ENABLE_BL,
+   MORSE_COMMAND_DISABLE_BL,
+   MORSE_COMMAND_SLEEP,
+   MORSE_END
+}morse_type_t;
 struct morse_node{
    const char * const letter;
    const void * const dit;
    const void * const dah;
+   const morse_type_t type;
 };
 const struct morse_node root_letter = {.letter = NULL, .dit = &e_letter, .dah = &t_letter};
 const struct morse_node e_letter = {.letter ="E", .dit = &i_letter, .dah = &a_letter};
 const struct morse_node i_letter = {.letter ="I", .dit = &s_letter, .dah = &u_letter};
 const struct morse_node s_letter = {.letter ="S", .dit = &h_letter, .dah = &v_letter};
 const struct morse_node h_letter = {.letter ="H", .dit = &d5_digit, .dah = &d4_digit};
-const struct morse_node d5_digit = {.letter ="5", .dit = NULL, .dah = NULL};
+const struct morse_node d5_digit = {.letter ="5", .dit = &bl_enable_command, .dah = &bl_disable_command};
+/* . . . . . .*/
+const struct morse_node bl_enable_command = {.letter ="!", .dit =&morse_sleep_command, .dah = NULL, .type = MORSE_COMMAND_ENABLE_BL};
+/* . . . . . _*/
+const struct morse_node bl_disable_command = {.letter ="!", .dit =NULL, .dah = NULL, .type = MORSE_COMMAND_DISABLE_BL};
+/* . . . . . . .*/
+const struct morse_node morse_sleep_command = {.letter ="!", .dit =NULL, .dah = NULL, .type = MORSE_COMMAND_SLEEP};
 const struct morse_node d4_digit = {.letter ="4", .dit = NULL, .dah = NULL};
 const struct morse_node v_letter = {.letter ="V", .dit = NULL, .dah = &d3_digit};
 const struct morse_node d3_digit = {.letter ="3", .dit = NULL, .dah = NULL};
@@ -99,7 +118,7 @@ int morse_unit_time = 100;
 #define SPACE_SIGNALS MORSE_UNIT_TIME_MS
 #define SPACE_LETTERS (3u*MORSE_UNIT_TIME_MS)
 #define SPACE_WORDS (7u*MORSE_UNIT_TIME_MS)
-
+#define TIME_BEFORE_SLEEP_MS (30*60*1000)
 static int morse_init(void);
 static int morse_deinit();
 static u16 fill_morse_log_buffer(u8 * buffer, const char * letter, u16 log_pointer, u16 log_size);
@@ -143,7 +162,7 @@ void morse_task(void *arg){
       }
    }
    main_printf(TAG,"morse task ready to start");
-
+   u32 last_button_press = task_get_tick_count();
    while(1){
       morse_unit_time = morse_reg->vars.morse_unit_time_ms;
       if(task_notify_wait(STOP_CHILD_PROCCES, &signal_value, MORSE_TASK_PERIOD)==pdTRUE){
@@ -157,6 +176,7 @@ void morse_task(void *arg){
       if(pin_state){
          const struct morse_node * node = &root_letter; 
          int word_end = 0;
+         last_button_press = task_get_tick_count();
          while(node){
             u64 diff = time_state(pin_state);
             if(diff > DASH_LENGTH){
@@ -173,13 +193,27 @@ void morse_task(void *arg){
             }
          }
          if(node!= NULL && node->letter != NULL){
-            log_pointer = fill_morse_log_buffer(&morse_reg->vars.morse_message[0], node->letter, log_pointer, log_size);
-            if(word_end){
-               //printf(" ");
+            if(node->type == MORSE_COMMAND_ENABLE_BL){
+               gpio_set_level(NOKIA_PIN_BL, 1);
+            }else if(node->type == MORSE_COMMAND_DISABLE_BL){
+               gpio_set_level(NOKIA_PIN_BL, 0);
+            }else if(node->type == MORSE_COMMAND_SLEEP){
+               u32 prev_value = 0;
+               u32 signal = (u32)SLEEP_TASK_DEEP_SLEEP;
+               task_notify_send(sleep_control_handle_id, signal, &prev_value);
+            }else{
+               log_pointer = fill_morse_log_buffer(&morse_reg->vars.morse_message[0], node->letter, log_pointer, log_size);
+               if(word_end){
+                  //printf(" ");
+               }
             }
          }
       }
-
+      if((task_get_tick_count() - last_button_press) > (TIME_BEFORE_SLEEP_MS/portTICK_PERIOD_MS)){
+         u32 prev_value = 0;
+         u32 signal = (u32)SLEEP_TASK_DEEP_SLEEP;
+         task_notify_send(sleep_control_handle_id, signal, &prev_value);
+      }
       task_counter++;
    }
 }

@@ -82,7 +82,7 @@
 #define TIME_SYNC_BUFFER_SIZE 100u
 #define TIME_SYNC_EXPEL_BUFFER_SIZE 10u
 #define MAX_TRANSMISSION_TIME 1000u
-#define DISPLAY_TIME_DIFF 1
+#define DISPLAY_TIME_DIFF 0
 #endif
 #if DI_HANDLING_ENABLE && PMW_TEST_ENABLE
 #error "DI_HANDLING_ENABLE and PMW_TEST_ENABLE can't be enabled at the same time"
@@ -90,6 +90,20 @@
 #if (FEEDER && STEP_MOTOR)|| (POLISHER && STEP_MOTOR)|| (FEEDER && POLISHER)
   #error "config problem"
 #endif
+#if MORSE
+#define DEVICE_NAME "morse"
+#elif FEEDER
+#define DEVICE_NAME "feeder"
+#elif POLISHER
+#define DEVICE_NAME "polisher"
+#elif TEST_INT
+#define DEVICE_NAME "test_int"
+#elif STEP_MOTOR
+#define DEVICE_NAME "step_motor"
+#elif DI_HANDLING_ENABLE
+#define DEVICE_NAME "di_handling"
+#endif
+
 /*task config end */
 
 

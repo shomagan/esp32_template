@@ -751,6 +751,7 @@ typedef enum {
     DEEP_SLEEP_FOR_120_SEC_COMM = 0x550D,            /*!< 0x550d go to deep sleep*/
     RESET_WIFI_FOR_120_SEC_COMM = 0x550E,            /*!< 0x550e disables wifi*/
     DEEP_SLEEP_FOR_N_SEC_COMM = 0x550f,            /*!< 0x550d go to deep sleep for sleep_time seconds*/
+    DEEP_SLEEP_COMM = 0x5510,            /*!< 0x550d go to deep sleep until external wake*/
     IIRLS_HANDSHAKE = 0x7000,   /*!< 28672 Issues a command for slave to perform "handshake" procedure.*/
     IIRLS_HANDSHAKE_CONFIRMATION = 0x7001,   /*!< 28673 Issues a command for slave to confirm successful "handshake".*/
     FEEDER_TASK_ONE_FEED_COMM = 0x8000, /*!< 32768 start feeder , only one cycle.*/
