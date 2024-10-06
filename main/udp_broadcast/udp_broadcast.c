@@ -12,6 +12,8 @@
 #include <string.h>
 #include "modbus_tcp_client.h"
 #include "os_type.h"
+#include "credentials.h"
+#include "morse.h"
 /**
  * @brief udp_broadcast use for bradcast advertisment
  *
@@ -20,6 +22,12 @@
 #if UDP_BROADCAST_ENABLE
 #include "lwip/udp.h"
 #include "lwip/timeouts.h"
+#if SOC_HMAC_SUPPORTED
+    #include "esp_efuse.h"
+    #include "esp_efuse_table.h"
+
+    #include "esp_hmac.h"
+#endif
 #define ADVERTISMENT_REQUEST "UDP_REQUEST"
 #define MODBUS_FIELD "modbus_address"
 #define MODBUS_FIELD_SIZE (sizeof(MODBUS_FIELD)-1)
@@ -50,6 +58,10 @@ static int get_di_info(char * temp_buff);
 int udp_broadcast_init(){
     int res = 0;
     /* LWIP_ASSERT_CORE_LOCKED(); is checked by udp_new() */
+#if SOC_HMAC_SUPPORTED
+    const uint8_t key_data[32] = hmac_key_32;
+    esp_efuse_write_key(EFUSE_BLK_KEY4, ESP_EFUSE_KEY_PURPOSE_HMAC_UP, key_data, sizeof(key_data));
+#endif
     udp_broadcast_pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
     if (udp_broadcast_pcb == NULL) {
         return ERR_MEM;
@@ -103,23 +115,68 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
                 regs_global->vars.gate[2],regs_global->vars.gate[3]);
         len += sprintf(&answer_buff[len],",\"port\": 502,}");
     }else {
-        int position_modbus_id = -1;
+        int position = -1;
         for (u16 i=0;i<receive_len-MODBUS_FIELD_SIZE;i++){
             if (strncmp(MODBUS_FIELD,&receive_buff[i],MODBUS_FIELD_SIZE) == 0){
-                position_modbus_id = i;
+                position = i;
                 break;
             }
         }
-        if (position_modbus_id>=0){
+        if (position>=0){
 #if MODBUS_MASTER_ENABLE
-            u8 modbus_id = (u8)atoi(&receive_buff[position_modbus_id+MODBUS_FIELD_SIZE  +3]);            
+            u8 modbus_id = (u8)atoi(&receive_buff[position + MODBUS_FIELD_SIZE  +3]);            
             if(add_ip_to_slave_table((uc8*)addr,modbus_id)){
                 main_printf(TAG, "new modbus device found\n");
             }
 #endif            
-            u8 ip_address_temp[4];
-            memcpy(ip_address_temp,addr,4);
         }
+#if MORSE
+        u8 message_valid = 1;
+        u8 last_symbol_position = receive_len - 2; 
+#if SOC_HMAC_SUPPORTED
+        if(receive_len > 32){
+            uint8_t hmac[32];
+            esp_hmac_calculate(HMAC_KEY4, receive_buff, receive_len-32, hmac);
+            if(memcmp(&receive_buff[receive_len-32], hmac, 32) != 0){
+                message_valid = 0;
+            }
+            last_symbol_position = receive_len - 32 - 2;
+        }
+#endif /* SOC_HMAC_SUPPORTED */
+        const char * param_message = "message";
+        u8 str_size = strlen(param_message);
+        if(message_valid){
+            position = -1;
+            for (u16 i=0;i<receive_len - str_size;i++){
+                if (strncmp(param_message,&receive_buff[i],str_size) == 0){
+                    position = i + str_size + 4;/*remove ": "*/
+                    break;
+                }
+            }
+            if(position > 0 && position < receive_len){
+                u8 message_len = last_symbol_position - position;/*remove " */
+                if(message_len > 0){
+                    u8 ip_address_temp[4];
+                    memcpy(ip_address_temp,addr,4);
+                    receive_buff[position-4] = (u8)(ip_address_temp[3]/100) + 0x30;
+                    receive_buff[position-3] = (u8)((ip_address_temp[3]%100)/10) + 0x30;
+                    receive_buff[position-2] = (u8)(ip_address_temp[3]%10) + 0x30;
+                    receive_buff[position-1] = ':';
+                    if(message_is_new((u8*)&receive_buff[position-4],message_len+4)){
+                        semaphore_take(regs_access_mutex, portMAX_DELAY);{
+                        u8 line = morse_reg->vars.morse_counter % DISPLAY_LINES_NUM;
+                        u8 * line_pointer = get_pointer_to_line(line);
+                        if (line_pointer != NULL) {
+                            memset(line_pointer, 0, MAX_MORSE_MESSAGE_LEN);
+                            memcpy(line_pointer, &receive_buff[position-4], message_len+4);
+                        }
+                        morse_reg->vars.morse_counter++;
+                        }semaphore_release(regs_access_mutex);
+                    }
+                }
+            }
+        }
+#endif /* MORSE */
     }
     if (len){
         struct pbuf * udp_broadcast_send_pbuff;
@@ -141,6 +198,11 @@ int udp_broadcast_advertisement(udp_broadcast_option_t option){
         if(option == UDP_BROADCAST_OPTION_INFORMATION){
             len += sprintf(&temp_buff[len],"{\"device_name\": \"%s\",", DEVICE_NAME);
 #if MORSE
+            len += sprintf(&temp_buff[len],"\"message\": \"");
+            u8 current_message_len = (u8)strlen((char*)&morse_reg->vars.morse_send[0]);
+            regs_copy_safe(&temp_buff[len], &morse_reg->vars.morse_send[0], current_message_len);
+            len += current_message_len;
+            len += sprintf(&temp_buff[len],"\"");
 #elif FEEDER
 #elif POLISHER
 #elif TEST_INT
@@ -149,6 +211,13 @@ int udp_broadcast_advertisement(udp_broadcast_option_t option){
             len += get_di_info(&temp_buff[len]);
 #endif
             len += sprintf(&temp_buff[len],"}");
+#if SOC_HMAC_SUPPORTED
+            uint8_t hmac[32];
+            esp_hmac_calculate(HMAC_KEY4, temp_buff, len, hmac);
+            memcpy(&temp_buff[len], hmac, 32);
+            len += 32;
+#endif /*SOC_HMAC_SUPPORTED*/
+
         }else{
             len += sprintf(temp_buff,ADVERTISMENT_REQUEST);
         }

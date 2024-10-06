@@ -23,9 +23,9 @@ static u8g2_esp32_hal_t    u8g2_esp32_hal;  // HAL state data.
 int init_display(void){
     u8g2_esp32_hal_t esp32_hal = U8G2_ESP32_HAL_DEFAULT;
 #if NOKIA_5110
-    int res=0;
-    gpio_config_t io_conf = {0};
-    io_conf.intr_type = GPIO_INTR_DISABLE;
+	 int res = 0;
+	 gpio_config_t io_conf = {0};
+	 io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pin_bit_mask = (1<<NOKIA_PIN_RESET)| (1<<NOKIA_PIN_BL);
     io_conf.pull_down_en = 0;
@@ -59,6 +59,7 @@ int init_display(void){
     return res;
 #else
     int res=0;
+#if  DISPLAY_PIN_RESET_EN
     gpio_config_t io_conf = {0};
     io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_OUTPUT;
@@ -68,7 +69,8 @@ int init_display(void){
     gpio_config(&io_conf);
     gpio_set_level(PIN_RESET, 0);
     gpio_set_level(PIN_RESET, 1);
-    esp32_hal.sda   = PIN_SDA;
+#endif	 
+    esp32_hal.sda  = PIN_SDA;
     esp32_hal.scl  = PIN_SCL;
     u8g2_esp32_hal_init(esp32_hal);
     u8g2_Setup_ssd1306_i2c_128x32_univision_f(

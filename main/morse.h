@@ -26,8 +26,11 @@
 extern task_handle_t morse_handle_id;
 
 #if MORSE
+#define MAX_MORSE_MESSAGE_LEN 32
+#define DISPLAY_LINES_NUM 4
 
 extern void morse_task(void *arg);
+u8 * get_pointer_to_line(u8 line);
 extern const struct morse_node root_letter ;
 extern const struct morse_node e_letter ;
 extern const struct morse_node i_letter ;
@@ -91,12 +94,21 @@ extern const struct morse_node zetta_letter ;
 extern const struct morse_node comma ;
 extern const struct morse_node q_letter ;
 extern const struct morse_node o_letter ;
+/*_ _ _ . */
 extern const struct morse_node otto_letter ;
+/*_ _ _ . _*/
+extern const struct morse_node remove_last_command;
+/*_ _ _ . .*/
 extern const struct morse_node d8_digit ;
 extern const struct morse_node colon ;
 extern const struct morse_node chapter ;
 extern const struct morse_node d9_digit ;
+/*_ _ _ _ _*/
 extern const struct morse_node d0_digit ;
+/*_ _ _ _ _ _*/
+extern const struct morse_node broadcast_the_message_command ;
+
+u8 message_is_new(u8 * message,u8 len);
 
 #endif //MORSE
 

@@ -127,6 +127,12 @@ GP21  tx     d6    ───┤       ├───d7  rx   GP20
 #define NOKIA_PIN_DC 7u
 #define NOKIA_PIN_CS 20u
 
+// ssd1306 SDA - GPIO21
+#define PIN_SDA 6u
+// ssd1306 SCL - GPIO22
+#define PIN_SCL 7u
+
+
 #endif
 
 /*add functions and variable declarations before */

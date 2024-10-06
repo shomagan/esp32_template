@@ -9,4 +9,10 @@ WIFI_SLIP
 add_new_task
 ------------
 python add_template.py -p main -n morse.c -t --cmake
-python add_template.py -p main -n morse.h -t --starter    
+python add_template.py -p main -n morse.h -t --starter
+
+http:
+  server_port: 8123
+  ssl_certificate: ~/repos/bash-updater/certificate.pem
+  ssl_key: ~/repos/bash-updater/privkey.pem
+    

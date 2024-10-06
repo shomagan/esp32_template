@@ -69,6 +69,7 @@
 #include "udp_broadcast.h"
 #endif
 #include "u8g2_esp32_hal.h"
+#include "morse.h"
 
 #define DUTY_TASK_PERIOD_MS 100u
 #define TEMP_BUFFER_SIZE 64u
@@ -122,7 +123,7 @@ void common_duty_task(void *pvParameters ){
             }else{
                 gpio_set_level(CONFIG_LED_BLINK_GPIO, 0u);
             }
-            if(((task_tick)%(1000u/DUTY_TASK_PERIOD_MS))==0u){
+            if(((task_tick)%(500u/DUTY_TASK_PERIOD_MS))==0u){
                 // rtc time update start 
                 semaphore_take(regs_access_mutex, portMAX_DELAY);{
                     regs_global->vars.live_time++;
@@ -329,12 +330,33 @@ static void display_statistic(void){
     u8g2_SendBuffer(&u8g2);
 }
 static void display_morse(void){
-    char temp_buff[TEMP_BUFFER_SIZE] = {0u};
+    static u8 counter = 0; 
     semaphore_take(regs_access_mutex, portMAX_DELAY);{
-        strlcpy(temp_buff, (const char *)&morse_reg->vars.morse_message[0], TEMP_BUFFER_SIZE);
+        u8 line = morse_reg->vars.morse_counter % DISPLAY_LINES_NUM;
+        u16 underscore_position = morse_reg->vars.morse_message_position;
+        if((counter++ & 0x01) == 0){
+            morse_reg->vars.morse_message[underscore_position] = '_';
+        }else{
+            morse_reg->vars.morse_message[underscore_position] = 0;
+        }
+        u8 * line_pointer = get_pointer_to_line(line);
+        if (line_pointer != NULL)
+        {
+           strlcpy((char *)line_pointer, (const char *)&morse_reg->vars.morse_message[0], TEMP_BUFFER_SIZE);
+        }
     }semaphore_release(regs_access_mutex);
-    u8g2_SetFont(&u8g2, u8g2_font_u8glib_4_tf);
-    u8g2_DrawStr(&u8g2, 0,6u, temp_buff);
+
+    u8g2_SetFont(&u8g2, u8g2_font_5x7_tf);
+    for(u8 i = 0; i<DISPLAY_LINES_NUM; i++){
+        char temp_buff[TEMP_BUFFER_SIZE] = {0u};
+        semaphore_take(regs_access_mutex, portMAX_DELAY);{
+        u8 * line_pointer = get_pointer_to_line(i);
+        if (line_pointer != NULL){
+            memcpy(temp_buff,line_pointer,32);
+        }
+        }semaphore_release(regs_access_mutex);
+        u8g2_DrawStr(&u8g2, 0,6u + i*8, (const char *)temp_buff);
+    }
     u8g2_SendBuffer(&u8g2);
 }
 /**

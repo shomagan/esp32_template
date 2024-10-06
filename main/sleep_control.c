@@ -167,7 +167,9 @@ static void display_good_bye_message(void){
    u8g2_DrawStr(&u8g2, 0,22u, temp_buff);
    u8g2_SendBuffer(&u8g2);
    u8g2_SetPowerSave(&u8g2, 1/*power save on*/); // wake down display
+#if NOKIA_5110   
    gpio_set_level(NOKIA_PIN_BL, 0u);
+#endif   
 
 #endif
 }

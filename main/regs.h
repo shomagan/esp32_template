@@ -195,7 +195,7 @@ typedef struct {
 #define FW_VERSION_SIZE 4
 #define FW_VERSION {0,10,0,0}
 #define FW_VERSION_STR "0.10.0-beta.0"
-#define FW_FIRMWARE_HASH "62-b8c4237eb29e0360d65846470c352f"
+#define FW_FIRMWARE_HASH "64-c7bec02e8e4b31ec5b03f1f86303de"
 #define FW_HASH 0x00000000
 #define REGS_MAX_NAME_SIZE 32
 #define DEVICE_NAME_SIZE 40
@@ -523,9 +523,19 @@ typedef union{
     struct MCU_PACK{
         // start regs struct
         u32 morse_unit_time_ms;         //!<"morse time ms" &save &def &min &max
-        u8 morse_message[128];         //!<"morse message" &ro 
+        u16 morse_message_len;         //!<"max morse message len" &save &def &min &max
+        u16 morse_settings;         //!<"morse settings bit0 - server" &save &def
+        u16 morse_message_position;         //!<"morse message position" &ro
+        u8 morse_message[32];         //!<"morse message to broadcast" &ro 
+        u8 morse_send[32];         //!<"morse message to broadcast" &ro
+        u8 morse_line_1[32];         //!<"morse messages received " &ro 
+        u8 morse_line_2[32];         //!<"morse messages received " &ro 
+        u8 morse_line_3[32];         //!<"morse messages received " &ro 
+        u8 morse_line_4[32];         //!<"morse messages received " &ro 
+        u8 morse_line_5[32];         //!<"morse messages received " &ro 
+        u16 morse_counter;         //!<"morse messages sent and received counter" &ro
     }vars;
-    u32 bytes[132]; //for full bksram copy
+    u32 bytes[256]; //for full bksram copy
 }morse_reg_t;// #generator_use_description {"message":"end_struct"}
 extern morse_reg_t * const morse_reg;
 /**
