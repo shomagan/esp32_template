@@ -13,7 +13,10 @@
 #include "modbus_tcp_client.h"
 #include "os_type.h"
 #include "credentials.h"
+#if MORSE
 #include "morse.h"
+#endif
+#include "common.h"
 /**
  * @brief udp_broadcast use for bradcast advertisment
  *
@@ -101,19 +104,19 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
     receive_len = receive_len>UDP_BROADCAST_MAX_PACKET_SIZE?UDP_BROADCAST_MAX_PACKET_SIZE:receive_len;
     pbuf_copy_partial(p, receive_buff, receive_len, 0);
     if (strncmp(ADVERTISMENT_REQUEST, &receive_buff[0], sizeof(ADVERTISMENT_REQUEST))==0){
-        len += sprintf(answer_buff,"{\"device_name\": \"%s\",", DEVICE_NAME);
-        len += sprintf(answer_buff,"{\"modbus_address\": %u,",regs_global->vars.mdb_addr);
-        len += sprintf(&answer_buff[len],"\"name\": \"chili\",");
+        len += sprintf(&answer_buff[len],"{\"device_name\": \"%s\",", DEVICE_NAME);
+        len += sprintf(&answer_buff[len],"\"modbus_address\": %u,",regs_global->vars.mdb_addr);
+        len += sprintf(&answer_buff[len],"\"personal_name\": \"chili\",");
         len += sprintf(&answer_buff[len],"\"serial\": \"0000\",");
         len += sprintf(&answer_buff[len],"\"model\": \"son\",");
         len += sprintf(&answer_buff[len],"\"firmware\": \"0.0.1\",");
-        len += sprintf(&answer_buff[len],",\"ip\": \"%u.%u.%u.%u\",",regs_global->vars.ip[0],regs_global->vars.ip[1],
+        len += sprintf(&answer_buff[len],"\"ip\": [%u,%u,%u,%u],",regs_global->vars.ip[0],regs_global->vars.ip[1],
                        regs_global->vars.ip[2],regs_global->vars.ip[3]);
-        len += sprintf(&answer_buff[len],"\"netmask\": [%u.%u.%u.%u],",regs_global->vars.netmask[0],regs_global->vars.netmask[1],
+        len += sprintf(&answer_buff[len],"\"netmask\": [%u,%u,%u,%u],",regs_global->vars.netmask[0],regs_global->vars.netmask[1],
                 regs_global->vars.netmask[2],regs_global->vars.netmask[3]);
-        len += sprintf(&answer_buff[len],"\"gateway\": [%u.%u.%u.%u],",regs_global->vars.gate[0],regs_global->vars.gate[1],
+        len += sprintf(&answer_buff[len],"\"gateway\": [%u,%u,%u,%u],",regs_global->vars.gate[0],regs_global->vars.gate[1],
                 regs_global->vars.gate[2],regs_global->vars.gate[3]);
-        len += sprintf(&answer_buff[len],",\"port\": 502,}");
+        len += sprintf(&answer_buff[len],"\"port\": 502}");
     }else {
         int position = -1;
         for (u16 i=0;i<receive_len-MODBUS_FIELD_SIZE;i++){
@@ -145,6 +148,8 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
 #endif /* SOC_HMAC_SUPPORTED */
         const char * param_message = "message";
         u8 str_size = strlen(param_message);
+        uint32_t prev_value = 0;
+        task_notify_send(common_duty_task_handle,UDB_BROADCAST_MSG_RECEIVED,&prev_value);
         if(message_valid){
             position = -1;
             for (u16 i=0;i<receive_len - str_size;i++){

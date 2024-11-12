@@ -17,12 +17,14 @@ def main():
                               '(default: %(default)s)'))
 
     args = parser.parse_args()
+
     if not os.path.exists(args.path):
         print("path not exist")
         exit()
     if os.path.exists(args.path + '/' +args.name):
-        print("file exist")
+        print("file already exist")
         exit()
+
     for root, dirnames, filenames in os.walk('./'):
         for filename in fnmatch.filter(filenames, '*.*'):
             if filename == args.name:

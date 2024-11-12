@@ -50,6 +50,7 @@
        MODBUS_MASTER_READ_1_SIGNAL         = (1<<25),   /*!< read set first part of registers*/
        MODBUS_MASTER_SET_2_SIGNAL         = (1<<26),   /*!< set thirв part of registers*/
        MODBUS_MASTER_PERIODIC_CONFIRMATION_SIGNAL = (1<<27),   /*!< set thirв part of registers*/
+       UDB_BROADCAST_MSG_RECEIVED   = (1<<28),   /*!< udp broadcast message received*/
        //.............................................................................
        UNUSED_EVENT_1              = (1<<28),   /*!< we should not use this bit!!*/
        RAM_ADDRESS_IN_EVENT        = (1<<29),   /*!< instead event use ram address*/

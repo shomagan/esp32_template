@@ -92,11 +92,11 @@ static bool timer_group_isr_callback(void *args);
 static void common_timer_task(void *pvParameters );
 static void example_tg_timer_deinit(int group, int timer);
 static int common_duty_init(void);
-static void display_update(uint32_t task_tick);
-static void udp_broabcast_update(uint32_t task_tick);
+static void display_update(u32 task_tick, u8 udp_bradcast_msg_received);
+static void udp_broabcast_update(u32 task_tick);
 static void display_time_diff(void);
 static void display_statistic(void);
-static void display_morse(void);
+static void display_morse(u8 udp_bradcast_msg_received);
 /**
  * @brief duty_task - do several common functions
  * @param pvParameters
@@ -106,66 +106,69 @@ void common_duty_task(void *pvParameters ){
     (void) pvParameters;
     /* Init internal ADC service channels */
     /* Initialise xNextWakeTime - this only needs to be done once. */
-    uint32_t prepare_time = 0u;
-    uint32_t task_tick = 0u;
-    uint32_t signal_value;
+    u32 prepare_time = 0u;
+    u32 task_tick = 0u;
+    u32 signal_value;
+    u8 udp_bradcast_msg_received = 0;
     if(common_duty_init()<0){
         led_blink_on(5000);
     }
     while(1){
         /* Place this task in the blocked state until it is time to run again. */
         signal_value = 0;
-        if(task_notify_wait(STOP_CHILD_PROCCES|PREPARE_TO_RESET, &signal_value, DUTY_TASK_PERIOD_MS)!=pdTRUE){
-            /*by timeout*/
-            if(led_os_blink_on_time ){
-                gpio_set_level(CONFIG_LED_BLINK_GPIO, 1u);
-                led_os_blink_on_time = led_os_blink_on_time>DUTY_TASK_PERIOD_MS?led_os_blink_on_time-DUTY_TASK_PERIOD_MS:0;
-            }else{
-                gpio_set_level(CONFIG_LED_BLINK_GPIO, 0u);
-            }
-            if(((task_tick)%(500u/DUTY_TASK_PERIOD_MS))==0u){
-                // rtc time update start 
-                semaphore_take(regs_access_mutex, portMAX_DELAY);{
-                    regs_global->vars.live_time++;
-                }semaphore_release(regs_access_mutex);
-                led_blink_on(250u);
-                display_update(task_tick);
-                main_printf(TAG,"tick %u",task_tick);
-                struct timeval tv;
-                if (gettimeofday(&tv, NULL)!= 0) {
-                    main_error_message(TAG,"Failed to obtain time");
-                }else{
-                    regs_global->vars.seconds_of_the_day = (u32)tv.tv_sec;
-                    main_debug(TAG,"seconds%lu",tv.tv_sec);
-                }
-                regs_copy_safe(&regs_global->vars.unix_time,&tv.tv_sec,sizeof(regs_global->vars.unix_time));
-            }
-            udp_broabcast_update(task_tick);
-
-            regs_access_t async_flags;
-            async_flags.flag = U64_REGS_FLAG;
-            regs_get(&regs_global->vars.async_flags,&async_flags);
-            if (async_flags.value.op_u64 & ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH){
-                async_flags.value.op_u64 &= ~ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
-                (void)regs_write_internal(&regs_global->vars.async_flags, async_flags);
-                if (internal_flash_save_mirror_to_flash()!=0u){
-                    main_printf(TAG, "Failed %d\n",__LINE__);
-                }else{
-                    main_printf(TAG, "bkram file saved to flash succes");
-                }
-            }
-            if (prepare_time){
-                if ((task_get_time_ms() - prepare_time) > TIME_FOR_PREPARE_RESET_MS){
-                    main_printf(TAG, "reset trough common duty task");
-                    esp_restart();
-                }
-            }
-        }else{
+        if(pdTRUE == task_notify_wait(STOP_CHILD_PROCCES|PREPARE_TO_RESET|UDB_BROADCAST_MSG_RECEIVED, &signal_value, DUTY_TASK_PERIOD_MS)){
             /*by signal*/
             if (signal_value & STOP_CHILD_PROCCES){
                 common_deinit();
+                task_delete(task_get_id());
             }else if(signal_value & PREPARE_TO_RESET){
                 prepare_time = task_get_time_ms();
+            }else if(signal_value & UDB_BROADCAST_MSG_RECEIVED){
+                udp_bradcast_msg_received = 1;
+            }
+        }
+        if(led_os_blink_on_time ){
+            gpio_set_level(CONFIG_LED_BLINK_GPIO, 1u);
+            led_os_blink_on_time = led_os_blink_on_time>DUTY_TASK_PERIOD_MS?led_os_blink_on_time-DUTY_TASK_PERIOD_MS:0;
+        }else{
+            gpio_set_level(CONFIG_LED_BLINK_GPIO, 0u);
+        }
+        if(((task_tick)%(500u/DUTY_TASK_PERIOD_MS))==0u){
+            // rtc time update start 
+            semaphore_take(regs_access_mutex, portMAX_DELAY);{
+                regs_global->vars.live_time++;
+            }semaphore_release(regs_access_mutex);
+            led_blink_on(250u);
+            display_update(task_tick, udp_bradcast_msg_received);
+            udp_bradcast_msg_received = 0;
+            main_printf(TAG,"tick %u",task_tick);
+            struct timeval tv;
+            if (gettimeofday(&tv, NULL)!= 0) {
+                main_error_message(TAG,"Failed to obtain time");
+            }else{
+                regs_global->vars.seconds_of_the_day = (u32)tv.tv_sec;
+                main_debug(TAG,"seconds%lu",tv.tv_sec);
+            }
+            regs_copy_safe(&regs_global->vars.unix_time,&tv.tv_sec,sizeof(regs_global->vars.unix_time));
+        }
+        udp_broabcast_update(task_tick);
+
+        regs_access_t async_flags;
+        async_flags.flag = U64_REGS_FLAG;
+        regs_get(&regs_global->vars.async_flags,&async_flags);
+        if (async_flags.value.op_u64 & ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH){
+            async_flags.value.op_u64 &= ~ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
+            (void)regs_write_internal(&regs_global->vars.async_flags, async_flags);
+            if (internal_flash_save_mirror_to_flash()!=0u){
+                main_printf(TAG, "Failed %d\n",__LINE__);
+            }else{
+                main_printf(TAG, "bkram file saved to flash succes");
+            }
+        }
+        if (prepare_time){
+            if ((task_get_time_ms() - prepare_time) > TIME_FOR_PREPARE_RESET_MS){
+                main_printf(TAG, "reset trough common duty task");
+                esp_restart();
             }
         }
         task_tick++;
@@ -208,7 +211,7 @@ int common_deinit(){
     }
     return 0;
 }
-static void udp_broabcast_update(uint32_t task_tick){
+static void udp_broabcast_update(u32 task_tick){
 #if UDP_BROADCAST_ENABLE && UDP_ADVERTISMENT_PERIOD
     if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==0u)
 #if  UDP_BROADCAST_UDP_REQUEST_ENABLE 
@@ -223,13 +226,13 @@ static void udp_broabcast_update(uint32_t task_tick){
     }
 #endif
 }
-static void display_update(uint32_t task_tick){
+static void display_update(u32 task_tick, u8 udp_bradcast_msg_received){
 #if DISPLAY
     u8g2_ClearBuffer(&u8g2);
 #if DISPLAY_TIME_DIFF
     display_time_diff();
 #elif MORSE
-    display_morse();
+    display_morse(udp_bradcast_msg_received);
 #else   // DISPLAY_TIME_DIFF
     display_statistic();
 #endif  // DISPLAY_TIME_DIFF
@@ -329,8 +332,12 @@ static void display_statistic(void){
     u8g2_DrawStr(&u8g2, 0,30u, temp_buff);
     u8g2_SendBuffer(&u8g2);
 }
-static void display_morse(void){
+static void display_morse(u8 udp_bradcast_msg_received){
     static u8 counter = 0; 
+    static u8 connection_state = 0;
+    if(udp_bradcast_msg_received){
+        connection_state += 1;
+    }
     semaphore_take(regs_access_mutex, portMAX_DELAY);{
         u8 line = morse_reg->vars.morse_counter % DISPLAY_LINES_NUM;
         u16 underscore_position = morse_reg->vars.morse_message_position;
@@ -356,6 +363,23 @@ static void display_morse(void){
         }
         }semaphore_release(regs_access_mutex);
         u8g2_DrawStr(&u8g2, 0,6u + i*8, (const char *)temp_buff);
+        switch (connection_state%4)
+        {
+        case 0:
+            u8g2_DrawDisc(&u8g2, 110, 3, 3, U8G2_DRAW_UPPER_LEFT);
+            break;
+        case 1:
+            u8g2_DrawDisc(&u8g2, 110, 3, 3, U8G2_DRAW_UPPER_RIGHT);
+            break;
+        case 2:
+            u8g2_DrawDisc(&u8g2, 110, 3, 3, U8G2_DRAW_LOWER_LEFT);
+            break;
+        case 3:
+            u8g2_DrawDisc(&u8g2, 110, 3, 3, U8G2_DRAW_LOWER_RIGHT);
+            break;
+        default:
+            break;
+        }
     }
     u8g2_SendBuffer(&u8g2);
 }
@@ -460,7 +484,7 @@ static int example_tg_timer_init(int group, int timer, bool auto_reload){
 v       Also, if auto_reload is set, this value will be automatically reload on alarm */
     timer_set_counter_value(group, timer, 0);
     /* Configure the alarm value and the interrupt on alarm. */
-    timer_set_alarm_value(group, timer, (uint32_t)(TIMER_SCALE));
+    timer_set_alarm_value(group, timer, (u32)(TIMER_SCALE));
     timer_enable_intr(group, timer);
     timer_isr_callback_add(group, timer, timer_group_isr_callback, &config, 0);
     if ( ESP_OK == timer_start(group, timer)){
@@ -486,12 +510,12 @@ static bool IRAM_ATTR timer_group_isr_callback(void *args){
     /* Prepare basic event data that will be then sent back to task */
     uint64_t timer_counter_value = timer_group_get_counter_value_in_isr(TIMER_GROUP_0, TIMER_0);
     if (!info->auto_reload) {
-        timer_group_set_alarm_value_in_isr(TIMER_GROUP_0, TIMER_0, timer_counter_value + (uint32_t)(TIMER_SCALE));
+        timer_group_set_alarm_value_in_isr(TIMER_GROUP_0, TIMER_0, timer_counter_value + (u32)(TIMER_SCALE));
     }
     if (common_timer_task_handle!=NULL){
         ui32 prev_signal=0;
         int  higher_priority_task_woken;
-        task_notify_send_isr_overwrite(common_timer_task_handle,0,(uint32_t)timer_counter_value,&prev_signal,&higher_priority_task_woken);
+        task_notify_send_isr_overwrite(common_timer_task_handle,0,(u32)timer_counter_value,&prev_signal,&higher_priority_task_woken);
     }
     return pdTRUE; // return whether we need to yield at the end of ISR
 }
@@ -504,8 +528,8 @@ void common_timer_task(void *pvParameters ){
     (void) pvParameters;
     /* Init internal ADC service channels */
     /* Initialise xNextWakeTime - this only needs to be done once. */
-    uint32_t task_tick = 0;
-    uint32_t signal_value;
+    u32 task_tick = 0;
+    u32 signal_value;
     while(1){
         /* Place this task in the blocked state until it is time to run again. */
         signal_value = 0;
