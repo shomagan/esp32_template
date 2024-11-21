@@ -201,9 +201,9 @@ int udp_broadcast_advertisement(udp_broadcast_option_t option){
     if(udp_broadcast_pcb!=NULL){
         int len = 0;
         if(option == UDP_BROADCAST_OPTION_INFORMATION){
-            len += sprintf(&temp_buff[len],"{\"device_name\": \"%s\",", DEVICE_NAME);
+            len += sprintf(&temp_buff[len],"{\"device_name\": \"%s\"", DEVICE_NAME);
 #if MORSE
-            len += sprintf(&temp_buff[len],"\"message\": \"");
+            len += sprintf(&temp_buff[len],",\"message\": \"");
             u8 current_message_len = (u8)strlen((char*)&morse_reg->vars.morse_send[0]);
             regs_copy_safe(&temp_buff[len], &morse_reg->vars.morse_send[0], current_message_len);
             len += current_message_len;

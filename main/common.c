@@ -96,7 +96,9 @@ static void display_update(u32 task_tick, u8 udp_bradcast_msg_received);
 static void udp_broabcast_update(u32 task_tick);
 static void display_time_diff(void);
 static void display_statistic(void);
+#if MORSE
 static void display_morse(u8 udp_bradcast_msg_received);
+#endif
 /**
  * @brief duty_task - do several common functions
  * @param pvParameters
@@ -332,6 +334,7 @@ static void display_statistic(void){
     u8g2_DrawStr(&u8g2, 0,30u, temp_buff);
     u8g2_SendBuffer(&u8g2);
 }
+#if MORSE
 static void display_morse(u8 udp_bradcast_msg_received){
     static u8 counter = 0; 
     static u8 connection_state = 0;
@@ -383,6 +386,7 @@ static void display_morse(u8 udp_bradcast_msg_received){
     }
     u8g2_SendBuffer(&u8g2);
 }
+#endif
 /**
  * @brief led_blink_on enable the led on ms
  * @param time_ms
