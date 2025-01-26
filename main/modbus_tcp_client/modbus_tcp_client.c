@@ -618,14 +618,15 @@ ip_addr_t * s_hostent_addr,ip_addr_t **s_phostent_addr){
     }else{
         socket_id = socket(AF_INET, SOCK_STREAM, 0);
         if (socket_id !=-1){
+            int res;
+            int err = errno;
     #if CONFIG_ACTIVATE_TCP_KEEPALIVE == 1
             activate_keep_alive(socket_id);
     #endif
             main_printf(TAG,"Socket connect: %u.%u.%u.%u:%i\n", dest_ip[0],dest_ip[1],dest_ip[2],dest_ip[3], 502);
             fcntl(socket_id, F_SETFL, O_NONBLOCK);
-            int res;
-            if (connect(socket_id, (struct sockaddr *) server_address, sizeof(struct sockaddr_in)) < 0) {
-                int err = errno;
+            err = connect(socket_id, (struct sockaddr *) server_address, sizeof(struct sockaddr_in));
+            if (err < 0) {
                 if(err == EINPROGRESS){
                     struct timeval tv;
                     tv.tv_sec = 0;
@@ -686,6 +687,7 @@ static inline int connection_proccess(u8 dest_ip[4],int * socket_id,struct socka
     }
     *socket_id = socket(AF_INET, SOCK_STREAM, 0);
     if (*socket_id!=-1){
+        int err = errno;
 #if CONFIG_ACTIVATE_TCP_KEEPALIVE == 1
         activate_keep_alive(*socket_id);
 #endif
@@ -693,8 +695,8 @@ static inline int connection_proccess(u8 dest_ip[4],int * socket_id,struct socka
         FD_ZERO(&file_desc_set.write_set);
         FD_SET(*socket_id, &file_desc_set.write_set);
         fcntl(*socket_id, F_SETFL, O_NONBLOCK);
-        if (connect(*socket_id, (struct sockaddr *) server_address, sizeof(struct sockaddr_in)) < 0) {
-            int err = errno;
+        err = connect(*socket_id, (struct sockaddr *) server_address, sizeof(struct sockaddr_in));
+        if (err < 0) {
             if(err == EINPROGRESS){
                 struct timeval tv;
                 tv.tv_sec = 0;
