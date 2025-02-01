@@ -88,6 +88,8 @@ typedef enum{
     CS0_TASK_ACTIVE_POLISHER            = BIT(15),/*!< polisher task must be work on*/
     CS0_TASK_ACTIVE_TEST_INT            = BIT(16),/*!< test int task must be work on*/
     CS0_TASK_ACTIVE_MORSE               = BIT(17),/*!< morse task must be work on*/
+    CS0_TASK_ACTIVE_BATTERY_STATE       = BIT(18),/*!< battery state task must be work on*/
+    CS0_TASK_ACTIVE_HTTP_SOCK         = BIT(19),/*!< http socket task must be work on*/
 } current_state_0;
 /**
   * @brief structures for u32 current_state[4]; //!< "current state of proccess" &ro description above contain flags
@@ -195,7 +197,7 @@ typedef struct {
 #define FW_VERSION_SIZE 4
 #define FW_VERSION {0,10,0,0}
 #define FW_VERSION_STR "0.10.0-beta.0"
-#define FW_FIRMWARE_HASH "64-c7bec02e8e4b31ec5b03f1f86303de"
+#define FW_FIRMWARE_HASH "68-6cca8d85ce4b1c4456a47658d504d9"
 #define FW_HASH 0x00000000
 #define REGS_MAX_NAME_SIZE 32
 #define DEVICE_NAME_SIZE 40
@@ -538,6 +540,29 @@ typedef union{
     u32 bytes[256]; //for full bksram copy
 }morse_reg_t;// #generator_use_description {"message":"end_struct"}
 extern morse_reg_t * const morse_reg;
+/**   
+ * @brief struct for battery_state component 
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *  @ingroup regs
+ */
+/** #generator_use_description {"space_name" :"battery_state_reg_t",  "address_space" :10, "modbus_type" :"server", "modbus_function" :"holding_registers", "register_start_address" :4700}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        u16 battery_level;         //!<"0 - 100" &ro
+        u16 battery_min_level;     //!<"min level to start" &save &def &min &max
+        float battery_voltage;     //!<"for exmpl 4.2v" &ro
+        u16 battery_settings;     //!<"bit 0 - activate level control" &save
+    }vars;
+    u32 bytes[32]; //for full bksram copy
+}battery_state_reg_t;// #generator_use_description {"message":"end_struct"}
+extern battery_state_reg_t * const battery_state_reg;
+
 /**
  * @brief struct for reading modbus data from another device maximume bytes - 240
  * name variables uses for generate name in description file and then in get value by name
@@ -684,6 +709,7 @@ typedef struct{
     polisher_reg_t polisher_reg; //!< "polisher_reg_t"
     test_int_reg_t test_int_reg; //!< "test_int_reg_t"
     morse_reg_t morse_reg; //!< "morse_reg_t"
+    battery_state_reg_t battery_state_reg; //!< "battery_state_reg_t"
     client_part_0_t client_part_0; //!< "client_part_0_t"
     sync_time_client_t sync_time_client; //!< "sync_time_client_t"
     client_part_1_t client_part_1; //!< "client_part_1_t"

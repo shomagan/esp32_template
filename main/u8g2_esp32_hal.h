@@ -16,8 +16,8 @@
 #include <u8g2.h>
 
 #define U8G2_ESP32_HAL_UNDEFINED (-1)
-#define NOKIA_5110 1
-#define DISPLAY_PIN_RESET_EN 1
+#define NOKIA_5110 0
+#define DISPLAY_PIN_RESET_EN 0
 #if CONFIG_IDF_TARGET_ESP32
 #define I2C_MASTER_NUM I2C_NUM_1           //  I2C port number for master dev
 #elif CONFIG_IDF_TARGET_ESP32C3

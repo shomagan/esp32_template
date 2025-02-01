@@ -52,6 +52,10 @@
  * @{
  */
 
+/*use or not sockets for connection */
+#if !defined LWIP_HTTPD_USE_SOCKS || defined __DOXYGEN__
+#define LWIP_HTTPD_USE_SOCKS 0
+#endif
 /** Set this to 1 to support CGI (old style).
  *
  * This old style CGI support works by registering an array of URLs and
@@ -100,7 +104,7 @@
  * can be used.
  */
 #if !defined LWIP_HTTPD_SSI || defined __DOXYGEN__
-#define LWIP_HTTPD_SSI            1
+#define LWIP_HTTPD_SSI            0
 #endif
 
 /** Set this to 1 to implement an SSI tag handler callback that gets a const char*

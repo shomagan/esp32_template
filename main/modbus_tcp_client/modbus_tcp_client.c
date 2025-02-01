@@ -61,7 +61,7 @@ static int get_slaves_info_by_number(slave_table_item_t * slave_table_item, u16 
  */
 static int get_ip_address_by_modbus(slave_table_item_t * slave_table_item, u8 modbus_id);
 static void activate_keep_alive(int sd);
-static int handleset_wait_ready(unsigned int timeout_ms,int socket,file_desc_set_t  file_desc_set);
+static int handleset_wait_ready(unsigned int timeout_ms,int socket);
 static int close_socket_connection(int * socket);
 static inline int ip_addresses_were_changed(u8 * server_ip_arg,u8 * own_ip_arg,u8 modbus_id);
 static FNCT_NO_RETURN void modbus_tcp_client_connection_task(void * argument);
@@ -389,15 +389,14 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
     }
 }
 
-static int handleset_wait_ready(unsigned int timeout_ms,int socket,file_desc_set_t  file_desc_set){
-   int result;
+static int handleset_wait_ready(unsigned int timeout_ms,int socket){
    struct timeval timeout;
+   file_desc_set_t  file_desc_set;
    timeout.tv_sec = timeout_ms / 1000;
    timeout.tv_usec = (timeout_ms % 1000) * 1000;
    FD_ZERO(&file_desc_set.read_set);
    FD_SET(socket, &file_desc_set.read_set);
-   result = select(socket + 1, &file_desc_set.read_set, NULL, NULL, &timeout);
-   return result;
+   return select(socket + 1, &file_desc_set.read_set, NULL, NULL, &timeout);
 }
 
 static void activate_keep_alive(int sd){
@@ -459,7 +458,7 @@ int modbus_tcp_master_packet_transaction(u16 channel,u8  *packet,u16 send_length
             u8 id_mismatch = 0;
             do{
                 id_mismatch = 0;
-                if(handleset_wait_ready(timeout,socket_id,file_desc_set)==1){
+                if(handleset_wait_ready(timeout,socket_id)==1){
                     res = recv(socket_id, packet, (size_t)MODBUS_PACKET_LEN, MSG_DONTWAIT);
                     if(res>0){
                         if (id[0]!=packet[0] || id[1]!=packet[1]){

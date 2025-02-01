@@ -42,6 +42,7 @@
 #include "polisher.h"
 #include "test_int.h"
 #include "morse.h"
+#include "battery_state.h"
 #include "u8g2_esp32_hal.h"
 
 /* The examples use WiFi configuration that you can set via project configuration menu.
@@ -105,7 +106,9 @@ void app_main(void){
 #if DISPLAY
     init_display();
 #endif
+#if (LWIP_HTTPD_USE_SOCKS == 0)
     httpd_init_sofi();
+#endif
     modbus_tcp_init();
     udp_broadcast_init();
     main_init_tasks(&esp_sleep_wakeup_cause);/*init all necessary tasks */
@@ -204,6 +207,20 @@ int main_init_tasks(esp_sleep_wakeup_cause_t * esp_sleep_wakeup_cause){
         main_printf(TAG,"morse_task inited success\n");
     }
 #endif
+
+#if BATTERY_STATE
+    res = task_create(battery_state_task, "battery_state_task", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &battery_state_handle_id);
+    if(res != pdTRUE){
+        main_printf(TAG,"battery_state_task inited success\n");
+    }
+#endif
+#if LWIP_HTTPD_USE_SOCKS
+    res = task_create(http_sock_task, "http_sock_task", 2464, NULL, (tskIDLE_PRIORITY + 2), &http_sock_handle_id);
+    if (res != pdTRUE) {
+        main_printf(TAG, "create httpd_task failed");
+    }
+#endif /*LWIP_HTTPD_USE_SOCKS*/
+
     return res;
 }
 /**

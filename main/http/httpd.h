@@ -233,7 +233,7 @@ err_t httpd_post_begin(void *connection, const char *uri, const char *http_reque
  * @return ERR_OK: Data accepted.
  *         another err_t: Data denied, http_post_get_response_uri will be called.
  */
-err_t httpd_post_receive_data(void *connection, struct pbuf *p);
+err_t httpd_post_receive_data(struct pbuf *p);
 
 /**
  * @ingroup httpd
@@ -260,7 +260,10 @@ err_t httpd_init_sofi(void);
 struct altcp_tls_config;
 err_t httpd_inits(struct altcp_tls_config *conf);
 #endif
-
+#if LWIP_HTTPD_USE_SOCKS
+extern task_handle_t http_sock_handle_id;
+void http_sock_task(void *arg);
+#endif /*LWIP_HTTPD_USE_SOCKS*/
 #ifdef __cplusplus
 }
 #endif

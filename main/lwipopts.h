@@ -1118,6 +1118,8 @@ LWIP_FORWARD_DECLARE_C_CXX uint32_t sntp_get_sync_interval(void);
 #define LWIP_HTTPD_SSI            0
 #define LWIP_HTTPD_CGI 1
 #define MODBUS_TCP_ENABLE 1
+#define LWIP_HTTPD_USE_SOCKS 1
+#define LWIP_HTTPD_SOCK_BUFSIZE 512
 #ifdef __cplusplus
 }
 #endif
