@@ -42,6 +42,9 @@
 #include "polisher.h"
 #include "test_int.h"
 #include "morse.h"
+#if SCD41_ENABLE
+#include "scd41.h"
+#endif
 #include "battery_state.h"
 #include "u8g2_esp32_hal.h"
 
@@ -212,6 +215,12 @@ int main_init_tasks(esp_sleep_wakeup_cause_t * esp_sleep_wakeup_cause){
     res = task_create(battery_state_task, "battery_state_task", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &battery_state_handle_id);
     if(res != pdTRUE){
         main_printf(TAG,"battery_state_task inited success\n");
+    }
+#endif
+#if SCD41_ENABLE
+    res = task_create(scd41_task, "scd41_task", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &scd41_task_handle);
+    if(res != pdTRUE){
+        main_printf(TAG,"scd41_task inited success\n");
     }
 #endif
 #if LWIP_HTTPD_USE_SOCKS

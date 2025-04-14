@@ -70,14 +70,15 @@
 #define MODBUS_MASTER_ENABLE 0
 #define DI_HANDLING_ENABLE 0
 #define SR04_MODULE 0
-#define DISPLAY 1
+#define DISPLAY 0
 #define TIME_SYNC_MEASUREMENT_ENABLE 1
 #define STEP_MOTOR 0
 #define FEEDER 0
 #define POLISHER 0
 #define TEST_INT 0
-#define MORSE 1
-#define BATTERY_STATE 1
+#define MORSE 0
+#define BATTERY_STATE 0
+#define SCD41_ENABLE 1
 #if TIME_SYNC_MEASUREMENT_ENABLE
 #define TIME_SYNC_DEVIATION_THRESHOLD 10
 #define TIME_SYNC_BUFFER_SIZE 100u
@@ -89,6 +90,9 @@
 #error "DI_HANDLING_ENABLE and PMW_TEST_ENABLE can't be enabled at the same time"
 #endif
 #if (FEEDER && STEP_MOTOR)|| (POLISHER && STEP_MOTOR)|| (FEEDER && POLISHER)
+  #error "config problem"
+#endif
+#if (SCD41_ENABLE && DISPLAY)
   #error "config problem"
 #endif
 #if MORSE
@@ -103,6 +107,8 @@
 #define DEVICE_NAME "step_motor"
 #elif DI_HANDLING_ENABLE
 #define DEVICE_NAME "di_handling"
+#elif SCD41_ENABLE
+#define DEVICE_NAME "scd41"
 #endif
 
 /*task config end */

@@ -33,6 +33,7 @@ idf_component_register(
     SRCS "test_int.c"
     SRCS "morse.c"
     SRCS "battery_state.c"
+    SRCS "scd41.c"
     INCLUDE_DIRS "."
     INCLUDE_DIRS "radar/."
     INCLUDE_DIRS "http/."

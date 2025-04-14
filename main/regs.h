@@ -90,6 +90,7 @@ typedef enum{
     CS0_TASK_ACTIVE_MORSE               = BIT(17),/*!< morse task must be work on*/
     CS0_TASK_ACTIVE_BATTERY_STATE       = BIT(18),/*!< battery state task must be work on*/
     CS0_TASK_ACTIVE_HTTP_SOCK         = BIT(19),/*!< http socket task must be work on*/
+    CS0_TASK_ACTIVE_SCD41               = BIT(20),/*!< SCD41 task must be work on*/    
 } current_state_0;
 /**
   * @brief structures for u32 current_state[4]; //!< "current state of proccess" &ro description above contain flags
@@ -176,7 +177,7 @@ typedef enum {
     S32_REGS_FLAG = (1<<6),/*!<signed int type(4 byte) */
     S64_REGS_FLAG = (1<<7),/*!<signed long long type(8 byte) */
     FLOAT_REGS_FLAG = (1<<8),/*!<float type(4 byte) */
-    DOUBLE_REGS_FLAG = (1<<9),/*!<double type(4 byte) */
+    DOUBLE_REGS_FLAG = (1<<9),/*!<double type(8 byte) */
     INT_REGS_FLAG = (1<<10),/*!<signed int type(4 byte) */
     TIME_REGS_FLAG = (1<<11)/*!<unsigned int type(4 byte) */
 }regs_flag_t;
@@ -197,7 +198,7 @@ typedef struct {
 #define FW_VERSION_SIZE 4
 #define FW_VERSION {0,10,0,0}
 #define FW_VERSION_STR "0.10.0-beta.0"
-#define FW_FIRMWARE_HASH "68-6cca8d85ce4b1c4456a47658d504d9"
+#define FW_FIRMWARE_HASH "69-647eab4f1cf1859df39abb005093d3"
 #define FW_HASH 0x00000000
 #define REGS_MAX_NAME_SIZE 32
 #define DEVICE_NAME_SIZE 40
@@ -564,6 +565,31 @@ typedef union{
 extern battery_state_reg_t * const battery_state_reg;
 
 /**
+ * @brief struct for SCD41 sensor component
+ * name variables use for generating names in the description file and then in get value by name.
+ * Therefore, use max size len name is 16 characters.
+ * Comment style:
+ *   "" - description,
+ *   &ro  - read only,
+ *   &def -> have const variable with struct like def_name,
+ *   &save- will have saved in bkram,
+ * @ingroup regs
+ */
+/** #generator_use_description {"space_name" :"scd41_reg_t",  "address_space" :11, "modbus_type" :"server", "modbus_function" :"holding_registers", "register_start_address" :4800}*/
+typedef union {
+    struct MCU_PACK {
+        // start regs struct
+        u16 scd41_co2_level;         //!< "CO2 level in ppm" &ro
+        float scd41_temperature;     //!< "Temperature in Celsius" &ro
+        float scd41_humidity;        //!< "Humidity in percentage" &ro
+        u16 scd41_settings;    //!< "Settings for SCD41 sensor" &save
+        u16 scd41_measur_interval;   //!< "minutes between a measurement" &save &def &min &max
+    } vars;
+    u32 bytes[32]; // for full bksram copy
+} scd41_reg_t; // #generator_use_description {"message":"end_struct"}
+extern scd41_reg_t * const scd41_reg;
+
+/**
  * @brief struct for reading modbus data from another device maximume bytes - 240
  * name variables uses for generate name in description file and then in get value by name
  * and therefore use max size len name is 16 charackter \n
@@ -710,6 +736,7 @@ typedef struct{
     test_int_reg_t test_int_reg; //!< "test_int_reg_t"
     morse_reg_t morse_reg; //!< "morse_reg_t"
     battery_state_reg_t battery_state_reg; //!< "battery_state_reg_t"
+    scd41_reg_t scd41_reg; //!< "scd41_reg_t"
     client_part_0_t client_part_0; //!< "client_part_0_t"
     sync_time_client_t sync_time_client; //!< "sync_time_client_t"
     client_part_1_t client_part_1; //!< "client_part_1_t"

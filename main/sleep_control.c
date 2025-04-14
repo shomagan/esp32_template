@@ -21,7 +21,7 @@
 
 #define SLEEP_CONTROL_TASK_PERIOD_MS 100u
 #define ALIVE_DEFAULT_S 50u
-#define ALIVE_LONG_S 300u
+#define ALIVE_LONG_S 120u
 static const char *TAG = "sleep_control";
 task_handle_t sleep_control_handle_id = NULL;
 #if ENABLE_DEEP_SLEEP

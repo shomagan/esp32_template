@@ -44,6 +44,7 @@ polisher_reg_t * const polisher_reg = &regs_main.polisher_reg; //!< "polisher_re
 test_int_reg_t * const test_int_reg = &regs_main.test_int_reg; //!< "test_int_reg_t"
 morse_reg_t * const morse_reg = &regs_main.morse_reg; //!< "morse_reg_t"
 battery_state_reg_t * const battery_state_reg = &regs_main.battery_state_reg; //!< "battery_state_reg_t"
+scd41_reg_t * const scd41_reg = &regs_main.scd41_reg; //!< "scd41_reg_t"
 client_part_0_t * const client_part_0 = &regs_main.client_part_0; //!< "client_part_0_t"
 sync_time_client_t * const sync_time_client = &regs_main.sync_time_client; //!< "sync_time_client_t"
 client_part_1_t * const client_part_1 = &regs_main.client_part_1; //!< "client_part_1_t"
