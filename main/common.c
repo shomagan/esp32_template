@@ -135,7 +135,7 @@ void common_duty_task(void *pvParameters ){
         }else{
             gpio_set_level(CONFIG_LED_BLINK_GPIO, 0u);
         }
-        if(((task_tick)%(500u/DUTY_TASK_PERIOD_MS))==0u){
+        if(((task_tick)%(1000u/DUTY_TASK_PERIOD_MS))==0u){
             // rtc time update start 
             semaphore_take(regs_access_mutex, portMAX_DELAY);{
                 regs_global->vars.live_time++;

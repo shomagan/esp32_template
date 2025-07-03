@@ -18,7 +18,7 @@
 #include <string.h> /* memset */
 #include <stdlib.h> /* atoi */
 #include <stdio.h>
-
+#include <math.h>
 #include "esp_log.h"
 #include "esp_check.h"
                        
@@ -548,6 +548,96 @@ int regs_description_get_index_by_address(const void * address){
         }        
     }
     return result;
+}
+u32 regs_description_get_regs_string_value(u16 reg_id,u8 reg_num, char * buffer, u32 buffer_size){
+   u32 result = 0;
+   u64 val_u64 = 0;
+   s32 temp_i32 = 0;
+   s16 temp_i16 = 0;
+   i8 temp_i8 = 0;
+   s64 temp_i64 = 0;
+   float val_float = 0.0f;
+   double val_double = 0.0;
+   regs_template_t reg_template = {0};
+   reg_template.ind = reg_id;
+   u32 pos = 0;
+   char temp_buf[96] = {0};
+   u32 temp_buf_len = 0;
+   if (buffer != NULL || buffer_size != 0){
+      for(u32 i=0; i<reg_num; i++){
+         if (regs_description_get_by_ind(&reg_template) == 0){
+            temp_buf_len+=sprintf(temp_buf,"%s: ",reg_template.name);
+            for (u16 i = 0; i < reg_template.size; i++) {
+               switch (reg_template.type){
+               case U8_REGS_FLAG:
+               case U16_REGS_FLAG:
+               case U32_REGS_FLAG:
+               case U64_REGS_FLAG:
+               case TIME_REGS_FLAG:
+                   val_u64 = 0;
+                   memcpy(&val_u64,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
+                   temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%llu,",val_u64);
+                   break;
+               case I8_REGS_FLAG:
+                   temp_i8 = 0;
+                   memcpy(&temp_i8,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
+                   temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%i,",temp_i8);
+                   break;
+               case S16_REGS_FLAG:
+                   temp_i16 = 0;
+                   memcpy(&temp_i16,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
+                   temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%i,",temp_i16);
+                   break;
+               case S32_REGS_FLAG:
+               case INT_REGS_FLAG:
+                   temp_i32 = 0;
+                   memcpy(&temp_i32,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
+                   temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%li,",temp_i32);
+                   break;
+               case S64_REGS_FLAG:
+                   temp_i64 = 0;
+                   memcpy(&temp_i64,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
+                   temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%lli,",temp_i64);
+                   break;
+               case FLOAT_REGS_FLAG:
+                   val_float = 0.0f;
+                   memcpy(&val_float,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
+                   if(isnanf(val_float) || isinff(val_float)){
+                     temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"\"%f\",",(double)val_float);
+                   }else{
+                     temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%f,",(double)val_float);
+                   }
+                   break;
+               case DOUBLE_REGS_FLAG:
+                   val_double = 0.0;
+                   memcpy(&val_double,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
+                   if(isnanf((float)val_double) || isinff((float)val_double)){
+                     temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"\"%f\",",val_double);
+                   }else{
+                     temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%f,",val_double);
+                   }
+                   break;
+               }
+               if (temp_buf_len > 0u){
+                  if (pos + temp_buf_len < buffer_size){
+                     memcpy(buffer + pos, temp_buf, temp_buf_len);
+                     pos += temp_buf_len;
+                     temp_buf_len = 0;
+                     result = pos;
+                  }else{
+                     result = pos;
+                     return result; //buffer overflow
+                  }
+               }
+           }
+         }else{
+            break;
+         }
+         reg_template.ind++;
+      }
+   
+   }
+   return result;      
 }
 /**
  * @brief regs_description_get_pointer_by_modbus

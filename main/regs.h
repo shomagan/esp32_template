@@ -90,7 +90,8 @@ typedef enum{
     CS0_TASK_ACTIVE_MORSE               = BIT(17),/*!< morse task must be work on*/
     CS0_TASK_ACTIVE_BATTERY_STATE       = BIT(18),/*!< battery state task must be work on*/
     CS0_TASK_ACTIVE_HTTP_SOCK         = BIT(19),/*!< http socket task must be work on*/
-    CS0_TASK_ACTIVE_SCD41               = BIT(20),/*!< SCD41 task must be work on*/    
+    CS0_TASK_ACTIVE_SCD41               = BIT(20),/*!< SCD41 task must be work on*/
+    CS0_TASK_ACTIVE_TELEGRAM            = BIT(21),/*!< telegram task must be work on*/
 } current_state_0;
 /**
   * @brief structures for u32 current_state[4]; //!< "current state of proccess" &ro description above contain flags

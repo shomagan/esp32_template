@@ -35,7 +35,7 @@ def main():
         q = msvcrt.getch()
         print(q)
         if ord(q) == 113: #q
-            s.close()
+            sock.close()
             sys.exit(1)
         elif ord(q) == 117: #u
             print("send message",message)

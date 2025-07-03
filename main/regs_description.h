@@ -179,6 +179,16 @@ int set_regs_def_values (void);
  * @return positive value if register is full filling
  */
 int regs_clear_temp_buffer(temp_data_buffering_t * temp_data_buffering);
+/*
+* @brief regs_description_get_string
+* @param reg_id - index of register
+* @param reg_num - number of registers to get after reg_id
+* @param buffer - pointer to buffer for string
+* @param buffer_size - size of buffer
+* @return number of bytes written to buffer, or 0 if no data written
+*/
+u32 regs_description_get_regs_string_value(u16 reg_id, u8 reg_num, char * buffer, u32 buffer_size);
+
 /*add functions and variable declarations before */
 #ifdef __cplusplus
 }

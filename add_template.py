@@ -191,25 +191,35 @@ def change_cmake_file(cmake_path, file_name):
 
 def change_task_handler(file_name):
     try:
-      index_string = -1
+      task_function_end = -1
+      include_end = -1
       with open('main/wifi_slip_main.c', 'r', encoding="utf-8") as file_opened:
          index = 0
          function_start = -1
+         re_task_funct_temp = re.compile(r"^int\s+main_init_tasks\(esp_sleep_wakeup_cause_t\s*\*\s*esp_sleep_wakeup_cause\)\{", re.UNICODE)
+         re_include_temp = re.compile(r"\/\*end\s+include\*\/", re.UNICODE)
          for line in file_opened:
-            define_temp = re.compile(r"^int\s+main_init_tasks\(esp_sleep_wakeup_cause_t\s*\*\s*esp_sleep_wakeup_cause\)\{", re.UNICODE)
-            match = define_temp.match(line)
+            match = re_include_temp.match(line)
+            if match:
+               include_end = index
+            match = re_task_funct_temp.match(line)
             if match:
                function_start = index
             if function_start >= 0:
                if "return" in line:
-                  index_string = index
+                  task_function_end = index
                   break
             index += 1
-      if index_string >= 0:
+      if task_function_end >= 0:
          task_config = []
          with open('main/wifi_slip_main.c', "r") as file_opened:
             task_config = file_opened.readlines()
-         task_config.insert(index_string, f"""
+         task_config.insert(include_end, f"""
+#if {file_name.upper()}
+#include \"{file_name}.h\"
+#endif
+""")
+         task_config.insert(task_function_end, f"""
 #if {file_name.upper()}
     res = task_create({file_name}_task, \"{file_name}_task\", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &{file_name}_handle_id);
     if(res != pdTRUE){{

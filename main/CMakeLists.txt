@@ -34,11 +34,12 @@ idf_component_register(
     SRCS "morse.c"
     SRCS "battery_state.c"
     SRCS "scd41.c"
+    SRCS "telegram.c"
     INCLUDE_DIRS "."
     INCLUDE_DIRS "radar/."
     INCLUDE_DIRS "http/."
     INCLUDE_DIRS "udp_broadcast/."
     INCLUDE_DIRS "modbus_tcp_client/."
-    EMBED_TXTFILES ${project_dir}/server_certs/ca_cert.pem
-    REQUIRES esp_netif nvs_flash u8g2 bt
+    EMBED_TXTFILES ${project_dir}/certs/telegram.pem
+    REQUIRES esp_netif nvs_flash u8g2 bt esp-tls
 )

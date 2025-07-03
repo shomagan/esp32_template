@@ -180,6 +180,7 @@ int internal_flash_save_mirror_to_flash(void){
     }
     {
         regs_global->vars.flash_write_number = (regs_global->vars.flash_write_number<0xffffffff)?(regs_global->vars.flash_write_number+1):regs_global->vars.flash_write_number;
+        main_printf(TAG, "mirror is saving to flash");
         nvs_handle_t my_handle;
         res = nvs_open("storage", NVS_READWRITE, &my_handle);
         if (res == ESP_OK) {
@@ -214,6 +215,7 @@ int internal_flash_restore_mirror_from_flash(void){
     }
     {
         nvs_handle_t my_handle;
+        main_printf(TAG, "mirror is getting from flash");
         res = nvs_open("storage", NVS_READWRITE, &my_handle);
         if (res == ESP_OK) {
             size_t len = INTERNAL_FLASH_MIRROR_ITEM_SIZE;

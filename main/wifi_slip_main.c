@@ -45,8 +45,12 @@
 #if SCD41_ENABLE
 #include "scd41.h"
 #endif
+#if TELEGRAM
+#include "telegram.h"
+#endif
 #include "battery_state.h"
 #include "u8g2_esp32_hal.h"
+/*end include*/
 
 /* The examples use WiFi configuration that you can set via project configuration menu.
    If you'd rather not, just change the below entries to strings with
@@ -230,6 +234,13 @@ int main_init_tasks(esp_sleep_wakeup_cause_t * esp_sleep_wakeup_cause){
     }
 #endif /*LWIP_HTTPD_USE_SOCKS*/
 
+
+#if TELEGRAM
+    res = task_create(telegram_task, "telegram_task", 12000, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &telegram_handle_id);
+    if(res != pdTRUE){
+        main_printf(TAG,"telegram_task inited success\n");
+    }
+#endif
     return res;
 }
 /**

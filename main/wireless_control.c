@@ -148,8 +148,8 @@ static int wifi_state_handle(u64 task_counter,u32 start_reset_time,wireless_stat
       case WIFI_STATE_NOT_ACTIVATED:/*not yet initialIzed*/
          *wifi_state = wifi_init();/*trying to init */
       break;
-      case WIFI_STATE_ACTIVATED:/*activated STA ot AP*/
-         if(((task_counter)%(10000u/wireless_control_TASK_PERIOD))==0u){    // every 10 sec
+      case WIFI_STATE_ACTIVATED:/*activated STA or AP*/
+         if(((task_counter)%(20000u/wireless_control_TASK_PERIOD))==0u){    // every 10 sec
             if((regs_global->vars.wifi_setting == WIFI_CLIENT) ||
                (regs_global->vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_CLIENT)||
                (regs_global->vars.wifi_setting == WIFI_AP_STA)||

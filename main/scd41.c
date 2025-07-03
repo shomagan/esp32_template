@@ -15,13 +15,15 @@
 #include "regs_description.h"
 #include "mirror_storage.h"
 #include "driver/i2c.h"
+#include "scd41.h"
+#include "telegram.h"
 
 #define SCD41_TASK_PERIOD_MS 20000u
 #define SCD41_I2C_ADDRESS 0x62
 #define SCD41_CMD_START_MEASUREMENT 0x21B1
 #define SCD41_CMD_READ_MEASUREMENT 0xEC05
 #define SLEEP_IS_ACTIVE 1
-#define MIN_WORK_TIME_MINUTE 1
+#define MIN_WORK_TIME_MINUTE 2
 
 static const char *TAG = "scd41";
 task_handle_t scd41_task_handle = NULL;
@@ -51,6 +53,7 @@ void scd41_task(void *arg){
    uint32_t signal_value;
    u64 task_counter = 0u;
    scd41_task_init();
+   u8 message_sent = 0u;
 
    while (1)   {
       if (task_notify_wait(SLEEP_TASK_STOP_CHILD_PROCCES, &signal_value, SCD41_TASK_PERIOD_MS) == pdTRUE)      {
@@ -74,6 +77,14 @@ void scd41_task(void *arg){
             scd41_reg->vars.scd41_humidity = humidity;
             scd41_reg->vars.scd41_temperature = temperature;
             main_debug(TAG, "CO2 Level: %u ppm, Humidity: %.2f%%, Temperature: %.2f°C", co2_level, humidity, temperature);
+            if(message_sent == 0u) {
+               u16 reg_ind = (u16)regs_description_get_index_by_address(&scd41_reg->vars.scd41_co2_level);
+               u8 reg_num = 3u; // Number of registers to send
+               u32 signal = (u32)TELEGRAM_SEND_REG_BY_ID | ((reg_ind << 16u) & 0xffff0000) | ((reg_num << 8u) & 0xff00);
+               u32 prev_value = 0;
+               task_notify_send(telegram_handle_id, signal, &prev_value);
+               message_sent = 1u; // Set flag to indicate message has been sent
+            }
          } else {
             main_error_message(TAG, "Failed to read CO2 level");
          }
