@@ -3558,8 +3558,7 @@ void http_sock_client_task(void *arg){
       do{
          fd_set read_set;
          fd_set error_set;
-         i++;
-         int res = setting_for_recv(10, clientfd, &read_set, &error_set);
+         int res = setting_for_recv(100, clientfd, &read_set, &error_set);
          if (res == 1){
             if (FD_ISSET(clientfd, &read_set)) {
                i = 0;
@@ -3569,20 +3568,31 @@ void http_sock_client_task(void *arg){
                   struct pbuf * http_received_pbuff = pbuf_alloc(PBUF_TRANSPORT, (u16)nbytes, PBUF_RAM);
                   if (http_received_pbuff != NULL) {
                      pbuf_take(http_received_pbuff,sock_buffer_recv,(u16)nbytes);
-                     http_sock_recv((struct http_state*)&http_state_main, clientfd, http_received_pbuff);
+                     err_t res = http_sock_recv((struct http_state*)&http_state_main, clientfd, http_received_pbuff);
                      pbuf_free(http_received_pbuff);
+                     if (res != ERR_INPROGRESS) {
+                        i = 75;
+                        break;
+                     }
                   }
                }else {
+                  i = 72;
                   break;
                }
             }
             if(FD_ISSET(clientfd, &error_set)){
+               i = 73;
                break;
             }
-         }else{
+         }else if(res < 0){
+            i = 74;
+            main_printf(TAG,"setting_for_recv error %d",res);
             break;
-         }
-      }while(i < 700);
+         }else{
+            i++;
+         }  
+      }while(i < 70);
+      main_printf(TAG,"http_sock_client_task close: clientfd=%i i=%d", clientfd, i);
       close_socket_connection(&clientfd);
    }
    http_state_eof((struct http_state*)&http_state_main);
@@ -3676,8 +3686,9 @@ static u8_t http_sock_send(int socket, struct http_state *hs){
 static err_t http_sock_recv(void *arg, int socket_id, struct pbuf *p)
 {
    struct http_state *hs = (struct http_state *)arg;
-   LWIP_DEBUGF(HTTPD_DEBUG | LWIP_DBG_TRACE, ("http_sock_recv: socket_id=%i pbuf=%p\n", socket_id,
-                                             (void *)p));
+   static err_t result = ERR_OK;
+   main_printf(TAG,"http_sock_recv: socket_id=%i pbuf=%p\n", socket_id,
+                                             (void *)p);
 
    if ((p == NULL) || (hs == NULL)) {
       /* error or closed by other side? */
@@ -3685,47 +3696,44 @@ static err_t http_sock_recv(void *arg, int socket_id, struct pbuf *p)
          /* this should not happen, only to be robust */
          LWIP_DEBUGF(HTTPD_DEBUG, ("Error, http_sock_recv: hs is NULL, close\n"));
       }
-      return ERR_OK;
-   }
-
+      result = ERR_ABRT;
+   }else{
 #if LWIP_HTTPD_SUPPORT_POST && LWIP_HTTPD_POST_MANUAL_WND
-   if (hs->no_auto_wnd) {
-      hs->unrecved_bytes += p->tot_len;
-   } 
+      if (hs->no_auto_wnd) {
+         hs->unrecved_bytes += p->tot_len;
+      } 
 #endif /* LWIP_HTTPD_SUPPORT_POST && LWIP_HTTPD_POST_MANUAL_WND */
-
-
 #if LWIP_HTTPD_SUPPORT_POST
-   if (hs->post_content_len_left > 0) {
-      /* this is data for a POST, pass the complete pbuf to the application */
-      http_post_rxpbuf(hs, p);
-      /* pbuf is passed to the application, don't free it! */
-      if (hs->post_content_len_left == 0) {
-         /* all data received, send response or close connection */
-         int res;
-         do{
-            res = http_sock_send(socket_id, hs);
-         }while(res);
-      }
-      return ERR_OK;
-   } else
+      if (hs->post_content_len_left > 0) {
+         /* this is data for a POST, pass the complete pbuf to the application */
+         http_post_rxpbuf(hs, p);
+         /* pbuf is passed to the application, don't free it! */
+         if (hs->post_content_len_left == 0) {
+            /* all data received, send response or close connection */
+            int res;
+            do{
+               res = http_sock_send(socket_id, hs);
+            }while(res);
+         }
+         result = ERR_OK;
+      } else
 #endif /* LWIP_HTTPD_SUPPORT_POST */
-   {
-      if (hs->handle == NULL) {
-         err_t parsed = http_parse_request(p, hs);
-         LWIP_ASSERT("http_parse_request: unexpected return value", parsed == ERR_OK
-                     || parsed == ERR_INPROGRESS || parsed == ERR_ARG || parsed == ERR_USE);
-#if LWIP_HTTPD_SUPPORT_REQUESTLIST
-         if (parsed != ERR_INPROGRESS) {
+      {
+         if (hs->handle == NULL) {
+            result = http_parse_request(p, hs);
+            LWIP_ASSERT("http_parse_request: unexpected return value", result == ERR_OK
+                        || result == ERR_INPROGRESS || result == ERR_ARG || result == ERR_USE);
+   #if LWIP_HTTPD_SUPPORT_REQUESTLIST
+            if (result != ERR_INPROGRESS) {
                /* request fully parsed or error */
                if (hs->req != NULL) {
                   pbuf_free(hs->req);
                   hs->req = NULL;
                }
-         }
-#endif /* LWIP_HTTPD_SUPPORT_REQUESTLIST */
-         if (parsed == ERR_OK) {
-#if LWIP_HTTPD_SUPPORT_POST
+            }
+   #endif /* LWIP_HTTPD_SUPPORT_REQUESTLIST */
+            if (result == ERR_OK) {
+   #if LWIP_HTTPD_SUPPORT_POST
                if (hs->post_content_len_left == 0)
 #endif /* LWIP_HTTPD_SUPPORT_POST */
                {
@@ -3734,13 +3742,16 @@ static err_t http_sock_recv(void *arg, int socket_id, struct pbuf *p)
                      res = http_sock_send(socket_id, hs);
                   }while(res);
                }
-         } 
-      } else {
-         main_printf(TAG,"http_sock_recv: already sending data\n");
-         /* already sending but still receiving data, we might want to RST here? */
+            } 
+         } else {
+            main_printf(TAG,"http_sock_recv: already sending data\n");
+            result = ERR_ABRT;
+            /* already sending but still receiving data, we might want to RST here? */
+         }
       }
+  
    }
-    return ERR_OK;
+   return result;
 }
 
 static int close_socket_connection(int * socket){
