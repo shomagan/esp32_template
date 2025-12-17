@@ -46,9 +46,16 @@
 #include "driver/mcpwm.h"
 #if CONFIG_IDF_TARGET_ESP32
 #include "soc/mcpwm_periph.h"
-#endif //CONFIG_IDF_TARGET_ESP32
+#elif CONFIG_IDF_TARGET_ESP32C3
+#include "driver/rmt.h"
+#include "hal/rmt_types.h"
+#endif
 #include "common.h"
 #include "pin_map.h"
+#include "esp_log.h"
+#include "esp_check.h"
+static const char *TAG = "pwm_control";
+static IRAM_ATTR void rmt_tx_loop_intr(rmt_channel_t channel, void *args);
 static void mcpwm_example_gpio_initialize(void);
 task_handle_t pwm_task_handle;
 static int pwm_test_init(void);
@@ -103,12 +110,29 @@ static int pwm_test_init(void){
 }
 void pwm_control_task(void *arg){
     (void)arg;
-#if (PWM_STEP_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32)
+    uint32_t counter = 0u;
+#if PWM_STEP_CONTROL_ENABLE 
+#if CONFIG_IDF_TARGET_ESP32
     float servo0 = 0.0f;
     float servo1 = 0.0f;
     float servo2 = 0.0f;
     float servo3 = 0.0f;
-#endif //PWM_STEP_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32    
+#endif
+#endif
+#if (PWM_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32C3)
+   rmt_item32_t rmt_items_loop;
+   rmt_config_t dev_config = RMT_DEFAULT_CONFIG_TX(GPIO_OUTPUT_STEP_MOTOR_STEP0, RMT_CHANNEL_0);
+   dev_config.tx_config.carrier_freq_hz = 28000;
+   dev_config.tx_config.carrier_duty_percent = 0;
+   dev_config.tx_config.carrier_en = false;
+   dev_config.tx_config.carrier_level = RMT_CARRIER_LEVEL_HIGH;
+   dev_config.tx_config.loop_en = true;
+   ESP_RETURN_ON_ERROR(rmt_config(&dev_config), TAG, "Failed to configure RMT");
+   ESP_RETURN_ON_ERROR(rmt_driver_install(dev_config.channel, 0, 0), TAG, "Failed to install RMT driver");
+   // register tx end callback function, which got invoked when tx loop comes to the end
+   rmt_register_tx_end_callback(rmt_tx_loop_intr, &dev_config);
+   uint16_t pwm_value_last = 0;
+#endif 
     uint32_t signal_value;
     pwm_test_init();
     while(1){
@@ -140,7 +164,33 @@ void pwm_control_task(void *arg){
             mcpwm_set_duty_type(MCPWM_UNIT_1, MCPWM_TIMER_1, MCPWM_OPR_B, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
         }
 #endif
+#if (PWM_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32C3)
+         uint16_t pwm_value = (uint16_t)regs_global_part1->vars.test_pwm_value;
+         if(counter % 10 == 0) {
+               main_printf(TAG, "PWM Test value: %d", pwm_value);
+         }
+         if (pwm_value != pwm_value_last) {
+            pwm_value_last = pwm_value;
+            rmt_tx_stop(dev_config.channel);
+            if (pwm_value > 1) {
+               rmt_set_tx_loop_count(dev_config.channel, 0);
+               rmt_enable_tx_loop_autostop(dev_config.channel, false);
+               rmt_set_tx_loop_mode(dev_config.channel, true);
+               rmt_items_loop.duration1 = pwm_value;
+               rmt_items_loop.level1 = 1;
+               rmt_items_loop.level0 = 0;
+               rmt_items_loop.duration0 = 100 - pwm_value;
+               ESP_ERROR_CHECK(rmt_write_items(dev_config.channel, &rmt_items_loop, 1, false));
+            } 
+         }
+#endif         
+         counter++;
     }
 }
 
+static IRAM_ATTR void rmt_tx_loop_intr(rmt_channel_t channel, void *args)
+{
+   rmt_config_t *dev_config = (rmt_config_t *)args;
+
+}
 #endif //PWM_TEST_C

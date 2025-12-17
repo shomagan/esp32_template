@@ -42,6 +42,7 @@
 #define PWM_TEST_H 1
  
 /*add includes below */
+#include "main_config.h"
 #include "type_def.h"
 #include "os_type.h"
 
