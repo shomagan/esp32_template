@@ -1,0 +1,10 @@
+{
+   // Recommended VS Code extensions for Aptiv C Coding Standards
+   "recommendations": [
+      "ms-vscode.cpptools",           // C/C++ IntelliSense, debugging, and code browsing
+      "ms-vscode.cpptools-extension-pack", // C/C++ Extension Pack
+      "xaver.clang-format",           // Clang-Format integration
+      "editorconfig.editorconfig",    // EditorConfig support
+      "streetsidesoftware.code-spell-checker" // Spell checker for comments
+   ]
+}

@@ -1,0 +1,109 @@
+{
+    "files.associations": {
+      "di_handle.h": "c",
+      "sr04.h": "c",
+      "wireless_control.h": "c",
+      "credentialprovider.h": "c",
+      "sleep_control.h": "c",
+      "memory_handle.h": "c",
+      "os_type.h": "c",
+      "type_def.h": "c",
+      "main_config.h": "c",
+      "feeder.h": "c",
+      "lwipopts.h": "c",
+      "test_int.h": "c",
+      "regs.h": "c",
+      "regs_description.h": "c",
+      "u8g2_esp32_hal.h": "c",
+      "u8g2.h": "c",
+      "u8x8.h": "c",
+      "stdio.h": "c",
+      "json.h": "c",
+      "epaper.h": "c"
+   },
+    "cmake.configureOnOpen": false,
+    "makefile.configureOnOpen": false,
+   "files.trimTrailingWhitespace": true,
+   "files.insertFinalNewline": true,
+   "files.eol": "\n",
+   // C/C++ Extension Settings
+   "C_Cpp.formatting": "clangFormat",
+   "C_Cpp.clang_format_path": "",
+   "C_Cpp.clang_format_style": "file",
+   "C_Cpp.clang_format_fallbackStyle": "LLVM",
+
+   // Highlight trailing spaces and tabs
+   "files.trimFinalNewlines": true,
+
+   // Bracket pair colorization
+   // Editor Settings
+   "editor.insertSpaces": true,
+   "editor.detectIndentation": false,
+   "editor.rulers": [131],
+   "editor.trimAutoWhitespace": true,
+   "editor.renderWhitespace": "boundary",
+   "editor.wordWrap": "off",
+   "editor.bracketPairColorization.enabled": true,
+   "editor.guides.bracketPairs": "active",
+
+   // IntelliSense settings
+   "C_Cpp.intelliSenseEngine": "default",
+   "C_Cpp.errorSquiggles": "enabled",
+
+   // Code analysis
+   "C_Cpp.codeAnalysis.clangTidy.enabled": true,
+   "C_Cpp.codeAnalysis.clangTidy.checks.enabled": [
+      "readability-braces-around-statements",
+      "readability-identifier-naming",
+      "readability-uppercase-literal-suffix",
+      "modernize-use-nullptr",
+      "cppcoreguidelines-*",
+      "performance-*"
+   ],
+
+   // Enhanced diagnostics for formatting issues
+   "C_Cpp.vcFormat.newLine.beforeOpenBrace.block": "newLine",
+   "C_Cpp.vcFormat.newLine.beforeOpenBrace.function": "newLine",
+   "C_Cpp.vcFormat.newLine.beforeOpenBrace.type": "newLine",
+   "C_Cpp.vcFormat.newLine.beforeOpenBrace.namespace": "newLine",
+   "C_Cpp.vcFormat.newLine.beforeOpenBrace.lambda": "newLine",
+
+   // Show formatting problems in problems panel
+   "C_Cpp.formatting.enforceFormatStyle": true,
+   "C_Cpp.formatting.clangFormat.enabled": true,
+
+   // Workspace recommendations
+   "extensions.ignoreRecommendations": false,
+
+   /*tabs for rust code always 4 spaces,
+    use rustfmt for formatting */
+   "[rust]": {
+      "editor.tabSize": 4,
+      /*allow breakpoints everywhere*/
+      "debug.allowBreakpointsEverywhere": true,
+      "editor.defaultFormatter": "rust-lang.rust-analyzer",
+      "editor.formatOnSave": false,
+      "editor.formatOnType": false,
+      "editor.insertSpaces": true,
+      "editor.rulers": [100, 120]
+
+   },
+   // Enable format on save for C files
+   "[c]": {
+      "editor.tabSize": 3,
+      "editor.insertSpaces": true,
+      "editor.formatOnSave": false,
+      "editor.defaultFormatter": "xaver.clang-format",
+      "editor.rulers": [131]
+   },
+
+   "[h]": {
+      "editor.tabSize": 3,
+      "editor.insertSpaces": true,
+      "editor.formatOnSave": false,
+      "editor.defaultFormatter": "ms-vscode.cpptools",
+      "editor.rulers": [131]
+   },
+
+
+}
