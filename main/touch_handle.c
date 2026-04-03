@@ -1,5 +1,5 @@
 /**
- * @file pwm_test.c
+ * @file touch_handle.c
  * @author Shoma Gane <shomagan@gmail.com>
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
  * @defgroup ../main/

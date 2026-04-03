@@ -1,0 +1,98 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+
+# All indentation shall be multiples of three spaces
+IndentWidth: 3
+TabWidth: 3
+UseTab: Never
+ContinuationIndentWidth: 3
+
+# All lines shall be no longer than 131 characters in length
+ColumnLimit: 131
+
+# All braces {} shall be indented using the LLVM
+BreakBeforeBraces: LLVM
+
+# There shall be no white-space characters between a unary operator and its operand
+# There shall be a single space in between a binary operator and each of its operands
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+
+# There shall not be any white-space immediately following a left parenthesis
+# There shall not be any white-space immediately preceding a right parenthesis
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+# There shall not be any white-space immediately preceding a comma
+# There shall be a single space immediately following a comma
+SpaceAfterCStyleCast: false
+SpaceBeforeCpp11BracedList: false
+
+# Structure, Union, and Enum formatting
+# Control flow statement formatting
+# All control statements must use braces
+# Switch statement formatting
+IndentCaseLabels: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+IndentCaseBlocks: true
+
+# Pointer alignment - asterisk with type
+PointerAlignment: Right
+DerivePointerAlignment: false
+
+
+# Function formatting
+AlwaysBreakAfterReturnType: None
+BinPackArguments: true
+BinPackParameters: true
+
+# Comment formatting
+ReflowComments: false
+SpacesBeforeTrailingComments: 1
+
+# Preprocessor formatting
+IndentPPDirectives: None
+IncludeBlocks: Preserve
+
+# Alignment and spacing
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignEscapedNewlines: Right
+AlignOperands: true
+AlignTrailingComments: false
+
+# Break settings
+AlwaysBreakBeforeMultilineStrings: false
+BreakBeforeBinaryOperators: None
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeColon
+BreakStringLiterals: true
+
+# Penalties (adjust formatting priorities)
+PenaltyBreakBeforeFirstCallParameter: 19
+PenaltyBreakComment: 300
+PenaltyBreakFirstLessLess: 120
+PenaltyBreakString: 1000
+PenaltyExcessCharacter: 1000000
+PenaltyReturnTypeOnItsOwnLine: 60
+
+# Keep empty lines
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 2
+
+# Sort includes (optional - adjust based on project needs)
+SortIncludes: false
+
+# Other settings
+CompactNamespaces: false
+Cpp11BracedListStyle: false
+FixNamespaceComments: false
+NamespaceIndentation: None

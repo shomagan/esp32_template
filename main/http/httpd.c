@@ -3592,7 +3592,7 @@ void http_sock_client_task(void *arg){
             i++;
          }  
       }while(i < 70);
-      main_printf(TAG,"http_sock_client_task close: clientfd=%i i=%d", clientfd, i);
+      main_debug(TAG,"http_sock_client_task close: clientfd=%i i=%d", clientfd, i);
       close_socket_connection(&clientfd);
    }
    http_state_eof((struct http_state*)&http_state_main);
@@ -3687,7 +3687,7 @@ static err_t http_sock_recv(void *arg, int socket_id, struct pbuf *p)
 {
    struct http_state *hs = (struct http_state *)arg;
    static err_t result = ERR_OK;
-   main_printf(TAG,"http_sock_recv: socket_id=%i pbuf=%p\n", socket_id,
+   main_debug(TAG,"http_sock_recv: socket_id=%i pbuf=%p\n", socket_id,
                                              (void *)p);
 
    if ((p == NULL) || (hs == NULL)) {
@@ -3855,7 +3855,7 @@ http_sock_write(int socket_id, const void *ptr, u16_t *length, u8_t apiflags)
    if (max_len < len) {
       len = max_len;
    }
-   main_printf(TAG, "Trying to send %d bytes\n", len);
+   main_debug(TAG, "Trying to send %d bytes\n", len);
    FD_ZERO(&write_set);
    FD_SET(socket_id, &write_set);
    tv.tv_sec =0;
@@ -3866,11 +3866,11 @@ http_sock_write(int socket_id, const void *ptr, u16_t *length, u8_t apiflags)
       len = 0;
    }
    if (len>0) {
-      main_printf(TAG,"Sent %d bytes\n", len);
+      main_debug(TAG,"Sent %d bytes\n", len);
       *length = len;
       err = ERR_OK;
    } else {
-      main_printf(TAG, "Send failed with err %d \n", len);
+      main_error_message(TAG, "Send failed with err %d \n", len);
       *length = 0;
       err = ERR_MEM;
    }

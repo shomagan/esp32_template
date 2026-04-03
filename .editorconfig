@@ -1,0 +1,21 @@
+root = true
+# All files
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# C source and header files
+[*.{c,h}]
+# All indentation shall be multiples of three spaces
+indent_style = space
+indent_size = 3
+
+# All lines shall be no longer than 131 characters in length
+max_line_length = 131
+
+# There shall not be any trailing white-space
+trim_trailing_whitespace = true
+
+# End files with a newline
+insert_final_newline = true

@@ -4,8 +4,8 @@
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
  * @defgroup ../main/
  * @ingroup ../main/
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 /*
  * All rights not reserved.
@@ -39,12 +39,12 @@
  */
 #ifndef MAIN_CONFIG_H
 #define MAIN_CONFIG_H 1
- 
+
 /*add includes below */
 #include "type_def.h"
 
 /*add includes before */
-#ifdef __cplusplus 
+#ifdef __cplusplus
    extern "C" {
 #endif
 /*add functions and variable declarations below */
@@ -59,9 +59,9 @@
 #define MAIN_DEBUG_ASSERT(message, assertion)
 #endif  //main_noassert
 /*task config start */
-#define ENABLE_DEEP_SLEEP 1
-#define SLIP_ENABLE 0
-#define PWM_TEST_ENABLE 0
+#define ENABLE_DEEP_SLEEP 0
+#define SLIP_ENABLE 0 /*enable slip handling over wifi or uart*/
+#define PWM_CONTROL_ENABLE 1
 #define TOUCH_HANDLE_ENABLE 0
 #define UDP_BROADCAST_ENABLE 1
 #define UDP_BROADCAST_UDP_REQUEST_ENABLE 1
@@ -71,7 +71,7 @@
 #define DI_HANDLING_ENABLE 0
 #define SR04_MODULE 0
 #define DISPLAY 0
-#define TIME_SYNC_MEASUREMENT_ENABLE 1
+#define TIME_SYNC_MEASUREMENT_ENABLE 0
 #define STEP_MOTOR 0
 #define FEEDER 0
 #define POLISHER 0
@@ -79,7 +79,8 @@
 #define MORSE 0
 #define BATTERY_STATE 0
 #define TELEGRAM 1
-#define SCD41_ENABLE 1
+#define SCD41_ENABLE 0
+#define EPAPER 1
 #if TIME_SYNC_MEASUREMENT_ENABLE
 #define TIME_SYNC_DEVIATION_THRESHOLD 10
 #define TIME_SYNC_BUFFER_SIZE 100u
@@ -110,6 +111,8 @@
 #define DEVICE_NAME "di_handling"
 #elif SCD41_ENABLE
 #define DEVICE_NAME "scd41"
+#elif PWM_CONTROL_ENABLE
+#define DEVICE_NAME "pwmcontrol"
 #endif
 
 /*task config end */

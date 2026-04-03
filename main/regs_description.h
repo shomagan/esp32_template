@@ -22,7 +22,7 @@
 #define  MAX_DESCRIPTION_SIZE 30
 #define  MAX_ARRAY_SIZE 256
 #define  MAX_DESCRIPTIONS_REGS  2048
-#define NUM_OF_SELF_VARS 130
+#define NUM_OF_SELF_VARS 132
 #define NUM_OF_CLIENT_VARS 21
 extern const u32 def_table_version;
 
@@ -188,7 +188,7 @@ int regs_clear_temp_buffer(temp_data_buffering_t * temp_data_buffering);
 * @return number of bytes written to buffer, or 0 if no data written
 */
 u32 regs_description_get_regs_string_value(u16 reg_id, u8 reg_num, char * buffer, u32 buffer_size);
-
+int regs_description_write_value_by_address(const void * address, const u8 * value);
 /*add functions and variable declarations before */
 #ifdef __cplusplus
 }

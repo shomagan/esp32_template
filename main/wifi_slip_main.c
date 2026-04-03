@@ -50,6 +50,10 @@
 #endif
 #include "battery_state.h"
 #include "u8g2_esp32_hal.h"
+
+#if EPAPER
+#include "epaper.h"
+#endif
 /*end include*/
 
 /* The examples use WiFi configuration that you can set via project configuration menu.
@@ -145,7 +149,7 @@ int main_init_tasks(esp_sleep_wakeup_cause_t * esp_sleep_wakeup_cause){
         ESP_LOGE(TAG, "create slip_modem_uart_rx_task failed");
     }
 #endif /*SLIP_ENABLE*/
-#if PWM_TEST_ENABLE
+#if PWM_CONTROL_ENABLE
     res = task_create(pwm_control_task, "pwm_control_task", 2048, NULL, (tskIDLE_PRIORITY + 2), &pwm_task_handle);
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create pwm_control_task failed");
@@ -240,6 +244,13 @@ int main_init_tasks(esp_sleep_wakeup_cause_t * esp_sleep_wakeup_cause){
     if(res != pdTRUE){
         main_printf(TAG,"telegram_task inited success\n");
     }
+
+#if EPAPER
+    res = task_create(epaper_task, "epaper_task", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &epaper_handle_id);
+    if(res != pdTRUE){
+        main_printf(TAG,"epaper_task inited success\n");
+    }
+#endif
 #endif
     return res;
 }

@@ -35,6 +35,7 @@ idf_component_register(
     SRCS "battery_state.c"
     SRCS "scd41.c"
     SRCS "telegram.c"
+    SRCS "epaper.c"
     INCLUDE_DIRS "."
     INCLUDE_DIRS "radar/."
     INCLUDE_DIRS "http/."

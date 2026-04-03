@@ -83,7 +83,8 @@ int regs_init(){
     return 0;
 }
 /**
- * @brief write new value in register
+ * @brief write new value in register, only for registers with write access
+ *    only to be used by connection interfaces (modbus, http etc)
  * @param reg_address - in byte addressing
  * @param reg - struct for register access
  * @return  0 - OK, \n
@@ -101,8 +102,9 @@ int regs_set(void * reg_address,regs_access_t reg){
     result = 0;
     int writable_var_index = regs_write_access(reg_address);
     if (writable_var_index>=0){
+        main_printf(TAG,"regs_set: writable_var_index=%d", writable_var_index);
         if (regs_fill_temp_buffer(reg_address,reg,&temp_data_buffering, writable_var_index)<0){
-
+            result = -ILLEGAL_DATA_VALUE;
         }
         if (regs_check_temp_buffer(&temp_data_buffering, writable_var_index)>0){
             main_printf(TAG,"regs_set: regs_check_temp_buffer OK");
@@ -118,6 +120,7 @@ int regs_set(void * reg_address,regs_access_t reg){
             regs_hadle_sets(reg_address, reg, (u16)writable_var_index);
         }
     }else{
+        main_error_message(TAG,"regs_set: no write access");
         result = -ILLEGAL_DATA_ADDRESS;
     }
     return result;
@@ -364,7 +367,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
  * @ingroup regs
  *
 */
-void regs_copy_safe(void * reg_to,void * reg_from,u8 size){
+void regs_copy_safe(void * reg_to,void * reg_from,u32 size){
     if (regs_access_mutex!=NULL){
         semaphore_take(regs_access_mutex, portMAX_DELAY);{
             memcpy(reg_to,reg_from,size);
@@ -468,6 +471,7 @@ u8 regs_size_in_byte(regs_flag_t type){
 }
 /**
  * @brief write new values in register array
+ *    only to be used by connection interfaces (modbus, http etc)
  * @param reg_address - first register address in byte addressing
  * @param buffer_from - pointer to reading buffer
  * @param byte_numm - number of bytes for writing

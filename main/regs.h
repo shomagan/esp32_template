@@ -199,7 +199,7 @@ typedef struct {
 #define FW_VERSION_SIZE 4
 #define FW_VERSION {0,10,0,0}
 #define FW_VERSION_STR "0.10.0-beta.0"
-#define FW_FIRMWARE_HASH "72-acae873ec1528b03c3baf470511cc9"
+#define FW_FIRMWARE_HASH "73-7c1a933632c5b22515c535ea58d3c9"
 #define FW_HASH 0x00000000
 #define REGS_MAX_NAME_SIZE 32
 #define DEVICE_NAME_SIZE 40
@@ -210,6 +210,7 @@ typedef struct {
 #define WIFI_PASSWORD_LEN 8
 #define WIFI_ROUTER_NAME_LEN 32
 #define WIFI_ROUTER_PASSWORD_LEN 32
+#define SCD41_ARRAY_SIZE 48
 
 #define BOARD_VERSION 0
 #define USE_REGS_GLOBAL 1
@@ -585,6 +586,8 @@ typedef union {
         float scd41_humidity;        //!< "Humidity in percentage" &ro
         u16 scd41_settings;    //!< "Settings for SCD41 sensor" &save
         u16 scd41_measur_interval;   //!< "minutes between a measurement" &save &def &min &max
+        u16 scd41_index_in_array;   //!< "Index in array" &ro &save
+        u16 scd41_co2_array[SCD41_ARRAY_SIZE];         //!< "CO2 level in ppm" &ro &save
     } vars;
     u32 bytes[32]; // for full bksram copy
 } scd41_reg_t; // #generator_use_description {"message":"end_struct"}
@@ -854,6 +857,7 @@ typedef struct {
 }temp_data_buffering_t;
 
 typedef enum {
+    WIFI_DISABLED     = 0,
     WIFI_ACCESS_POINT = 1,
     WIFI_CLIENT       = 2,
     WIFI_AP_STA       = 3,
@@ -919,7 +923,7 @@ int regs_write_internal(void * reg_address,regs_access_t reg);
  * @ingroup regs
  *
 */
-void regs_copy_safe(void * reg_to,void * reg_from,u8 size);
+void regs_copy_safe(void * reg_to,void * reg_from,u32 size);
 
 #ifdef __cplusplus
 }
