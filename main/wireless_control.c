@@ -1,15 +1,15 @@
 /**
  * @file wireless_control.c
  * @author Shoma Gane <shomagan@gmail.com>
- *         
+ *
  * @defgroup main
  * @ingroup main
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 #ifndef WIRELESS_CONTROL_C
 #define WIRELESS_CONTROL_C 1
-#include "wireless_control.h" 
+#include "wireless_control.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_wifi_types.h"
@@ -18,7 +18,7 @@
 #define wireless_control_TASK_PERIOD (100u)
 #define ESP_WIFI_CHANNEL   1u
 #define MAX_STA_CONN       4u
-#define TEMPORAL_DISACTIVATION_TIME 120/*sec*/ 
+#define TEMPORAL_DISACTIVATION_TIME 120/*sec*/
 typedef enum {
     WIFI_STATE_NOT_ACTIVATED = 0,/*not yet initialIzed or not disabled by default*/
     WIFI_STATE_ACTIVATED = 1,/*activated STA ot AP*/
@@ -87,21 +87,21 @@ static int wireless_control_init(){
    int result = 0;
    regs_global->vars.current_state[0] |= CS0_TASK_ACTIVE_WIRELESS_CONTROL;
    return result;
-}  
+}
 static int wireless_control_deinit(){
    int result = 0;
    regs_global->vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_WIRELESS_CONTROL);
    return result;
 }
 void wireless_control_task(void *arg){
-   (void)(*arg);
+   (void)arg;
    uint32_t signal_value;
    wireless_control_init();
    u64 task_counter = 0u;
    u32 start_reset_time = 0u;/*capture time of reset command*/
    wireless_state_t wifi_state = WIFI_STATE_NOT_ACTIVATED;
    wifi_ap_record_t ap_info;
-   
+
    while(1){
       wifi_state_handle(task_counter, start_reset_time, &wifi_state);
       signal_value = 0;
@@ -260,7 +260,7 @@ static void wifi_init_soft_ap_sta(void){
     memset(&sta_config,0,sizeof(wifi_config_t));
     memcpy(sta_config.sta.ssid,regs_global->vars.wifi_router_name,strlen((char*)&regs_global->vars.wifi_router_name));
     memcpy(sta_config.sta.password,regs_global->vars.wifi_router_password,strlen((char*)&regs_global->vars.wifi_router_password));
-    
+
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_APSTA) );
     ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_AP, &ap_config) );
     ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &sta_config) );
@@ -323,6 +323,6 @@ static int wifi_full_stop(void){
       result = -1;
    }
    return result;
-} 
+}
 
 #endif /*WIRELESS_CONTROL_C*/

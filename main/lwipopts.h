@@ -99,7 +99,6 @@
 #include "esp_task.h"
 #include "esp_system.h"
 #include "sdkconfig.h"
-#include "netif/dhcp_state.h"
 
 /* Enable all Espressif-only options */
 
@@ -211,7 +210,14 @@
    ---------- IP options ----------
    --------------------------------
 */
-#define LWIP_IPV4    1
+/**
+ * LWIP_IPV4==1: Enable IPv4
+ */
+#ifdef CONFIG_LWIP_IPV4
+#define LWIP_IPV4                       1
+#else
+#define LWIP_IPV4                       1
+#endif
 /**
  * IP_REASSEMBLY==1: Reassemble incoming fragmented IP4 packets. Note that
  * this option does not affect outgoing packet sizes, which can be controlled
@@ -658,7 +664,7 @@
  * SO_RCVTIMEO processing.
  */
 #define LWIP_SO_RCVTIMEO                1
-
+#define LWIP_COMPAT_SOCKETS       1
 /**
  * LWIP_TCP_KEEPALIVE==1: Enable TCP_KEEPIDLE, TCP_KEEPINTVL and TCP_KEEPCNT
  * options processing. Note that TCP_KEEPIDLE and TCP_KEEPINTVL have to be set
@@ -807,7 +813,11 @@
 /**
  * LWIP_IPV6==1: Enable IPv6
  */
+#ifdef CONFIG_LWIP_IPV6
 #define LWIP_IPV6                       1
+#else
+#define LWIP_IPV6                       1
+#endif
 
 /**
  * MEMP_NUM_ND6_QUEUE: Max number of IPv6 packets to queue during MAC resolution.

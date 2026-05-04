@@ -87,7 +87,7 @@ def main():
       file_template.write("#include \"pin_map.h\"\n")
       file_template.write("\n")
       file_template.write("/*add includes before */\n")
-      file_template.write("#ifdef __cplusplus \n")           
+      file_template.write("#ifdef __cplusplus \n")
       file_template.write("   extern \"C\" {\n")
       file_template.write("#endif\n")
       file_template.write("/*add functions and variable declarations below */\n")
@@ -124,7 +124,7 @@ def add_task_dependencies_for_c_source(file_template, component_name):
 #include \"esp_log.h\"
 #include \"esp_check.h\"
 #include \"regs_description.h\"
-                       
+
 task_handle_t {component_name}_handle_id = NULL;
 static const char *TAG = \"{component_name}\";
 #define {component_name.upper()}_TASK_PERIOD (100u)
@@ -139,14 +139,14 @@ static int {component_name}_init(){{
    return result;
 }}""")
 
-   file_template.write(f"""  
+   file_template.write(f"""
 static int {component_name}_deinit(){{
    int result = 0;
    regs_global->vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_{component_name.upper()});
    return result;
 }}
 void {component_name}_task(void *arg){{
-   (void)(*arg);
+   (void)arg;
    uint32_t signal_value;
    {component_name}_init();
    u64 task_counter = 0u;
@@ -163,7 +163,7 @@ void {component_name}_task(void *arg){{
 }}
 #endif //{component_name.upper()}
 """)
-   
+
 def change_cmake_file(cmake_path, file_name):
     try:
       index_string = -1
@@ -185,7 +185,7 @@ def change_cmake_file(cmake_path, file_name):
             cmake_config_new = "".join(cmake_config)
             file_opened.write(cmake_config_new)
       else:
-         sys.stdout.write('cmake config was not changed'+cmake_path+'/CMakeLists.txt'+'\n') 
+         sys.stdout.write('cmake config was not changed'+cmake_path+'/CMakeLists.txt'+'\n')
     except FileNotFoundError:
         sys.stdout.write('did not find '+cmake_path+'/CMakeLists.txt'+'\n')
 
@@ -231,7 +231,7 @@ def change_task_handler(file_name):
             task_config_new = "".join(task_config)
             file_opened.write(task_config_new)
       else:
-         sys.stdout.write('task config was not changed'+'main/wifi_slip_main.c'+'\n') 
+         sys.stdout.write('task config was not changed'+'main/wifi_slip_main.c'+'\n')
     except FileNotFoundError:
         sys.stdout.write('did not find '+'main/wifi_slip_main.c'+'\n')
 
@@ -240,4 +240,3 @@ def change_task_handler(file_name):
 if __name__ == "__main__":
    'add template in project'
    main()
-

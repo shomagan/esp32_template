@@ -4,12 +4,10 @@
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
  * @defgroup free_rtos\lwip\src\apps\http
  * @ingroup free_rtos\lwip\src\apps\http
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 /*
- * Copyright (c) 2018 Snema Service
- * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -42,5 +40,5 @@
 
 #ifndef HTTPD_SSI_CGI_C
 #define HTTPD_SSI_CGI_C 1
- 
+
 #endif //HTTPD_SSI_CGI_C

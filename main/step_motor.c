@@ -1,11 +1,11 @@
 /**
  * @file step_motor.c
  * @author Shoma Gane <shomagan@gmail.com>
- *         
+ *
  * @defgroup main
  * @ingroup main
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 #ifndef STEP_MOTOR_C
 #define STEP_MOTOR_C 1
@@ -56,7 +56,7 @@ static int step_motor_deinit(){
 }
 
 void step_motor_task(void *arg){
-    (void)(*arg);
+    (void)arg;
     uint32_t signal_value;
     step_motor_init();
     u64 task_counter = 0;
@@ -81,5 +81,5 @@ void step_motor_task(void *arg){
         }
     }
 }
- 
+
 #endif //STEP_MOTOR_C

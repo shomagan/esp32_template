@@ -22,7 +22,7 @@
 #define I2C_MASTER_NUM I2C_NUM_1           //  I2C port number for master dev
 #elif CONFIG_IDF_TARGET_ESP32C3
 #define I2C_MASTER_NUM I2C_NUM_0           //  I2C port number for master dev
-#endif		  
+#endif
 
 #define I2C_MASTER_TX_BUF_DISABLE   0      //  I2C master do not need buffer
 #define I2C_MASTER_RX_BUF_DISABLE   0      //  I2C master do not need buffer

@@ -4,17 +4,18 @@
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
  * @defgroup ../main/
  * @ingroup ../main/
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 #ifndef COMMON_H
 #define COMMON_H 1
- 
+
 /*add includes below */
 #include "type_def.h"
 #include "os_type.h"
+#include "driver/gptimer.h"
 /*add includes before */
-#ifdef __cplusplus 
+#ifdef __cplusplus
    extern "C" {
 #endif
 #define TIME_FOR_PREPARE_RESET_MS 2000
@@ -59,6 +60,7 @@
    };
 
 extern task_handle_t common_duty_task_handle;
+extern gptimer_handle_t s_gptimer;/*global timer used in several files*/
 /**
  * @brief compare_float_value
  * @param a compare

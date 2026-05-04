@@ -4,12 +4,10 @@
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
  * @defgroup ../main/
  * @ingroup ../main/
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 /*
- * Copyright (c) 2018 Snema Service
- * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -40,7 +38,7 @@
  */
 #ifndef PWM_TEST_H
 #define PWM_TEST_H 1
- 
+
 /*add includes below */
 #include "main_config.h"
 #include "type_def.h"
@@ -48,7 +46,7 @@
 
 
 /*add includes before */
-#ifdef __cplusplus 
+#ifdef __cplusplus
    extern "C" {
 #endif
 #define PWM_STEP_CONTROL_ENABLE 0

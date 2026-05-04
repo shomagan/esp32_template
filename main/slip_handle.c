@@ -16,7 +16,7 @@
 #include "string.h"
 #include "slip_handle.h"
 #include "esp_netif.h"
-#include "esp_netif_slip.h"
+
 #include "esp_event.h"
 #include "esp_log.h"
 #include "lwip/opt.h"
@@ -465,4 +465,3 @@ struct pbuf* slip_handle_if_input(uint8_t* buff,uint16_t length){
 }
 
 #endif // SLIP_HANDLE_C
-

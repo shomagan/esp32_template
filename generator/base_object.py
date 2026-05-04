@@ -23,7 +23,7 @@ class Base(object):
     """
     error_message = "error handling file"
     error_num = 0
-    deleted_message = "$deleted after handing SNEMA generator"
+    deleted_message = "$deleted after handing generator"
 
     def __init__(self, os_type):
         # now used for plc_main.c plc_main.h main.cpp kernel.c
@@ -136,5 +136,3 @@ class Base(object):
 
     def get_description_type(self,iec_type):
         return self.iec_type_to_description[iec_type]
-
-

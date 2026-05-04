@@ -1,15 +1,15 @@
 /**
  * @file morse.c
  * @author Shoma Gane <shomagan@gmail.com>
- *         
+ *
  * @defgroup main
  * @ingroup main
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 #ifndef MORSE_C
 #define MORSE_C 1
- 
+
 #include "morse.h"
 #include "pin_map.h"
 #include "esp_log.h"
@@ -77,7 +77,7 @@ const struct morse_node question_sign= {.letter ="?", .dit = NULL, .dah = NULL};
 const struct morse_node underscore_sign= {.letter ="_", .dit = NULL, .dah = NULL};
 const struct morse_node d2_digit = {.letter ="2", .dit = NULL, .dah = NULL};
 const struct morse_node a_letter = {.letter ="A", .dit = &r_letter, .dah = &w_letter};
-const struct morse_node r_letter = {.letter ="R", .dit = &l_letter, .dah = &atte_letter}; 
+const struct morse_node r_letter = {.letter ="R", .dit = &l_letter, .dah = &atte_letter};
 const struct morse_node l_letter = {.letter ="L", .dit = NULL, .dah = &etta_letter};
 const struct morse_node etta_letter = {.letter ="E", .dit =&quotes_signs, .dah = NULL};
 const struct morse_node quotes_signs = {.letter ="\'\'", .dit =NULL, .dah = NULL};
@@ -132,7 +132,7 @@ const struct morse_node d0_digit = {.letter ="0", .dit = NULL, .dah = &broadcast
 /*_ _ _ _ _ _*/
 const struct morse_node broadcast_the_message_command = {.letter ="!", .dit = NULL, .dah = NULL, .type=MORSE_COMMAND_BROADCAST};
 
-int morse_unit_time = 100; 
+int morse_unit_time = 100;
 static int morse_init(void);
 static int morse_deinit();
 static u16 fill_morse_log_buffer(u8 * buffer, const char * letter, u16 log_pointer, u16 log_size);
@@ -146,7 +146,7 @@ static int morse_init(){
    morse_reseived.message[2] = &morse_reg->vars.morse_line_3[0];
    morse_reseived.message[3] = &morse_reg->vars.morse_line_4[0];
    return result;
-}  
+}
 static int morse_deinit(){
    int result = 0;
    regs_global->vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_MORSE);
@@ -166,7 +166,7 @@ static u32 time_state(u32 pin_state_base){
 }
 
 void morse_task(void *arg){
-   (void)(*arg);
+   (void)arg;
    uint32_t signal_value;
    morse_init();
    u64 task_counter = 0u;
@@ -183,7 +183,7 @@ void morse_task(void *arg){
       }
       u32 pin_state = gpio_get_level(EXT_WAKEUP_PIN);
       if(pin_state){
-         const struct morse_node * node = &root_letter; 
+         const struct morse_node * node = &root_letter;
          last_button_press = task_get_tick_count();
          while(node){
             u64 diff = time_state(pin_state);

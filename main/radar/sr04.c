@@ -1,10 +1,10 @@
 /**
  * @file sr04.cpp
  * @author Shoma Gane <shomagan@gmail.com>
- *         
+ *
  * @defgroup main/radar
  * @ingroup main/radar
- * @version 0.1 
+ * @version 0.1
  * @brief  itteraction with sr04 radar
  */
 #ifndef SR04_CPP
@@ -15,7 +15,7 @@
 #include "sr04.h"
 #include "driver/gpio.h"
 #include "interrupt.h"
-#include "driver/timer.h"
+#include "driver/gptimer.h"
 #include "os_type.h"
 #define ESP_INTR_FLAG_DEFAULT 0
 task_handle_t sr04_handle_id = NULL;
@@ -79,7 +79,7 @@ static int sr04_deinit(){
 }
 
 void sr04_task(void *arg){
-    (void)(*arg);
+    (void)arg;
     uint32_t signal_value;
     u16 state = 0;
     float distance = 0.0f;
@@ -104,7 +104,7 @@ void sr04_task(void *arg){
                 distance = (float)(time_faling_edge*10 - time_rising_edge*10) / 58.0f;
                 os_exit_critical(&sr04_mux);
                 state |= SR04_STATE_ECHO;
-                regs_copy_safe(&sr04_reg->vars.lap_state,&state,sizeof(sr04_reg->vars.lap_state));                    
+                regs_copy_safe(&sr04_reg->vars.lap_state,&state,sizeof(sr04_reg->vars.lap_state));
                 if (distance < 15.5f){
                     regs_copy_safe(&lap,&regs_global->vars.sys_tick_counter,sizeof(regs_global->vars.sys_tick_counter));
                     regs_copy_safe(&sr04_reg->vars.lap,&lap,sizeof(sr04_reg->vars.lap));
@@ -126,10 +126,10 @@ static void sr04_trigger(){
     gpio_set_level(DI_HANDLER_PIN13_INPUT, 1);
     u64 temp_time, temp_time2;
     int i =10000u;
-    timer_get_counter_value(TIMER_GROUP_0, TIMER_0, &temp_time);
+    gptimer_get_counter_value(s_gptimer, &temp_time);
     temp_time2 = temp_time;
     while(i && ((temp_time2 - temp_time) > 2u)){
-        timer_get_counter_value(TIMER_GROUP_0, TIMER_0, &temp_time2);
+        gptimer_get_counter_value(s_gptimer, &temp_time2);
         i--;
     };
     gpio_set_level(DI_HANDLER_PIN13_INPUT, 0);

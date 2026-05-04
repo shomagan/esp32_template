@@ -4,12 +4,10 @@
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
  * @defgroup ../main/
  * @ingroup ../main/
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 /*
- * Copyright (c) 2018 Snema Service
- * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -40,12 +38,12 @@
  */
 #ifndef PIN_MAP_H
 #define PIN_MAP_H 1
- 
+
 /*add includes below */
 #include "type_def.h"
 
 /*add includes before */
-#ifdef __cplusplus 
+#ifdef __cplusplus
    extern "C" {
 #endif
 /*add functions and variable declarations below */
@@ -57,7 +55,7 @@
 #define PIN_SDA 21u
 // ssd1306 SCL - GPIO22
 #define PIN_SCL 22u
-// ssd1306 reset 
+// ssd1306 reset
 #define PIN_RESET 19u
 //touch pind config
 #define GPIO_TOUCH_0 0

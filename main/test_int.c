@@ -1,21 +1,21 @@
 /**
  * @file test_int.c
  * @author Shoma Gane <shomagan@gmail.com>
- *         
+ *
  * @defgroup main
  * @ingroup main
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 #ifndef TEST_INT_C
 #define TEST_INT_C 1
- 
+
 
 #include "test_int.h"
 #include "esp_log.h"
 #include "esp_check.h"
 #include "regs_description.h"
-                       
+
 task_handle_t test_int_handle_id = NULL;
 static const char *TAG = "test_int";
 #define TEST_INT_TASK_PERIOD (2000u)
@@ -28,14 +28,14 @@ static int test_int_init(){
    int result = 0;
    regs_global->vars.current_state[0] |= CS0_TASK_ACTIVE_TEST_INT;
    return result;
-}  
+}
 static int test_int_deinit(){
    int result = 0;
    regs_global->vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_TEST_INT);
    return result;
 }
 void test_int_task(void *arg){
-   (void)(*arg);
+   (void)arg;
    uint32_t signal_value;
    test_int_init();
    u64 task_counter = 0u;
@@ -95,43 +95,43 @@ static int test_int_regs_description(void){
    if(index != 2){
       main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
       result += RES_ERROR;
-   }  
+   }
    index = regs_description_get_index_by_address(&polisher_reg->vars.polisher_direction);
    if(index != 103){
       main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
       result += RES_ERROR;
-   }  
+   }
    index = regs_description_get_index_by_address(&sync_time_client->vars.sys_tick_slave);
    if(index != 123){
       main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
       result += RES_ERROR;
-   }  
+   }
    index = regs_description_get_index_by_address(&client_part_0->vars.cli_mdb_addr);
    if(index != 116){
       main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
       result += RES_ERROR;
-   } 
+   }
    index = regs_description_get_index_by_address(&client_part_0->vars.cli_gate[0]);
    if(index != 119){
       main_error_message(TAG,"Failed %s:%d:%i\n",__FILE__,__LINE__, index);
       result += RES_ERROR;
-   }  
+   }
    index = regs_description_get_index_by_address(&client_part_0->vars.cli_gate[1]);
    if(index != 119){
       main_error_message(TAG,"Failed %s:%d:%i\n",__FILE__,__LINE__, index);
       result += RES_ERROR;
-   }  
+   }
    index = regs_description_get_index_by_address(&client_part_0->vars.cli_slip_gate[0]);
    if(index != 122){
       main_error_message(TAG,"Failed %s:%d:%i\n",__FILE__,__LINE__, index);
       result += RES_ERROR;
-   }  
+   }
 
    index = regs_description_get_index_by_address(&sync_time_regs_from_client->vars.cli_average_time_ms);
    if(index != 129){
       main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
       result += RES_ERROR;
-   }  
+   }
    if(result == RES_OK){
       main_printf(TAG,"regs_description_get_index_by_address passed %i",result);
    }

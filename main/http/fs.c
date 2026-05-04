@@ -72,7 +72,9 @@ fs_open(struct fs_file *file, const char *name)
       file->data = (const char *)f->data;
       file->len = f->len;
       file->index = f->len;
+#if LWIP_HTTPD_FILE_EXTENSION
       file->pextension = NULL;
+#endif
       file->flags = f->flags;
 #if HTTPD_PRECALCULATED_CHECKSUM
       file->chksum_count = f->chksum_count;
@@ -168,5 +170,4 @@ int
 fs_bytes_left(struct fs_file *file)
 {
   return file->len - file->index;
-} 
-                                                                                                                                                                                                  
+}

@@ -112,8 +112,8 @@ static int store_array_of_co2_levels(uint16_t co2_level){
       prev_value = 0;
       task_notify_send(telegram_handle_id, signal, &prev_value);
    }
-   regs_description_write_value_by_address(&scd41_reg->vars.scd41_index_in_array, &index);
-   regs_description_write_value_by_address(&scd41_reg->vars.scd41_co2_array, &temp_co2_level);
+   regs_description_write_value_by_address(&scd41_reg->vars.scd41_index_in_array, (const u8 *)&index);
+   regs_description_write_value_by_address(&scd41_reg->vars.scd41_co2_array, (const u8 *)&temp_co2_level);
    return result;
 }
 static int handle_scd_data(uint16_t co2_level, float humidity, float temperature, u8 *co2_level_captured){

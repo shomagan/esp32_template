@@ -206,8 +206,8 @@ typedef struct {
 #define BKRAM_BYTES_NUM 66
 #define WRITE_REG_MASK 0xFFFF
 #define WRITE_REG_CH_MASK 0xFFFF0000
-#define WIFI_NAME_LEN 12
-#define WIFI_PASSWORD_LEN 8
+#define WIFI_NAME_LEN 13
+#define WIFI_PASSWORD_LEN 9
 #define WIFI_ROUTER_NAME_LEN 32
 #define WIFI_ROUTER_PASSWORD_LEN 32
 #define SCD41_ARRAY_SIZE 48
@@ -218,7 +218,7 @@ typedef struct {
 /**
   * @}
   */
-/** \union main_vars_t  
+/** \union main_vars_t
  * @brief main struct
  * name variables uses for generate name in description file and then in get value by name
  * and therefore use max size len name is 16 charackter \n
@@ -259,7 +259,7 @@ typedef union{
         u32 min_free_heap;      //!<"in bytes",&ro
         u8 debug_info[8];       //!<"reserved use for debug"&ro
         u16 num_of_vars;        //!<"number of vars self + config(user) &ro &def
-        u16 client_num_of_vars;        //!<"number of client vars self" &ro &def        
+        u16 client_num_of_vars;        //!<"number of client vars self" &ro &def
         float temperature_mcu;  //!<"temperature mcu Celsius" &ro
         u8 fw_version[FW_VERSION_SIZE];      //!<"version like 0.1.1.0",&ro,&def
         u16 board_ver;              //!< "board version", &ro, &def
@@ -285,8 +285,8 @@ typedef union{
         u16 i2c_display_address; //!< "address of display" &ro
         u8 sta_ip[4]; //!< "ip address of sta" &ro &save
         u32 live_time; //!< "live time in seconds" &ro
-        s64 unix_time; //!< "unix time , not implemented" 
-        u32 seconds_of_the_day; //!< "seconds of the day" 
+        s64 unix_time; //!< "unix time , not implemented"
+        u32 seconds_of_the_day; //!< "seconds of the day"
         u32 flash_write_number; //!< "increments every flash write by an app" &ro &save
         u32 current_state[4]; //!< "current state of proccess" &ro
         u16 sleep_time;//!< "seconds,couple with SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC"  &def &min
@@ -405,7 +405,7 @@ typedef union{
         // start regs struct
         s32 sync_sys_tick_dev;         //!< "deviation between master and slave" &ro
         u64 sync_sys_tick_slave;        //!< "time read from slave" &ro
-        u64 sync_sys_tick_master;       //!< "time read from master" &ro 
+        u64 sync_sys_tick_master;       //!< "time read from master" &ro
         u16 sync_average_time_ms;    //!< "average send receive time " &ro
         u16 sync_last_req_time_ms;       //!< "last send receive time " &ro
         u16 sync_active;                      //!< "activated measurement" &ro
@@ -435,7 +435,7 @@ typedef union{
         // start regs struct
         u16 lap_state;         //!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
         float lap_distance;        //!< "current distance" &ro
-        u64 lap;       //!< "when we have sharp change of a distance, save it " &ro 
+        u64 lap;       //!< "when we have sharp change of a distance, save it " &ro
         u64 lap_paired_dev;    //!< "lap from paired device" &ro
         float distance_filtered;      //!< "current distance filterd" &ro
     }vars;
@@ -451,7 +451,7 @@ extern sr04_reg_t * const sr04_reg;
  *                  &ro  - read only, \n
  *                  &def -> have const varibale with struct like def_name, \n
  *                  &save- will have saved in bkram, \n
- *                  
+ *
  * @ingroup regs
  */
 /** #generator_use_description {"space_name" :"feeder_reg_t",  "address_space" :6, "modbus_type" :"server", "modbus_function" :"holding_registers", "register_start_address" :4200}*/
@@ -475,7 +475,7 @@ extern feeder_reg_t * const feeder_reg;
  *                  &ro  - read only, \n
  *                  &def -> have const varibale with struct like def_name, \n
  *                  &save- will have saved in bkram, \n
- *                  
+ *
  * @ingroup regs
  */
 /** #generator_use_description {"space_name" :"polisher_reg_t",  "address_space" :7, "modbus_type" :"server", "modbus_function" :"holding_registers", "register_start_address" :4300}*/
@@ -485,13 +485,13 @@ typedef union{
         u32 polisher_sec;         //!<"how many time in seconds it was active" &save &ro
         u32 polisher_last_sec;         //!<"how many time in seconds it was active last session" &ro
         u16 polisher_speed;        //!< "polisher_speed" &save &def &max
-        u16 polisher_direction;         //!< "polisher_direction" &save &def &max 
+        u16 polisher_direction;         //!< "polisher_direction" &save &def &max
     }vars;
     u32 bytes[4]; //for full bksram copy
 }polisher_reg_t;// #generator_use_description {"message":"end_struct"}
 extern polisher_reg_t * const polisher_reg;
-/**   
- * @brief test struct for internal tests 
+/**
+ * @brief test struct for internal tests
  * name variables uses for generate name in description file and then in get value by name
  * and therefore use max size len name is 16 charackter \n
  * coment style :   "" - description, \n
@@ -506,15 +506,15 @@ typedef union{
         // start regs struct
         u32 test_int_state;         //!<"current state" &ro
         u32 test_int_command;         //!<"command" &ro
-        u32 test_int_component;         //!<"component to be tested" 
-        u32 test_int_type;         //!<"test type - check, stress, performance" 
+        u32 test_int_component;         //!<"component to be tested"
+        u32 test_int_type;         //!<"test type - check, stress, performance"
         u32 test_int_result;         //!<"overall result" &ro
     }vars;
     u32 bytes[4]; //for full bksram copy
 }test_int_reg_t;// #generator_use_description {"message":"end_struct"}
 extern test_int_reg_t * const test_int_reg;
-/**   
- * @brief struct for morse component 
+/**
+ * @brief struct for morse component
  * name variables uses for generate name in description file and then in get value by name
  * and therefore use max size len name is 16 charackter \n
  * coment style :   "" - description, \n
@@ -531,20 +531,20 @@ typedef union{
         u16 morse_message_len;         //!<"max morse message len" &save &def &min &max
         u16 morse_settings;         //!<"morse settings bit0 - server" &save &def
         u16 morse_message_position;         //!<"morse message position" &ro
-        u8 morse_message[32];         //!<"morse message to broadcast" &ro 
+        u8 morse_message[32];         //!<"morse message to broadcast" &ro
         u8 morse_send[32];         //!<"morse message to broadcast" &ro
-        u8 morse_line_1[32];         //!<"morse messages received " &ro 
-        u8 morse_line_2[32];         //!<"morse messages received " &ro 
-        u8 morse_line_3[32];         //!<"morse messages received " &ro 
-        u8 morse_line_4[32];         //!<"morse messages received " &ro 
-        u8 morse_line_5[32];         //!<"morse messages received " &ro 
+        u8 morse_line_1[32];         //!<"morse messages received " &ro
+        u8 morse_line_2[32];         //!<"morse messages received " &ro
+        u8 morse_line_3[32];         //!<"morse messages received " &ro
+        u8 morse_line_4[32];         //!<"morse messages received " &ro
+        u8 morse_line_5[32];         //!<"morse messages received " &ro
         u32 morse_counter;         //!<"morse messages sent and received counter" &ro
     }vars;
     u32 bytes[256]; //for full bksram copy
 }morse_reg_t;// #generator_use_description {"message":"end_struct"}
 extern morse_reg_t * const morse_reg;
-/**   
- * @brief struct for battery_state component 
+/**
+ * @brief struct for battery_state component
  * name variables uses for generate name in description file and then in get value by name
  * and therefore use max size len name is 16 charackter \n
  * coment style :   "" - description, \n
@@ -611,13 +611,13 @@ extern scd41_reg_t * const scd41_reg;
 typedef union{
     struct MCU_PACK{
         // start regs struct
-        u16 cli_mdb_addr;                   //!<"modbus address" 
-        u8 cli_ip[4];                       //!<"device ip address, warning!!! " 
+        u16 cli_mdb_addr;                   //!<"modbus address"
+        u8 cli_ip[4];                       //!<"device ip address, warning!!! "
         u8 cli_netmask[4];                  //!<"netmask address for main wifi net",
-        u8 cli_gate[4];                     //!<"gateaway address, warning!!! " 
+        u8 cli_gate[4];                     //!<"gateaway address, warning!!! "
         u8 cli_slip_ip[4];                  //!<"ip address for local net",
-        u8 cli_slip_netmask[4];             //!<"netmask address for local net", 
-        u8 cli_slip_gate[4];                //!<"gateaway address for local net", 
+        u8 cli_slip_netmask[4];             //!<"netmask address for local net",
+        u8 cli_slip_gate[4];                //!<"gateaway address for local net",
     }vars;
     u8 bytes[32]; //for full bksram copy
 }client_part_0_t;// #generator_use_description {"message":"end_struct"}
@@ -664,8 +664,8 @@ extern sync_time_client_t * const sync_time_client;
 typedef union{
     struct MCU_PACK{
         // start regs struct
-        u16 cli_num_of_vars;        //!<"number of vars self + config(user) &ro 
-        u16 cli_client_num_of_vars;        //!<"number of client vars self" &ro 
+        u16 cli_num_of_vars;        //!<"number of vars self + config(user) &ro
+        u16 cli_client_num_of_vars;        //!<"number of client vars self" &ro
     }vars;
     u8 bytes[8]; //for full bksram copy
 }client_part_1_t;// #generator_use_description {"message":"end_struct"}
@@ -683,14 +683,14 @@ extern client_part_1_t * const client_part_1;
  *
  * @ingroup regs
  */
-/** inside struct modbus_type shows us that this struct is for client(read data from client) or not 
+/** inside struct modbus_type shows us that this struct is for client(read data from client) or not
  * #generator_use_description {"space_name" :"sync_data_client_t",  "address_space" :4, "modbus_type" :"client", "modbus_function" :"holding_registers", "modbus_address" :3, "register_start_address" :4000}*/
 typedef union{
     struct MCU_PACK{
         // start regs struct
         s32 cli_sys_tick_dev;         //!< "deviation between master and slave" &ro
         u64 cli_sys_tick_slave;        //!< "time read from slave" &ro
-        u64 cli_sys_tick_master;       //!< "time read from master" &ro 
+        u64 cli_sys_tick_master;       //!< "time read from master" &ro
         u16 cli_average_time_ms;    //!< "average send receive time " &ro
         u16 cli_last_req_time_ms;       //!< "last send receive time " &ro
         u16 cli_sync_state;                      //!< "activated measurement" &ro
@@ -716,7 +716,7 @@ typedef union{
         // start regs struct
         u16 cli_state;         //!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
         float cli_distance;        //!< "current distance" &ro
-        u64 cli_lap;       //!< "when we have sharp change of a distance, save it " &ro 
+        u64 cli_lap;       //!< "when we have sharp change of a distance, save it " &ro
         u64 cli_lap_paired_dev;    //!< "lap from paired device" &ro
         float cli_distance_filtered;      //!< "current distance filterd" &ro
     }vars;

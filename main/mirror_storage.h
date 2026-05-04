@@ -4,12 +4,10 @@
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
  * @defgroup ../main/
  * @ingroup ../main/
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 /*
- * Copyright (c) 2018 Snema Service
- * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -40,14 +38,14 @@
  */
 #ifndef MIRROR_STORAGE_H
 #define MIRROR_STORAGE_H 1
- 
+
 /*add includes below */
 #include "type_def.h"
 #include "os_type.h"
 #include "main_config.h"
 #include "regs_description.h"
 /*add includes before */
-#ifdef __cplusplus 
+#ifdef __cplusplus
    extern "C" {
 #endif
    #define FLASH_WRITE_PAGE_SIZE_IN_BYTE 32

@@ -1,11 +1,11 @@
 /**
  * @file polisher.c
  * @author Shoma Gane <shomagan@gmail.com>
- *         
+ *
  * @defgroup main
  * @ingroup main
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 #ifndef POLISHER_C
 #define POLISHER_C 1
@@ -16,9 +16,10 @@
 #include "esp_log.h"
 #include "esp_check.h"
 #include "soc/rtc.h"
-#include "driver/rmt.h"/*use rmt as step controller*/
-
-#include "hal/rmt_types.h"
+#include "driver/rmt_tx.h"/*use rmt as step controller*/
+#include "driver/rmt_encoder.h"
+#include "driver/rmt_types.h"
+#include <limits.h>
 #include <math.h>
 #include "sleep_control.h"
 #include "regs_description.h"
@@ -26,41 +27,32 @@
 
 
 #define POLISHER_TASK_PERIOD (1000u)
-#define RMT_TX_CHANNEL RMT_CHANNEL_0
+#define RMT_RESOLUTION_HZ (1000000u)
 #define SPEED_STEPS 50u
 
 task_handle_t polisher_handle_id = NULL;
 static const char *TAG = "polisher";
 typedef enum {
     STOPPED = 0,
-    SMOOTH_SPEED_UP,
-    SMOOTH_KEEP_SPEED,
-    SMOOTH_SLOW_DOWN,
     UNLIMITED_LOOP,
     LIMITED_LOOP,
 } rmt_step_motor_running_status;
 
 typedef struct {
-   rmt_config_t *rmt_config;
+   rmt_channel_handle_t tx_chan;
+   rmt_encoder_handle_t copy_encoder;
    rmt_step_motor_running_status status;
-   rmt_item32_t rmt_items_loop;
+   rmt_symbol_word_t rmt_items_loop;
    uint32_t rmt_items_loop_count;
-   rmt_item32_t rmt_items_speedup[SPEED_STEPS];
-   rmt_item32_t rmt_items_speeddown[SPEED_STEPS];
-   uint32_t rmt_items_smoothstep_count;
-   semaphore_handle_t notify_semphr;/*we have a mutex here :)*/
+   uint32_t current_speed;
 } rmt_step_motor_t;
 
 
 #if POLISHER
 static int polisher_init(rmt_step_motor_t * rmt_step_motor);
 static int polisher_deinit(rmt_step_motor_t * rmt_step_motor);
-static inline float helper_smootherstep_clamp(float x, float lowerlimit, float upperlimit);
-static float helper_smootherstep(float edge0, float edge1, float x);
 static uint16_t helper_speed_to_duration(uint16_t speed);
-static esp_err_t helper_fill_rmt_items(rmt_item32_t *items, uint32_t speed);
-static esp_err_t rmt_step_motor_smoothstep(rmt_step_motor_t *rmt_handle, uint32_t n, uint32_t speed_min,uint32_t speed_max);
-static IRAM_ATTR void rmt_tx_loop_intr(rmt_channel_t channel, void *args);
+static esp_err_t helper_fill_rmt_items(rmt_symbol_word_t *items, uint32_t speed);
 static esp_err_t step_motor_create_rmt(rmt_step_motor_t * rmt_step_motor);
 static esp_err_t step_motor_delete_rmt(rmt_step_motor_t * rmt_step_motor);
 static esp_err_t rmt_step_motor_step_impl(rmt_step_motor_t *rmt_handle, uint32_t n, uint32_t speed);
@@ -86,7 +78,7 @@ static int polisher_init(rmt_step_motor_t * rmt_step_motor){
    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 0);
    ESP_ERROR_CHECK(step_motor_create_rmt(rmt_step_motor));
    return result;
-}  
+}
 static int polisher_deinit(rmt_step_motor_t * rmt_step_motor){
    int result = 0;
    gpio_config_t io_conf = {0};
@@ -105,14 +97,12 @@ static int polisher_deinit(rmt_step_motor_t * rmt_step_motor){
    return result;
 }
 void polisher_task(void *arg){
-   (void)(*arg);
+   (void)arg;
    uint32_t signal_value;
-   rmt_config_t dev_config = RMT_DEFAULT_CONFIG_TX(GPIO_OUTPUT_STEP_MOTOR_STEP0, RMT_TX_CHANNEL);
-   rmt_step_motor_t rmt_step_motor;
-   rmt_step_motor.rmt_config = &dev_config;     
+   rmt_step_motor_t rmt_step_motor = {0};
    polisher_init(&rmt_step_motor);
    u64 task_counter = 0u;
-   u16 polisher_speed;        //!< "speed" 
+   u16 polisher_speed;        //!< "speed"
    u16 polisher_direction;    //!< "reserved"
    while(1){
       if(task_notify_wait(STOP_CHILD_PROCCES, &signal_value, POLISHER_TASK_PERIOD)==pdTRUE){
@@ -151,73 +141,83 @@ void polisher_task(void *arg){
 // assume n != 0 and speed is within considerable range
 static esp_err_t rmt_step_motor_step_impl(rmt_step_motor_t *rmt_handle, uint32_t n, uint32_t speed)
 {
-   rmt_set_tx_loop_mode(rmt_handle->rmt_config->channel, true);
-   rmt_enable_tx_loop_autostop(rmt_handle->rmt_config->channel, true);
-   rmt_handle->rmt_items_loop_count = n;
-   if ((rmt_handle->rmt_items_loop_count) > 1023)
-   {
-      (rmt_handle->rmt_items_loop_count) -= 1023;
-      rmt_set_tx_loop_count(rmt_handle->rmt_config->channel, 1023);
+   if (rmt_handle == NULL) {
+      return ESP_ERR_INVALID_ARG;
    }
-   else
-   {
-      rmt_set_tx_loop_count(rmt_handle->rmt_config->channel, rmt_handle->rmt_items_loop_count);
-      rmt_handle->rmt_items_loop_count = 0;
+   if ((helper_speed_to_duration(speed) <= 1) || (n > INT_MAX)) {
+      return ESP_ERR_INVALID_ARG;
    }
+
    helper_fill_rmt_items(&rmt_handle->rmt_items_loop, speed);
+   rmt_handle->rmt_items_loop_count = n;
    rmt_handle->status = LIMITED_LOOP;
-   rmt_write_items(rmt_handle->rmt_config->channel, &rmt_handle->rmt_items_loop, 1, false);
-   semaphore_take(rmt_handle->notify_semphr, portMAX_DELAY);
+   rmt_handle->current_speed = speed;
+
+   rmt_transmit_config_t tx_cfg = {
+      .loop_count = (int)n,
+   };
+   ESP_RETURN_ON_ERROR(rmt_transmit(rmt_handle->tx_chan,
+                                    rmt_handle->copy_encoder,
+                                    &rmt_handle->rmt_items_loop,
+                                    sizeof(rmt_handle->rmt_items_loop),
+                                    &tx_cfg), TAG, "failed to transmit finite step loop");
+   ESP_RETURN_ON_ERROR(rmt_tx_wait_all_done(rmt_handle->tx_chan, -1), TAG, "failed while waiting finite step loop");
+
+   rmt_handle->status = STOPPED;
    return ESP_OK;
 }
 static esp_err_t rmt_step_motor_step(rmt_step_motor_t *rmt_handle, uint32_t n, uint32_t speed)
 {
    esp_err_t result = ESP_FAIL;
-   if (ESP_OK == rmt_tx_stop(rmt_handle->rmt_config->channel))
-   {
-      if (n == UINT32_MAX)
-      { // forever loop, non-blocking
-         rmt_set_tx_loop_count(rmt_handle->rmt_config->channel, 0);
-         rmt_enable_tx_loop_autostop(rmt_handle->rmt_config->channel, false);
-         rmt_set_tx_loop_mode(rmt_handle->rmt_config->channel, true);
+   if (rmt_handle == NULL) {
+      return ESP_ERR_INVALID_ARG;
+   }
+
+   if (n == UINT32_MAX)
+   { // forever loop, non-blocking
+      if (helper_speed_to_duration(speed) <= 1) {
+         return ESP_ERR_INVALID_ARG;
+      }
+      if ((rmt_handle->status != UNLIMITED_LOOP) || (rmt_handle->current_speed != speed)) {
+         ESP_RETURN_ON_ERROR(rmt_disable(rmt_handle->tx_chan), TAG, "failed to stop previous transmission");
+         ESP_RETURN_ON_ERROR(rmt_enable(rmt_handle->tx_chan), TAG, "failed to re-enable channel");
          helper_fill_rmt_items(&rmt_handle->rmt_items_loop, speed);
+         rmt_transmit_config_t tx_cfg = {
+            .loop_count = -1,
+         };
+         ESP_RETURN_ON_ERROR(rmt_transmit(rmt_handle->tx_chan,
+                                          rmt_handle->copy_encoder,
+                                          &rmt_handle->rmt_items_loop,
+                                          sizeof(rmt_handle->rmt_items_loop),
+                                          &tx_cfg), TAG, "failed to start infinite loop transmission");
          rmt_handle->status = UNLIMITED_LOOP;
-         ESP_ERROR_CHECK(rmt_write_items(rmt_handle->rmt_config->channel, &rmt_handle->rmt_items_loop, 1, false));
-         result = ESP_OK;
+         rmt_handle->current_speed = speed;
       }
-      else if (n == 0)
-      { // break the forever loop
+      result = ESP_OK;
+   }
+   else if (n == 0)
+   { // break the forever loop
+      if (rmt_handle->status == UNLIMITED_LOOP) {
+         ESP_RETURN_ON_ERROR(rmt_disable(rmt_handle->tx_chan), TAG, "failed to disable channel");
+         ESP_RETURN_ON_ERROR(rmt_enable(rmt_handle->tx_chan), TAG, "failed to re-enable channel after stop");
+      }
+      rmt_handle->status = STOPPED;
+      rmt_handle->current_speed = 0;
+      result = ESP_OK;
+   }
+   else
+   { // normally move n steps
+      if (rmt_handle->status == UNLIMITED_LOOP) {
+         ESP_RETURN_ON_ERROR(rmt_disable(rmt_handle->tx_chan), TAG, "failed to disable channel before finite move");
+         ESP_RETURN_ON_ERROR(rmt_enable(rmt_handle->tx_chan), TAG, "failed to re-enable channel before finite move");
          rmt_handle->status = STOPPED;
-         rmt_tx_stop(rmt_handle->rmt_config->channel);
-         ESP_ERROR_CHECK(rmt_set_tx_loop_mode(rmt_handle->rmt_config->channel, false));
-         result = ESP_OK;
+         rmt_handle->current_speed = 0;
       }
-      else
-      { // normally move n steps
-         if (helper_speed_to_duration(speed) > 1){
-            result =  rmt_step_motor_step_impl(rmt_handle, n, speed);
-         }
+      if (helper_speed_to_duration(speed) > 1){
+         result =  rmt_step_motor_step_impl(rmt_handle, n, speed);
       }
    }
    return result;
-}
-static inline float helper_smootherstep_clamp(float x, float lowerlimit, float upperlimit)
-{
-   if (x < lowerlimit){
-      x = lowerlimit;
-   }
-   if (x > upperlimit){
-      x = upperlimit;
-   }
-   return x;
-}
-
-static float helper_smootherstep(float edge0, float edge1, float x)
-{
-   // Scale, and clamp x to 0..1 range
-   x = helper_smootherstep_clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
-   // Evaluate polynomial
-   return x * x * x * (x * (x * 6 - 15) + 10) * (edge1 - edge0) + edge0;
 }
 
 static uint16_t helper_speed_to_duration(uint16_t speed)
@@ -225,7 +225,7 @@ static uint16_t helper_speed_to_duration(uint16_t speed)
    return (uint16_t)round(1.0 * 1000 * 1000 / speed);
 }
 
-static esp_err_t helper_fill_rmt_items(rmt_item32_t *items, uint32_t speed)
+static esp_err_t helper_fill_rmt_items(rmt_symbol_word_t *items, uint32_t speed)
 {
    items->duration1 = 100;
    items->level1 = 1;
@@ -239,122 +239,70 @@ static esp_err_t helper_fill_rmt_items(rmt_item32_t *items, uint32_t speed)
    }
    return ESP_OK;
 }
-static esp_err_t rmt_step_motor_smoothstep(rmt_step_motor_t *rmt_handle, uint32_t n, uint32_t speed_min,
-                                           uint32_t speed_max)
-{
-   esp_err_t ret = ESP_OK;
-   if ((speed_min <= speed_max) && (n > SPEED_STEPS * 2) && (helper_speed_to_duration(speed_max) > 1)){
-      if (ESP_OK == rmt_tx_stop(rmt_handle->rmt_config->channel)){
-         // prepare speed tables
-         for (int i = 0; i < SPEED_STEPS; ++i){
-            helper_fill_rmt_items(&rmt_handle->rmt_items_speedup[i],
-                                 (uint16_t)helper_smootherstep(
-                                    (float)speed_min,
-                                    (float)speed_max,
-                                    (float)speed_min + ((float)i / (float)SPEED_STEPS) * (float)(speed_max - speed_min)));
-         }
-         for (int i = 0; i < SPEED_STEPS; ++i){
-            helper_fill_rmt_items(&rmt_handle->rmt_items_speeddown[i],
-                                 speed_max + speed_min - (uint16_t)helper_smootherstep((float)speed_min, (float)speed_max, (float)speed_min + ((float)i / (float)SPEED_STEPS) * (float)(speed_max - speed_min)));
-         }
-         rmt_handle->rmt_items_smoothstep_count = SPEED_STEPS;
-         // prepare continuous phase rmt payload
-         helper_fill_rmt_items(&rmt_handle->rmt_items_loop, speed_max);
-         rmt_handle->rmt_items_loop_count = n - SPEED_STEPS * 2;
-         // set status to be checked inside ISR
-         rmt_handle->status = SMOOTH_SPEED_UP;
-         // start transmitting
-         ESP_ERROR_CHECK(rmt_write_items(rmt_handle->rmt_config->channel, rmt_handle->rmt_items_speedup, SPEED_STEPS, false));
-         // waiting for transfer done
-         semaphore_take(rmt_handle->notify_semphr, portMAX_DELAY);
-      }   else   {
-         main_error_message(TAG, "failed to stop rmt tx");
-         ret = ESP_FAIL;
-      }
-   }
-   return ret;
-}
-
-static IRAM_ATTR void rmt_tx_loop_intr(rmt_channel_t channel, void *args)
-{
-   rmt_step_motor_t *rmt_step_motor = (rmt_step_motor_t *)args;
-
-   // smoothstep speedup stage finished
-   if (rmt_step_motor->status == SMOOTH_SPEED_UP)
-   {
-      rmt_step_motor->status = SMOOTH_KEEP_SPEED;
-      rmt_set_tx_loop_mode(rmt_step_motor->rmt_config->channel, true);
-      rmt_enable_tx_loop_autostop(rmt_step_motor->rmt_config->channel, true);
-      rmt_set_tx_intr_en(rmt_step_motor->rmt_config->channel, 0);
-      // continue and configure loop count
-   }
-
-   if (rmt_step_motor->status == SMOOTH_KEEP_SPEED || rmt_step_motor->status == LIMITED_LOOP)
-   {
-      // loop count not 0, continuing looping
-      if ((rmt_step_motor->rmt_items_loop_count) != 0)
-      {
-         if ((rmt_step_motor->rmt_items_loop_count) > 1023)
-         {
-            (rmt_step_motor->rmt_items_loop_count) -= 1023;
-            rmt_set_tx_loop_count(rmt_step_motor->rmt_config->channel, 1023);
-         }
-         else
-         {
-            rmt_set_tx_loop_count(rmt_step_motor->rmt_config->channel, rmt_step_motor->rmt_items_loop_count);
-            rmt_step_motor->rmt_items_loop_count = 0;
-         }
-         rmt_write_items(rmt_step_motor->rmt_config->channel, &rmt_step_motor->rmt_items_loop, 1, false);
-         return;
-      }
-   }
-
-   // smoothstep keep speed stage finished
-   if (rmt_step_motor->status == SMOOTH_KEEP_SPEED)
-   {
-      rmt_step_motor->status = SMOOTH_SLOW_DOWN;
-      rmt_set_tx_loop_mode(rmt_step_motor->rmt_config->channel, false);
-      rmt_enable_tx_loop_autostop(rmt_step_motor->rmt_config->channel, false);
-      rmt_set_tx_intr_en(rmt_step_motor->rmt_config->channel, 1);
-      rmt_write_items(rmt_step_motor->rmt_config->channel, rmt_step_motor->rmt_items_speeddown, rmt_step_motor->rmt_items_smoothstep_count, false);
-      return;
-   }
-
-   if (rmt_step_motor->status == LIMITED_LOOP || rmt_step_motor->status == SMOOTH_SLOW_DOWN)
-   {
-      rmt_step_motor->status = STOPPED;
-      BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-      semaphore_release_ISR(rmt_step_motor->notify_semphr, &xHigherPriorityTaskWoken);
-      /*if (xHigherPriorityTaskWoken == pdTRUE)
-      {
-         portYIELD_FROM_ISR();
-      }*/
-   }
-}
 /*all args preallocated*/
 static esp_err_t step_motor_create_rmt(rmt_step_motor_t * rmt_step_motor)
 {
-   if (rmt_step_motor != NULL)
-   {
-      ESP_RETURN_ON_ERROR(rmt_config(rmt_step_motor->rmt_config), TAG, "Failed to configure RMT");
-      ESP_RETURN_ON_ERROR(rmt_driver_install(rmt_step_motor->rmt_config->channel, 0, 0), TAG, "Failed to install RMT driver");
-      semaphore_create_binary(rmt_step_motor->notify_semphr)
-      // register tx end callback function, which got invoked when tx loop comes to the end
-      rmt_register_tx_end_callback(rmt_tx_loop_intr, rmt_step_motor);
-      return ESP_OK;
-   }
-   else
+   if (rmt_step_motor == NULL)
    {
       return ESP_ERR_INVALID_ARG;
    }
+
+   rmt_tx_channel_config_t tx_chan_cfg = {
+      .gpio_num = GPIO_OUTPUT_STEP_MOTOR_STEP0,
+      .clk_src = RMT_CLK_SRC_DEFAULT,
+      .resolution_hz = RMT_RESOLUTION_HZ,
+      .mem_block_symbols = 64,
+      .trans_queue_depth = 2,
+      .flags.invert_out = false,
+      .flags.with_dma = false,
+   };
+   ESP_RETURN_ON_ERROR(rmt_new_tx_channel(&tx_chan_cfg, &rmt_step_motor->tx_chan), TAG, "Failed to create RMT TX channel");
+
+   rmt_copy_encoder_config_t encoder_cfg = {};
+   esp_err_t ret = rmt_new_copy_encoder(&encoder_cfg, &rmt_step_motor->copy_encoder);
+   if (ret != ESP_OK) {
+      rmt_del_channel(rmt_step_motor->tx_chan);
+      rmt_step_motor->tx_chan = NULL;
+      return ret;
+   }
+
+   ret = rmt_enable(rmt_step_motor->tx_chan);
+   if (ret != ESP_OK) {
+      rmt_del_encoder(rmt_step_motor->copy_encoder);
+      rmt_step_motor->copy_encoder = NULL;
+      rmt_del_channel(rmt_step_motor->tx_chan);
+      rmt_step_motor->tx_chan = NULL;
+      return ret;
+   }
+
+   return ESP_OK;
 }
 static esp_err_t step_motor_delete_rmt(rmt_step_motor_t * rmt_step_motor)
 {
-   semaphore_delete(rmt_step_motor->notify_semphr);
-   if (ESP_OK!=rmt_driver_uninstall(rmt_step_motor->rmt_config->channel)){
-      main_error_message(TAG, "Failed to uninstall RMT driver");
-      return ESP_FAIL;
+   if (rmt_step_motor == NULL) {
+      return ESP_ERR_INVALID_ARG;
    }
+
+   if (rmt_step_motor->tx_chan != NULL) {
+      if (rmt_step_motor->status == UNLIMITED_LOOP) {
+         (void)rmt_disable(rmt_step_motor->tx_chan);
+      } else {
+         (void)rmt_tx_wait_all_done(rmt_step_motor->tx_chan, -1);
+         (void)rmt_disable(rmt_step_motor->tx_chan);
+      }
+   }
+
+   if (rmt_step_motor->copy_encoder != NULL) {
+      ESP_RETURN_ON_ERROR(rmt_del_encoder(rmt_step_motor->copy_encoder), TAG, "Failed to delete RMT encoder");
+      rmt_step_motor->copy_encoder = NULL;
+   }
+   if (rmt_step_motor->tx_chan != NULL) {
+      ESP_RETURN_ON_ERROR(rmt_del_channel(rmt_step_motor->tx_chan), TAG, "Failed to delete RMT channel");
+      rmt_step_motor->tx_chan = NULL;
+   }
+
+   rmt_step_motor->status = STOPPED;
+   rmt_step_motor->current_speed = 0;
    return ESP_OK;
 }
 #endif //POLISHER

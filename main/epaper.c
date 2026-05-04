@@ -37,7 +37,7 @@ static int epaper_deinit(){
    return result;
 }
 void epaper_task(void *arg){
-   (void)(*arg);
+   (void)arg;
    uint32_t signal_value;
    epaper_init();
    u64 task_counter = 0u;

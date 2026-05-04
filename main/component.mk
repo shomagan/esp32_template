@@ -7,3 +7,4 @@
 # please read the ESP-IDF documents if you need to do this.
 #
 COMPONENT_EMBED_TXTFILES :=  ${PROJECT_PATH}/server_certs/telegram.pem
+COMPONENT_REQUIRES += esp_driver_rmt

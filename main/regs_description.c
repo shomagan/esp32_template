@@ -21,7 +21,7 @@
 #include <math.h>
 #include "esp_log.h"
 #include "esp_check.h"
-                       
+
 static const char *TAG = "regs_description";
 
 static const u16 def_mdb_addr = 14;
@@ -128,7 +128,7 @@ regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.min_free_heap, 0,"in bytes","min_free_heap", U32_REGS_FLAG, 22, 148, 0x3004a, 1, 3, 0 },//!<"in bytes",&ro
 { NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.debug_info[0], 0,"reserved use for debug","debug_info", U8_REGS_FLAG, 23, 152, 0x3004c, 8, 3, 0 },//!<"reserved use for debug"&ro
 { &def_num_of_vars, NULL, NULL, (u8*)&regs_main.regs_global.vars.num_of_vars, 0,"num_of_vars","num_of_vars", U16_REGS_FLAG, 24, 160, 0x30050, 1, 3, 0 },//!<"number of vars self + config(user) &ro &def
-{ &def_client_num_of_vars, NULL, NULL, (u8*)&regs_main.regs_global.vars.client_num_of_vars, 0,"number of client vars self","client_num_of_vars", U16_REGS_FLAG, 25, 162, 0x30051, 1, 3, 0 },//!<"number of client vars self" &ro &def        
+{ &def_client_num_of_vars, NULL, NULL, (u8*)&regs_main.regs_global.vars.client_num_of_vars, 0,"number of client vars self","client_num_of_vars", U16_REGS_FLAG, 25, 162, 0x30051, 1, 3, 0 },//!<"number of client vars self" &ro &def
 { NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.temperature_mcu, 0,"temperature mcu Celsius","temperature_mcu", FLOAT_REGS_FLAG, 26, 164, 0x30052, 1, 3, 0 },//!<"temperature mcu Celsius" &ro
 { &def_fw_version, NULL, NULL, (u8*)&regs_main.regs_global.vars.fw_version[0], 0,"version like 0.1.1.0","fw_version", U8_REGS_FLAG, 27, 168, 0x30054, 4, 3, 0 },//!<"version like 0.1.1.0",&ro,&def
 { &def_board_ver, NULL, NULL, (u8*)&regs_main.regs_global.vars.board_ver, 0,"board version","board_ver", U16_REGS_FLAG, 28, 172, 0x30056, 1, 3, 0 },//!< "board version", &ro, &def
@@ -154,8 +154,8 @@ regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.i2c_display_address, 0,"address of display","i2c_display_address", U16_REGS_FLAG, 48, 316, 0x3009e, 1, 3, 0 },//!< "address of display" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.sta_ip[0], 142,"ip address of sta","sta_ip", U8_REGS_FLAG, 49, 318, 0x3009f, 4, 7, 0 },//!< "ip address of sta" &ro &save
 { NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.live_time, 0,"live time in seconds","live_time", U32_REGS_FLAG, 50, 322, 0x300a1, 1, 3, 0 },//!< "live time in seconds" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.unix_time, 0,"unix time , not implemented","unix_time", S64_REGS_FLAG, 51, 326, 0x300a3, 1, 1, 0 },//!< "unix time , not implemented" 
-{ NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.seconds_of_the_day, 0,"seconds of the day","seconds_of_the_day", U32_REGS_FLAG, 52, 334, 0x300a7, 1, 1, 0 },//!< "seconds of the day" 
+{ NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.unix_time, 0,"unix time , not implemented","unix_time", S64_REGS_FLAG, 51, 326, 0x300a3, 1, 1, 0 },//!< "unix time , not implemented"
+{ NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.seconds_of_the_day, 0,"seconds of the day","seconds_of_the_day", U32_REGS_FLAG, 52, 334, 0x300a7, 1, 1, 0 },//!< "seconds of the day"
 { NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.flash_write_number, 146,"increments every flash write by an app","flash_write_number", U32_REGS_FLAG, 53, 338, 0x300a9, 1, 7, 0 },//!< "increments every flash write by an app" &ro &save
 { NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.current_state[0], 0,"current state of proccess","current_state", U32_REGS_FLAG, 54, 342, 0x300ab, 4, 3, 0 },//!< "current state of proccess" &ro
 { &def_sleep_time, &def_min_sleep_time, NULL, (u8*)&regs_main.regs_global.vars.sleep_time, 0,"seconds,couple with SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC","sleep_time", U16_REGS_FLAG, 55, 358, 0x300b3, 1, 65, 0 },//!< "seconds,couple with SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC"  &def &min
@@ -190,13 +190,13 @@ regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { NULL, NULL, NULL, (u8*)&regs_main.di_control.vars.pin_state, 0,"current states of digital inputs","pin_state", U32_REGS_FLAG, 84, 464, 0x30bb8, 1, 1, 3 },//!<"current states of digital inputs"
 { NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs.vars.sync_sys_tick_dev, 0,"deviation between master and slave","sync_sys_tick_dev", S32_REGS_FLAG, 85, 468, 0x30fa0, 1, 3, 4 },//!< "deviation between master and slave" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs.vars.sync_sys_tick_slave, 0,"time read from slave","sync_sys_tick_slave", U64_REGS_FLAG, 86, 472, 0x30fa2, 1, 3, 4 },//!< "time read from slave" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs.vars.sync_sys_tick_master, 0,"time read from master","sync_sys_tick_master", U64_REGS_FLAG, 87, 480, 0x30fa6, 1, 3, 4 },//!< "time read from master" &ro 
+{ NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs.vars.sync_sys_tick_master, 0,"time read from master","sync_sys_tick_master", U64_REGS_FLAG, 87, 480, 0x30fa6, 1, 3, 4 },//!< "time read from master" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs.vars.sync_average_time_ms, 0,"average send receive time ","sync_average_time_ms", U16_REGS_FLAG, 88, 488, 0x30faa, 1, 3, 4 },//!< "average send receive time " &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs.vars.sync_last_req_time_ms, 0,"last send receive time ","sync_last_req_time_ms", U16_REGS_FLAG, 89, 490, 0x30fab, 1, 3, 4 },//!< "last send receive time " &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs.vars.sync_active, 0,"activated measurement","sync_active", U16_REGS_FLAG, 90, 492, 0x30fac, 1, 3, 4 },//!< "activated measurement" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sr04_reg.vars.lap_state, 0,"state sr04, bit0 - activated, bit1 - echo signal received","lap_state", U16_REGS_FLAG, 91, 494, 0x31004, 1, 3, 5 },//!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sr04_reg.vars.lap_distance, 0,"current distance","lap_distance", FLOAT_REGS_FLAG, 92, 496, 0x31005, 1, 3, 5 },//!< "current distance" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sr04_reg.vars.lap, 0,"when we have sharp change of a distance, save it ","lap", U64_REGS_FLAG, 93, 500, 0x31007, 1, 3, 5 },//!< "when we have sharp change of a distance, save it " &ro 
+{ NULL, NULL, NULL, (u8*)&regs_main.sr04_reg.vars.lap, 0,"when we have sharp change of a distance, save it ","lap", U64_REGS_FLAG, 93, 500, 0x31007, 1, 3, 5 },//!< "when we have sharp change of a distance, save it " &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sr04_reg.vars.lap_paired_dev, 0,"lap from paired device","lap_paired_dev", U64_REGS_FLAG, 94, 508, 0x3100b, 1, 3, 5 },//!< "lap from paired device" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sr04_reg.vars.distance_filtered, 0,"current distance filterd","distance_filtered", FLOAT_REGS_FLAG, 95, 516, 0x3100f, 1, 3, 5 },//!< "current distance filterd" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.feeder_reg.vars.feeder_counter, 222,"how many time step motor started","feeder_counter", U32_REGS_FLAG, 96, 520, 0x31068, 1, 7, 6 },//!<"how many time step motor started" &save &ro
@@ -206,23 +206,23 @@ regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { NULL, NULL, NULL, (u8*)&regs_main.polisher_reg.vars.polisher_sec, 232,"how many time in seconds it was active","polisher_sec", U32_REGS_FLAG, 100, 532, 0x310cc, 1, 7, 7 },//!<"how many time in seconds it was active" &save &ro
 { NULL, NULL, NULL, (u8*)&regs_main.polisher_reg.vars.polisher_last_sec, 0,"how many time in seconds it was active last session","polisher_last_sec", U32_REGS_FLAG, 101, 536, 0x310ce, 1, 3, 7 },//!<"how many time in seconds it was active last session" &ro
 { &def_polisher_speed, NULL, &def_max_polisher_speed, (u8*)&regs_main.polisher_reg.vars.polisher_speed, 236,"polisher_speed","polisher_speed", U16_REGS_FLAG, 102, 540, 0x310d0, 1, 133, 7 },//!< "polisher_speed" &save &def &max
-{ &def_polisher_direction, NULL, &def_max_polisher_direction, (u8*)&regs_main.polisher_reg.vars.polisher_direction, 238,"polisher_direction","polisher_direction", U16_REGS_FLAG, 103, 542, 0x310d1, 1, 133, 7 },//!< "polisher_direction" &save &def &max 
+{ &def_polisher_direction, NULL, &def_max_polisher_direction, (u8*)&regs_main.polisher_reg.vars.polisher_direction, 238,"polisher_direction","polisher_direction", U16_REGS_FLAG, 103, 542, 0x310d1, 1, 133, 7 },//!< "polisher_direction" &save &def &max
 { NULL, NULL, NULL, (u8*)&regs_main.test_int_reg.vars.test_int_state, 0,"current state","test_int_state", U32_REGS_FLAG, 104, 544, 0x31130, 1, 3, 8 },//!<"current state" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.test_int_reg.vars.test_int_command, 0,"command","test_int_command", U32_REGS_FLAG, 105, 548, 0x31132, 1, 3, 8 },//!<"command" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.test_int_reg.vars.test_int_component, 0,"component to be tested","test_int_component", U32_REGS_FLAG, 106, 552, 0x31134, 1, 1, 8 },//!<"component to be tested" 
-{ NULL, NULL, NULL, (u8*)&regs_main.test_int_reg.vars.test_int_type, 0,"test type - check, stress, performance","test_int_type", U32_REGS_FLAG, 107, 556, 0x31136, 1, 1, 8 },//!<"test type - check, stress, performance" 
+{ NULL, NULL, NULL, (u8*)&regs_main.test_int_reg.vars.test_int_component, 0,"component to be tested","test_int_component", U32_REGS_FLAG, 106, 552, 0x31134, 1, 1, 8 },//!<"component to be tested"
+{ NULL, NULL, NULL, (u8*)&regs_main.test_int_reg.vars.test_int_type, 0,"test type - check, stress, performance","test_int_type", U32_REGS_FLAG, 107, 556, 0x31136, 1, 1, 8 },//!<"test type - check, stress, performance"
 { NULL, NULL, NULL, (u8*)&regs_main.test_int_reg.vars.test_int_result, 0,"overall result","test_int_result", U32_REGS_FLAG, 108, 560, 0x31138, 1, 3, 8 },//!<"overall result" &ro
 { &def_morse_unit_time_ms, &def_min_morse_unit_time_ms, &def_max_morse_unit_time_ms, (u8*)&regs_main.morse_reg.vars.morse_unit_time_ms, 240,"morse time ms","morse_unit_time_ms", U16_REGS_FLAG, 109, 564, 0x31194, 1, 197, 9 },//!<"morse time ms" &save &def &min &max
 { &def_morse_message_len, &def_min_morse_message_len, &def_max_morse_message_len, (u8*)&regs_main.morse_reg.vars.morse_message_len, 242,"max morse message len","morse_message_len", U16_REGS_FLAG, 110, 566, 0x31195, 1, 197, 9 },//!<"max morse message len" &save &def &min &max
 { &def_morse_settings, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_settings, 244,"morse settings bit0 - server","morse_settings", U16_REGS_FLAG, 111, 568, 0x31196, 1, 5, 9 },//!<"morse settings bit0 - server" &save &def
 { NULL, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_message_position, 0,"morse message position","morse_message_position", U16_REGS_FLAG, 112, 570, 0x31197, 1, 3, 9 },//!<"morse message position" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_message[0], 0,"morse message to broadcast","morse_message", U8_REGS_FLAG, 113, 572, 0x31198, 32, 3, 9 },//!<"morse message to broadcast" &ro 
+{ NULL, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_message[0], 0,"morse message to broadcast","morse_message", U8_REGS_FLAG, 113, 572, 0x31198, 32, 3, 9 },//!<"morse message to broadcast" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_send[0], 0,"morse message to broadcast","morse_send", U8_REGS_FLAG, 114, 604, 0x311a8, 32, 3, 9 },//!<"morse message to broadcast" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_line_1[0], 0,"morse messages received ","morse_line_1", U8_REGS_FLAG, 115, 636, 0x311b8, 32, 3, 9 },//!<"morse messages received " &ro 
-{ NULL, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_line_2[0], 0,"morse messages received ","morse_line_2", U8_REGS_FLAG, 116, 668, 0x311c8, 32, 3, 9 },//!<"morse messages received " &ro 
-{ NULL, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_line_3[0], 0,"morse messages received ","morse_line_3", U8_REGS_FLAG, 117, 700, 0x311d8, 32, 3, 9 },//!<"morse messages received " &ro 
-{ NULL, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_line_4[0], 0,"morse messages received ","morse_line_4", U8_REGS_FLAG, 118, 732, 0x311e8, 32, 3, 9 },//!<"morse messages received " &ro 
-{ NULL, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_line_5[0], 0,"morse messages received ","morse_line_5", U8_REGS_FLAG, 119, 764, 0x311f8, 32, 3, 9 },//!<"morse messages received " &ro 
+{ NULL, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_line_1[0], 0,"morse messages received ","morse_line_1", U8_REGS_FLAG, 115, 636, 0x311b8, 32, 3, 9 },//!<"morse messages received " &ro
+{ NULL, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_line_2[0], 0,"morse messages received ","morse_line_2", U8_REGS_FLAG, 116, 668, 0x311c8, 32, 3, 9 },//!<"morse messages received " &ro
+{ NULL, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_line_3[0], 0,"morse messages received ","morse_line_3", U8_REGS_FLAG, 117, 700, 0x311d8, 32, 3, 9 },//!<"morse messages received " &ro
+{ NULL, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_line_4[0], 0,"morse messages received ","morse_line_4", U8_REGS_FLAG, 118, 732, 0x311e8, 32, 3, 9 },//!<"morse messages received " &ro
+{ NULL, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_line_5[0], 0,"morse messages received ","morse_line_5", U8_REGS_FLAG, 119, 764, 0x311f8, 32, 3, 9 },//!<"morse messages received " &ro
 { NULL, NULL, NULL, (u8*)&regs_main.morse_reg.vars.morse_counter, 0,"morse messages sent and received counter","morse_counter", U32_REGS_FLAG, 120, 796, 0x31208, 1, 3, 9 },//!<"morse messages sent and received counter" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.battery_state_reg.vars.battery_level, 0,"0 - 100","battery_level", U16_REGS_FLAG, 121, 800, 0x3125c, 1, 3, 10 },//!<"0 - 100" &ro
 { &def_battery_min_level, &def_min_battery_min_level, &def_max_battery_min_level, (u8*)&regs_main.battery_state_reg.vars.battery_min_level, 246,"min level to start","battery_min_level", U16_REGS_FLAG, 122, 802, 0x3125d, 1, 197, 10 },//!<"min level to start" &save &def &min &max
@@ -237,25 +237,25 @@ regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { NULL, NULL, NULL, (u8*)&regs_main.scd41_reg.vars.scd41_co2_array[0], 256,"CO2 level in ppm","scd41_co2_array", U16_REGS_FLAG, 131, 826, 0x312c8, 48, 7, 11 },//!< "CO2 level in ppm" &ro &save
 };
 regs_description_t const regs_description_user[NUM_OF_CLIENT_VARS]={
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_mdb_addr, 0,"modbus address","cli_mdb_addr", U16_REGS_FLAG, 132, 922, 0x30000, 1, 1, 0xc03 },//!<"modbus address" 
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_ip[0], 0,"device ip address, warning!!! ","cli_ip", U8_REGS_FLAG, 133, 924, 0x30001, 4, 1, 0xc03 },//!<"device ip address, warning!!! " 
+{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_mdb_addr, 0,"modbus address","cli_mdb_addr", U16_REGS_FLAG, 132, 922, 0x30000, 1, 1, 0xc03 },//!<"modbus address"
+{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_ip[0], 0,"device ip address, warning!!! ","cli_ip", U8_REGS_FLAG, 133, 924, 0x30001, 4, 1, 0xc03 },//!<"device ip address, warning!!! "
 { NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_netmask[0], 0,"netmask address for main wifi net","cli_netmask", U8_REGS_FLAG, 134, 928, 0x30003, 4, 1, 0xc03 },//!<"netmask address for main wifi net",
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_gate[0], 0,"gateaway address, warning!!! ","cli_gate", U8_REGS_FLAG, 135, 932, 0x30005, 4, 1, 0xc03 },//!<"gateaway address, warning!!! " 
+{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_gate[0], 0,"gateaway address, warning!!! ","cli_gate", U8_REGS_FLAG, 135, 932, 0x30005, 4, 1, 0xc03 },//!<"gateaway address, warning!!! "
 { NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_slip_ip[0], 0,"ip address for local net","cli_slip_ip", U8_REGS_FLAG, 136, 936, 0x30007, 4, 1, 0xc03 },//!<"ip address for local net",
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_slip_netmask[0], 0,"netmask address for local net","cli_slip_netmask", U8_REGS_FLAG, 137, 940, 0x30009, 4, 1, 0xc03 },//!<"netmask address for local net", 
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_slip_gate[0], 0,"gateaway address for local net","cli_slip_gate", U8_REGS_FLAG, 138, 944, 0x3000b, 4, 1, 0xc03 },//!<"gateaway address for local net", 
+{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_slip_netmask[0], 0,"netmask address for local net","cli_slip_netmask", U8_REGS_FLAG, 137, 940, 0x30009, 4, 1, 0xc03 },//!<"netmask address for local net",
+{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_slip_gate[0], 0,"gateaway address for local net","cli_slip_gate", U8_REGS_FLAG, 138, 944, 0x3000b, 4, 1, 0xc03 },//!<"gateaway address for local net",
 { NULL, NULL, NULL, (u8*)&regs_main.sync_time_client.vars.sys_tick_slave, 0,"time read from slave","sys_tick_slave", U64_REGS_FLAG, 139, 948, 0x3003f, 1, 3, 0xd03 },//!< "time read from slave" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_1.vars.cli_num_of_vars, 0,"cli_num_of_vars","cli_num_of_vars", U16_REGS_FLAG, 140, 956, 0x30050, 1, 3, 0xe03 },//!<"number of vars self + config(user) &ro 
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_1.vars.cli_client_num_of_vars, 0,"number of client vars self","cli_client_num_of_vars", U16_REGS_FLAG, 141, 958, 0x30051, 1, 3, 0xe03 },//!<"number of client vars self" &ro 
+{ NULL, NULL, NULL, (u8*)&regs_main.client_part_1.vars.cli_num_of_vars, 0,"cli_num_of_vars","cli_num_of_vars", U16_REGS_FLAG, 140, 956, 0x30050, 1, 3, 0xe03 },//!<"number of vars self + config(user) &ro
+{ NULL, NULL, NULL, (u8*)&regs_main.client_part_1.vars.cli_client_num_of_vars, 0,"number of client vars self","cli_client_num_of_vars", U16_REGS_FLAG, 141, 958, 0x30051, 1, 3, 0xe03 },//!<"number of client vars self" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs_from_client.vars.cli_sys_tick_dev, 0,"deviation between master and slave","cli_sys_tick_dev", S32_REGS_FLAG, 142, 960, 0x30fa0, 1, 3, 0xf03 },//!< "deviation between master and slave" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs_from_client.vars.cli_sys_tick_slave, 0,"time read from slave","cli_sys_tick_slave", U64_REGS_FLAG, 143, 964, 0x30fa2, 1, 3, 0xf03 },//!< "time read from slave" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs_from_client.vars.cli_sys_tick_master, 0,"time read from master","cli_sys_tick_master", U64_REGS_FLAG, 144, 972, 0x30fa6, 1, 3, 0xf03 },//!< "time read from master" &ro 
+{ NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs_from_client.vars.cli_sys_tick_master, 0,"time read from master","cli_sys_tick_master", U64_REGS_FLAG, 144, 972, 0x30fa6, 1, 3, 0xf03 },//!< "time read from master" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs_from_client.vars.cli_average_time_ms, 0,"average send receive time ","cli_average_time_ms", U16_REGS_FLAG, 145, 980, 0x30faa, 1, 3, 0xf03 },//!< "average send receive time " &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs_from_client.vars.cli_last_req_time_ms, 0,"last send receive time ","cli_last_req_time_ms", U16_REGS_FLAG, 146, 982, 0x30fab, 1, 3, 0xf03 },//!< "last send receive time " &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs_from_client.vars.cli_sync_state, 0,"activated measurement","cli_sync_state", U16_REGS_FLAG, 147, 984, 0x30fac, 1, 3, 0xf03 },//!< "activated measurement" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_state, 0,"state sr04, bit0 - activated, bit1 - echo signal received","cli_state", U16_REGS_FLAG, 148, 986, 0x31004, 1, 3, 0x1003 },//!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_distance, 0,"current distance","cli_distance", FLOAT_REGS_FLAG, 149, 988, 0x31005, 1, 3, 0x1003 },//!< "current distance" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_lap, 0,"when we have sharp change of a distance, save it ","cli_lap", U64_REGS_FLAG, 150, 992, 0x31007, 1, 3, 0x1003 },//!< "when we have sharp change of a distance, save it " &ro 
+{ NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_lap, 0,"when we have sharp change of a distance, save it ","cli_lap", U64_REGS_FLAG, 150, 992, 0x31007, 1, 3, 0x1003 },//!< "when we have sharp change of a distance, save it " &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_lap_paired_dev, 0,"lap from paired device","cli_lap_paired_dev", U64_REGS_FLAG, 151, 1000, 0x3100b, 1, 3, 0x1003 },//!< "lap from paired device" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_distance_filtered, 0,"current distance filterd","cli_distance_filtered", FLOAT_REGS_FLAG, 152, 1008, 0x3100f, 1, 3, 0x1003 },//!< "current distance filterd" &ro
 };
@@ -284,7 +284,7 @@ int regs_description_get_by_name(regs_template_t * regs_template){
                 result = 0;
                 break;
             }
-        }else if(regs_description_user!=NULL){
+        } else {
             if (memcmp(regs_template->name, regs_description_user[i-NUM_OF_SELF_VARS].name, name_size) == 0){
                 memcpy(regs_template,&regs_description_user[i-NUM_OF_SELF_VARS],sizeof(regs_description_t));
                 regs_template->ind = regs_description_user[i-NUM_OF_SELF_VARS].ind+NUM_OF_SELF_VARS;
@@ -292,9 +292,6 @@ int regs_description_get_by_name(regs_template_t * regs_template){
                 result = 0;
                 break;
             }
-        }else{
-            result =-2;
-            break;
         }
     }
     return result;
@@ -310,11 +307,9 @@ int regs_description_get_by_ind(regs_template_t * regs_template){
         if(regs_template->ind<NUM_OF_SELF_VARS){
             memcpy(regs_template,&regs_description[regs_template->ind],sizeof(regs_description_t));
             regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
-        }else if(regs_description_user!=NULL){
+        } else {
             memcpy(regs_template,&regs_description_user[regs_template->ind-NUM_OF_SELF_VARS],sizeof(regs_description_t));
             regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
-        }else{
-            result = -2;
         }
     }else{
         result = -1;
@@ -359,7 +354,7 @@ static const regs_description_t * bin_search_guid(u32 guid, const regs_descripti
             }else {
                 right =current - 1;
             }
-        }    
+        }
     }
     return result;
 }
@@ -446,7 +441,7 @@ u8 regs_description_is_credential(u16 reg_index){
         }else{
             result = 0;
         }
-    }    
+    }
     return result;
 }
 /**
@@ -470,7 +465,7 @@ u8 regs_description_is_saved(u16 reg_index){
         }else{
             result = 0;
         }
-    }    
+    }
     return result;
 }
 /**
@@ -493,7 +488,7 @@ u8 regs_description_flag_check (u16 reg_index, u8 flag){
         }else{
             result = 0;
         }
-    }        
+    }
     return result;
 }
 
@@ -559,7 +554,7 @@ int regs_description_get_index_by_address(const void * address){
             }else {
                 right =current - 1;
             }
-        }        
+        }
     }
     return result;
 }
@@ -649,9 +644,9 @@ u32 regs_description_get_regs_string_value(u16 reg_id,u8 reg_num, char * buffer,
          }
          reg_template.ind++;
       }
-   
+
    }
-   return result;      
+   return result;
 }
 /**
  * @brief regs_description_get_pointer_by_modbus
@@ -669,7 +664,7 @@ void * regs_description_get_pointer_by_modbus(u16 modbus_address, u8 modbus_func
         u8 reg_mdb_function = RD_MDB_FUNCTION(regs_description[current].modbus_description);
         u16 reg_mdb_address = RD_MDB_ADDRESS(regs_description[current].modbus_description);
         u16 reg_size_in_word = (regs_size_in_byte(regs_description[current].type)*regs_description[current].size)/2;
-        if ((modbus_function == reg_mdb_function) && 
+        if ((modbus_function == reg_mdb_function) &&
             ((modbus_address == reg_mdb_address)||((modbus_address > reg_mdb_address) &&
                      (modbus_address < (reg_mdb_address + reg_size_in_word))))){
             if (modbus_address == reg_mdb_address){
@@ -683,7 +678,7 @@ void * regs_description_get_pointer_by_modbus(u16 modbus_address, u8 modbus_func
         }else {
             right =current - 1;
         }
-    }    
+    }
     return p_value;
 }
 

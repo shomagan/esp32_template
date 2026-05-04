@@ -4,13 +4,10 @@
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
  * @defgroup ../main/
  * @ingroup ../main/
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 /*
- * Copyright (c) 2018 Snema Service
- * All rights reserved.
- *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
  *
@@ -43,67 +40,150 @@
 #include "pwm_test.h"
 #include "regs.h"
 #include "regs_description.h"
-#include "driver/mcpwm.h"
 #if CONFIG_IDF_TARGET_ESP32
-#include "soc/mcpwm_periph.h"
+#include "driver/mcpwm_prelude.h"
 #elif CONFIG_IDF_TARGET_ESP32C3
-#include "driver/rmt.h"
-#include "hal/rmt_types.h"
+#include "driver/rmt_tx.h"
+#include "driver/rmt_encoder.h"
+#include "driver/rmt_types.h"
 #endif
 #include "common.h"
 #include "pin_map.h"
 #include "esp_log.h"
 #include "esp_check.h"
+
+#if CONFIG_IDF_TARGET_ESP32
+#define PWM_TEST_MCPWM_RESOLUTION_HZ (10000000u)
+#elif CONFIG_IDF_TARGET_ESP32C3
+#define PWM_TEST_RMT_RESOLUTION_HZ (1000000u)
+#endif
+
 static const char *TAG = "pwm_control";
-static IRAM_ATTR void rmt_tx_loop_intr(rmt_channel_t channel, void *args);
-static void mcpwm_example_gpio_initialize(void);
 task_handle_t pwm_task_handle;
 static int pwm_test_init(void);
-static void mcpwm_example_gpio_initialize(void){
-#if PWM_AIR_ENABLE
-    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0A, GPIO_PWM0A_OUT);
-    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0B, GPIO_PWM0B_OUT);
-#elif PWM_STEP_CONTROL_ENABLE
-    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0A, GPIO_STEP0_OUT);
-    mcpwm_gpio_init(MCPWM_UNIT_0, MCPWM0B, GPIO_STEP1_OUT);
-    mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM1A, GPIO_STEP2_OUT);
-    mcpwm_gpio_init(MCPWM_UNIT_1, MCPWM1B, GPIO_STEP3_OUT);
-#endif
+
+#if CONFIG_IDF_TARGET_ESP32
+typedef struct {
+    mcpwm_timer_handle_t timer;
+    mcpwm_oper_handle_t oper;
+    mcpwm_cmpr_handle_t comparator_a;
+    mcpwm_cmpr_handle_t comparator_b;
+    mcpwm_gen_handle_t generator_a;
+    mcpwm_gen_handle_t generator_b;
+    uint32_t period_ticks;
+} pwm_test_pair_t;
+
+static pwm_test_pair_t pwm_air_pair = {0};
+static pwm_test_pair_t pwm_step_pair0 = {0};
+static pwm_test_pair_t pwm_step_pair1 = {0};
+
+static uint32_t pwm_test_duty_to_ticks(uint32_t period_ticks, float duty_cycle)
+{
+    if (duty_cycle <= 0.0f) {
+        return 0;
+    }
+    if (duty_cycle >= 100.0f) {
+        return period_ticks;
+    }
+    return (uint32_t)((duty_cycle * (float)period_ticks) / 100.0f);
 }
+
+static void pwm_test_set_pair(pwm_test_pair_t *pair, float duty_a, float duty_b)
+{
+    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(pair->comparator_a,
+                                                       pwm_test_duty_to_ticks(pair->period_ticks, duty_a)));
+    ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(pair->comparator_b,
+                                                       pwm_test_duty_to_ticks(pair->period_ticks, duty_b)));
+}
+
+static void pwm_test_init_pair(pwm_test_pair_t *pair,
+                               int group_id,
+                               int gpio_a,
+                               int gpio_b,
+                               uint32_t frequency_hz,
+                               float duty_a,
+                               float duty_b)
+{
+    pair->period_ticks = PWM_TEST_MCPWM_RESOLUTION_HZ / frequency_hz;
+
+    mcpwm_timer_config_t timer_config = {
+        .group_id = group_id,
+        .clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT,
+        .resolution_hz = PWM_TEST_MCPWM_RESOLUTION_HZ,
+        .count_mode = MCPWM_TIMER_COUNT_MODE_UP,
+        .period_ticks = pair->period_ticks,
+    };
+    ESP_ERROR_CHECK(mcpwm_new_timer(&timer_config, &pair->timer));
+
+    mcpwm_operator_config_t operator_config = {
+        .group_id = group_id,
+    };
+    ESP_ERROR_CHECK(mcpwm_new_operator(&operator_config, &pair->oper));
+    ESP_ERROR_CHECK(mcpwm_operator_connect_timer(pair->oper, pair->timer));
+
+    mcpwm_comparator_config_t comparator_config = {};
+    ESP_ERROR_CHECK(mcpwm_new_comparator(pair->oper, &comparator_config, &pair->comparator_a));
+    ESP_ERROR_CHECK(mcpwm_new_comparator(pair->oper, &comparator_config, &pair->comparator_b));
+
+    mcpwm_generator_config_t generator_a_config = {
+        .gen_gpio_num = gpio_a,
+    };
+    mcpwm_generator_config_t generator_b_config = {
+        .gen_gpio_num = gpio_b,
+    };
+    ESP_ERROR_CHECK(mcpwm_new_generator(pair->oper, &generator_a_config, &pair->generator_a));
+    ESP_ERROR_CHECK(mcpwm_new_generator(pair->oper, &generator_b_config, &pair->generator_b));
+
+    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(
+        pair->generator_a,
+        MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
+    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(
+        pair->generator_a,
+        MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, pair->comparator_a, MCPWM_GEN_ACTION_LOW)));
+    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_timer_event(
+        pair->generator_b,
+        MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH)));
+    ESP_ERROR_CHECK(mcpwm_generator_set_action_on_compare_event(
+        pair->generator_b,
+        MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, pair->comparator_b, MCPWM_GEN_ACTION_LOW)));
+
+    pwm_test_set_pair(pair, duty_a, duty_b);
+    ESP_ERROR_CHECK(mcpwm_timer_enable(pair->timer));
+    ESP_ERROR_CHECK(mcpwm_timer_start_stop(pair->timer, MCPWM_TIMER_START_NO_STOP));
+}
+#endif
+
 void pwm_test_set(float duty_cycle){
 #if (PWM_AIR_ENABLE && CONFIG_IDF_TARGET_ESP32)
-    mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, duty_cycle);
-    mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
-    mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, duty_cycle);
-    mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
+    pwm_test_set_pair(&pwm_air_pair, duty_cycle, duty_cycle);
 #endif //PWM_AIR_ENABLE && CONFIG_IDF_TARGET_ESP32
 }
 
 static int pwm_test_init(void){
-    mcpwm_example_gpio_initialize();
 #if (PWM_AIR_ENABLE && CONFIG_IDF_TARGET_ESP32)
-    mcpwm_config_t pwm_config = {0};
-    pwm_config.frequency = 22000;    //frequency =22000Hz,
-    pwm_config.cmpr_a = regs_global_part1->vars.test_pwm_value;    //duty cycle of PWMxA = 0
-    pwm_config.cmpr_b = regs_global_part1->vars.test_pwm_value;    //duty cycle of PWMxb = 0
-    pwm_config.counter_mode = MCPWM_UP_COUNTER;
-    pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
-    mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config);    //Configure PWM0A & PWM0B with above settings
+    pwm_test_init_pair(&pwm_air_pair,
+                       0,
+                       GPIO_PWM0A_OUT,
+                       GPIO_PWM0B_OUT,
+                       22000u,
+                       regs_global_part1->vars.test_pwm_value,
+                       regs_global_part1->vars.test_pwm_value);
     pwm_test_set(regs_global_part1->vars.test_pwm_value);
 #elif (PWM_STEP_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32)
-    mcpwm_config_t pwm_config = {0};
-    pwm_config.frequency = 50;    //frequency = 50Hz,
-    pwm_config.cmpr_a = servo_control_part->vars.servo_0;    //duty cycle of PWMxA = 0
-    pwm_config.cmpr_b = servo_control_part->vars.servo_1;    //duty cycle of PWMxb = 0
-    pwm_config.counter_mode = MCPWM_UP_COUNTER;
-    pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
-    mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config);    //Configure PWM0A & PWM0B with above settings
-    pwm_config.frequency = 50;    //frequency = 50Hz,
-    pwm_config.cmpr_a = servo_control_part->vars.servo_2;    //duty cycle of PWMxA = 0
-    pwm_config.cmpr_b = servo_control_part->vars.servo_3;    //duty cycle of PWMxb = 0
-    pwm_config.counter_mode = MCPWM_UP_COUNTER;
-    pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
-    mcpwm_init(MCPWM_UNIT_1, MCPWM_TIMER_1, &pwm_config);    //Configure PWM0A & PWM0B with above settings
+    pwm_test_init_pair(&pwm_step_pair0,
+                       0,
+                       GPIO_STEP0_OUT,
+                       GPIO_STEP1_OUT,
+                       50u,
+                       servo_control_part->vars.servo_0,
+                       servo_control_part->vars.servo_1);
+    pwm_test_init_pair(&pwm_step_pair1,
+                       1,
+                       GPIO_STEP2_OUT,
+                       GPIO_STEP3_OUT,
+                       50u,
+                       servo_control_part->vars.servo_2,
+                       servo_control_part->vars.servo_3);
 #endif
 
     return 0;
@@ -111,7 +191,7 @@ static int pwm_test_init(void){
 void pwm_control_task(void *arg){
     (void)arg;
     uint32_t counter = 0u;
-#if PWM_STEP_CONTROL_ENABLE 
+#if PWM_STEP_CONTROL_ENABLE
 #if CONFIG_IDF_TARGET_ESP32
     float servo0 = 0.0f;
     float servo1 = 0.0f;
@@ -120,21 +200,32 @@ void pwm_control_task(void *arg){
 #endif
 #endif
 #if (PWM_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32C3)
-   rmt_item32_t rmt_items_loop;
-   rmt_config_t dev_config = RMT_DEFAULT_CONFIG_TX(GPIO_OUTPUT_STEP_MOTOR_STEP0, RMT_CHANNEL_0);
-   dev_config.tx_config.carrier_freq_hz = 28000;
-   dev_config.tx_config.carrier_duty_percent = 0;
-   dev_config.tx_config.carrier_en = false;
-   dev_config.tx_config.carrier_level = RMT_CARRIER_LEVEL_HIGH;
-   dev_config.tx_config.loop_en = true;
-   ESP_RETURN_ON_ERROR(rmt_config(&dev_config), TAG, "Failed to configure RMT");
-   ESP_RETURN_ON_ERROR(rmt_driver_install(dev_config.channel, 0, 0), TAG, "Failed to install RMT driver");
-   // register tx end callback function, which got invoked when tx loop comes to the end
-   rmt_register_tx_end_callback(rmt_tx_loop_intr, &dev_config);
+    rmt_symbol_word_t rmt_items_loop = {0};
+    rmt_channel_handle_t tx_chan = NULL;
+    rmt_encoder_handle_t copy_encoder = NULL;
+    rmt_tx_channel_config_t tx_chan_cfg = {
+        .gpio_num = GPIO_OUTPUT_STEP_MOTOR_STEP0,
+        .clk_src = RMT_CLK_SRC_DEFAULT,
+        .resolution_hz = PWM_TEST_RMT_RESOLUTION_HZ,
+        .mem_block_symbols = 64,
+        .trans_queue_depth = 2,
+        .flags.invert_out = false,
+        .flags.with_dma = false,
+    };
+    ESP_RETURN_VOID_ON_ERROR(rmt_new_tx_channel(&tx_chan_cfg, &tx_chan), TAG, "Failed to create RMT TX channel");
+    rmt_copy_encoder_config_t encoder_cfg = {};
+    ESP_RETURN_VOID_ON_ERROR(rmt_new_copy_encoder(&encoder_cfg, &copy_encoder), TAG, "Failed to create RMT encoder");
+    ESP_RETURN_VOID_ON_ERROR(rmt_enable(tx_chan), TAG, "Failed to enable RMT channel");
    uint16_t pwm_value_last = 0;
-#endif 
+#endif
     uint32_t signal_value;
     pwm_test_init();
+#if (PWM_STEP_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32)
+    servo0 = servo_control_part->vars.servo_0;
+    servo1 = servo_control_part->vars.servo_1;
+    servo2 = servo_control_part->vars.servo_2;
+    servo3 = servo_control_part->vars.servo_3;
+#endif
     while(1){
         if(task_notify_wait(STOP_CHILD_PROCCES|PACKET_RECEIVED, &signal_value, 100)==pdTRUE){
             /*by signal*/
@@ -143,25 +234,19 @@ void pwm_control_task(void *arg){
             }
         }
 #if (PWM_STEP_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32)
-        if (!compare_float_value(servo0, servo_control_part->vars.servo_0, 0.01f)){
-            servo0=servo_control_part->vars.servo_0;
-            mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, servo0);
-            mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
+        float next_servo0 = servo_control_part->vars.servo_0;
+        float next_servo1 = servo_control_part->vars.servo_1;
+        float next_servo2 = servo_control_part->vars.servo_2;
+        float next_servo3 = servo_control_part->vars.servo_3;
+        if (!compare_float_value(servo0, next_servo0, 0.01f) || !compare_float_value(servo1, next_servo1, 0.01f)){
+            servo0 = next_servo0;
+            servo1 = next_servo1;
+            pwm_test_set_pair(&pwm_step_pair0, servo0, servo1);
         }
-        if (!compare_float_value(servo1, servo_control_part->vars.servo_1, 0.01f)){
-            servo1=servo_control_part->vars.servo_1;
-            mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, servo1);
-            mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
-        }
-        if (!compare_float_value(servo2, servo_control_part->vars.servo_2, 0.01f)){
-            servo2=servo_control_part->vars.servo_2;
-            mcpwm_set_duty(MCPWM_UNIT_1, MCPWM_TIMER_1, MCPWM_OPR_A, servo2);
-            mcpwm_set_duty_type(MCPWM_UNIT_1, MCPWM_TIMER_1, MCPWM_OPR_A, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
-        }
-        if (!compare_float_value(servo3, servo_control_part->vars.servo_3, 0.01f)){
-            servo3=servo_control_part->vars.servo_3;
-            mcpwm_set_duty(MCPWM_UNIT_1, MCPWM_TIMER_1, MCPWM_OPR_B, servo3);
-            mcpwm_set_duty_type(MCPWM_UNIT_1, MCPWM_TIMER_1, MCPWM_OPR_B, MCPWM_DUTY_MODE_0); //call this each time, if operator was previously in low/high state
+        if (!compare_float_value(servo2, next_servo2, 0.01f) || !compare_float_value(servo3, next_servo3, 0.01f)){
+            servo2 = next_servo2;
+            servo3 = next_servo3;
+            pwm_test_set_pair(&pwm_step_pair1, servo2, servo3);
         }
 #endif
 #if (PWM_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32C3)
@@ -171,26 +256,21 @@ void pwm_control_task(void *arg){
          }
          if (pwm_value != pwm_value_last) {
             pwm_value_last = pwm_value;
-            rmt_tx_stop(dev_config.channel);
+                ESP_ERROR_CHECK(rmt_disable(tx_chan));
+                ESP_ERROR_CHECK(rmt_enable(tx_chan));
             if (pwm_value > 1) {
-               rmt_set_tx_loop_count(dev_config.channel, 0);
-               rmt_enable_tx_loop_autostop(dev_config.channel, false);
-               rmt_set_tx_loop_mode(dev_config.channel, true);
                rmt_items_loop.duration1 = pwm_value;
                rmt_items_loop.level1 = 1;
                rmt_items_loop.level0 = 0;
                rmt_items_loop.duration0 = 100 - pwm_value;
-               ESP_ERROR_CHECK(rmt_write_items(dev_config.channel, &rmt_items_loop, 1, false));
-            } 
+                    rmt_transmit_config_t tx_cfg = {
+                        .loop_count = -1,
+                    };
+                    ESP_ERROR_CHECK(rmt_transmit(tx_chan, copy_encoder, &rmt_items_loop, sizeof(rmt_items_loop), &tx_cfg));
+            }
          }
-#endif         
+#endif
          counter++;
     }
-}
-
-static IRAM_ATTR void rmt_tx_loop_intr(rmt_channel_t channel, void *args)
-{
-   rmt_config_t *dev_config = (rmt_config_t *)args;
-
 }
 #endif //PWM_TEST_C

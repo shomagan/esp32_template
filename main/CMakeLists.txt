@@ -35,12 +35,12 @@ idf_component_register(
     SRCS "battery_state.c"
     SRCS "scd41.c"
     SRCS "telegram.c"
-    SRCS "epaper.c"
+    #SRCS "epaper.c"
     INCLUDE_DIRS "."
     INCLUDE_DIRS "radar/."
     INCLUDE_DIRS "http/."
     INCLUDE_DIRS "udp_broadcast/."
     INCLUDE_DIRS "modbus_tcp_client/."
     EMBED_TXTFILES ${project_dir}/certs/telegram.pem
-    REQUIRES esp_netif nvs_flash u8g2 bt esp-tls
+    REQUIRES esp_netif nvs_flash u8g2 bt esp-tls esp_driver_gptimer esp_driver_uart esp_driver_gpio esp_driver_spi esp_driver_rmt driver esp_driver_mcpwm esp_wifi efuse esp_event esp_adc esp_system esp_pm lwip
 )

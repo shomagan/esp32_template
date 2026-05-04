@@ -95,6 +95,8 @@ menu "Example Configuration"
         default 5000
         help
             Maximum time for reception
-
+    config FREERTOS_ENABLE_BACKWARD_COMPATIBILITY
+        bool "FREERTOS_ENABLE_BACKWARD_COMPATIBILITY"
+        default y
 
 endmenu

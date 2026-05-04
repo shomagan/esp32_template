@@ -1,11 +1,11 @@
 /**
  * @file di_handler.c
  * @author Shoma Gane <shomagan@gmail.com>
- *         
+ *
  * @defgroup main/
  * @ingroup main/
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 #ifndef DI_HANDLER_C
 #define DI_HANDLER_C 1
@@ -84,7 +84,7 @@ int di_handle_deinit(){
 }
 
 void di_handle_task(void *arg){
-    (void)(*arg);
+    (void)arg;
     uint32_t signal_value;
     di_handle_init();
     u32 pin_states = 0;
@@ -112,7 +112,7 @@ void di_handle_task(void *arg){
                 (gpio_get_level(DI_HANDLER_PIN5_INPUT_RESERV)<<10u);
         pin_states = (~pin_states) & 0xFFF;
         semaphore_take(regs_access_mutex, portMAX_DELAY);{
-#if PIN_STATE_DEBUG            
+#if PIN_STATE_DEBUG
         static u32 pin_states_debug = 0xfffu;
         if (task_counter % 100 == 0u){
             if(pin_states_debug==0u){
@@ -120,12 +120,12 @@ void di_handle_task(void *arg){
             }else{
                 pin_states_debug = pin_states_debug>>1;
             }
-            
-        }                
+
+        }
         di_control->vars.pin_state = pin_states_debug;
 #else
         di_control->vars.pin_state = pin_states;
-#endif        
+#endif
         }semaphore_release(regs_access_mutex);
         task_counter++;
     }

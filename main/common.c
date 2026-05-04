@@ -4,8 +4,8 @@
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
  * @defgroup ../main/
  * @ingroup ../main/
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 /*
  *
@@ -62,7 +62,6 @@
 #include "modbus_tcp_client.h"
 #include "wifi_slip_main.h"
 #include "modbus_tcp_client.h"
-#include "driver/timer.h"
 #include "driver/rtc_io.h"
 #include "time.h"
 #if UDP_BROADCAST_ENABLE
@@ -74,23 +73,23 @@
 #define DUTY_TASK_PERIOD_MS 100u
 #define TEMP_BUFFER_SIZE 64u
 #define TIMER_INTERVAL_SECONDS    1u
-/*80.000.000 hz/800 = 100000 */
-#define TIMER_DIVIDER         800u  //  Hardware timer clock divider
-#define TIMER_SCALE           (TIMER_BASE_CLK / (TIMER_DIVIDER*200))  // convert counter value to seconds
+/* 100kHz resolution; alarm every 500 ticks = 5ms (same rate as before) */
+#define TIMER_RESOLUTION_HZ   100000u  // 100kHz timer resolution
+#define TIMER_SCALE           500u      // alarm every 500 ticks (5ms)
 #define BOX_SHIFT 40u
 
 task_handle_t common_duty_task_handle;
-task_handle_t modbus_master_id;
 static task_handle_t common_timer_task_handle = NULL;
 static const char *TAG = "common";
 extern modbus_tcp_client_slave_connections_t modbus_tcp_client_slave_connections[];
 static u16 led_os_blink_on_time = 0;
 static int timer_init_state = 0;
+gptimer_handle_t s_gptimer = NULL;/*global timer used in several files*/
 
-static int example_tg_timer_init(int group, int timer, bool auto_reload);
-static bool timer_group_isr_callback(void *args);
+static int common_timer_init(bool auto_reload);
+static bool timer_group_isr_callback(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx);
 static void common_timer_task(void *pvParameters );
-static void example_tg_timer_deinit(int group, int timer);
+static void common_timer_deinit(void);
 static int common_duty_init(void);
 static void display_update(u32 task_tick, u8 udp_bradcast_msg_received);
 static void udp_broabcast_update(u32 task_tick);
@@ -136,7 +135,7 @@ void common_duty_task(void *pvParameters ){
             gpio_set_level(CONFIG_LED_BLINK_GPIO, 0u);
         }
         if(((task_tick)%(1000u/DUTY_TASK_PERIOD_MS))==0u){
-            // rtc time update start 
+            // rtc time update start
             semaphore_take(regs_access_mutex, portMAX_DELAY);{
                 regs_global->vars.live_time++;
             }semaphore_release(regs_access_mutex);
@@ -175,7 +174,7 @@ void common_duty_task(void *pvParameters ){
         }
         task_tick++;
     }
-} 
+}
 /**
  * @brief common_init
  * + creates task for timer
@@ -189,7 +188,7 @@ static int common_duty_init(void){
         res = -1;
     }else{
         /*init timers*/
-        timer_init_state = example_tg_timer_init(TIMER_GROUP_0, TIMER_0, false);
+        timer_init_state = common_timer_init(true);
         if (timer_init_state <=0){
             res = -1;
         }else{
@@ -206,7 +205,7 @@ static int common_duty_init(void){
 int common_deinit(){
     /*deinit timers*/
     if (timer_init_state >0){
-        example_tg_timer_deinit(TIMER_GROUP_0, TIMER_0);
+        common_timer_deinit();
     }
     if (common_timer_task_handle!=NULL){
         task_delete(common_timer_task_handle);
@@ -216,13 +215,13 @@ int common_deinit(){
 static void udp_broabcast_update(u32 task_tick){
 #if UDP_BROADCAST_ENABLE && UDP_ADVERTISMENT_PERIOD
     if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==0u)
-#if  UDP_BROADCAST_UDP_REQUEST_ENABLE 
-    {   
+#if  UDP_BROADCAST_UDP_REQUEST_ENABLE
+    {
         udp_broadcast_advertisement(UDP_BROADCAST_OPTION_UDP_REQUEST);
     }
 #endif
     if(((task_tick)%(UDP_ADVERTISMENT_PERIOD/DUTY_TASK_PERIOD_MS))==1u){
-#if UDP_BROADCAST_INFORMATION_ENABLE 
+#if UDP_BROADCAST_INFORMATION_ENABLE
         udp_broadcast_advertisement(UDP_BROADCAST_OPTION_INFORMATION);
 #endif
     }
@@ -241,7 +240,7 @@ static void display_update(u32 task_tick, u8 udp_bradcast_msg_received){
 #endif
 }
 static void display_time_diff(void){
-    char temp_buff[TEMP_BUFFER_SIZE] = {0u}; 
+    char temp_buff[TEMP_BUFFER_SIZE] = {0u};
     u8 position = BOX_SHIFT;
     u8 const box_side = 10;
     s32 time_div_slave = 0;
@@ -249,7 +248,7 @@ static void display_time_diff(void){
     semaphore_take(regs_access_mutex, portMAX_DELAY);{
         time_div_slave = sync_time_regs_from_client->vars.cli_sys_tick_dev;
         time_div_own = sync_time_regs->vars.sync_sys_tick_dev;
-    }semaphore_release(regs_access_mutex);    
+    }semaphore_release(regs_access_mutex);
     if ((time_div_slave != 0) && (time_div_own != 0) ){
         if ((time_div_slave + time_div_own) < 10){
             u8g2_DrawBox(&u8g2, BOX_SHIFT, 0, box_side, box_side/2);
@@ -336,7 +335,7 @@ static void display_statistic(void){
 }
 #if MORSE
 static void display_morse(u8 udp_bradcast_msg_received){
-    static u8 counter = 0; 
+    static u8 counter = 0;
     static u8 connection_state = 0;
     if(udp_bradcast_msg_received){
         connection_state += 1;
@@ -472,54 +471,47 @@ u8 compare_float_value(float a,float b, float diff){
  * @param auto_reload whether auto-reload on alarm event
  * @param timer_interval_sec interval of alarm
  */
-static int example_tg_timer_init(int group, int timer, bool auto_reload){
-    /* Select and initialize basic parameters of the timer */
-    int result = 0;
-    static timer_config_t config = {
-        .divider = TIMER_DIVIDER,
-        .counter_dir = TIMER_COUNT_UP,
-        .counter_en = TIMER_PAUSE,
-        .alarm_en = TIMER_ALARM_EN,
-        .auto_reload = 0,
-    }; // default clock source is APB
-    config.auto_reload = auto_reload;
-    timer_init(group, timer, &config);
-    /* Timer's counter will initially start from value below.
-v       Also, if auto_reload is set, this value will be automatically reload on alarm */
-    timer_set_counter_value(group, timer, 0);
-    /* Configure the alarm value and the interrupt on alarm. */
-    timer_set_alarm_value(group, timer, (u32)(TIMER_SCALE));
-    timer_enable_intr(group, timer);
-    timer_isr_callback_add(group, timer, timer_group_isr_callback, &config, 0);
-    if ( ESP_OK == timer_start(group, timer)){
-        result = 1;
-    }else{
-        result = -1;
-    }
-    return result;
+static int common_timer_init(bool auto_reload){
+    gptimer_config_t config = {
+        .clk_src = GPTIMER_CLK_SRC_DEFAULT,
+        .direction = GPTIMER_COUNT_UP,
+        .resolution_hz = TIMER_RESOLUTION_HZ,
+    };
+    gptimer_alarm_config_t alarm_config = {
+        .alarm_count = TIMER_SCALE,
+        .reload_count = 0,
+        .flags.auto_reload_on_alarm = (uint32_t)auto_reload,
+    };
+    gptimer_event_callbacks_t cbs = {
+        .on_alarm = timer_group_isr_callback,
+    };
+    if (gptimer_new_timer(&config, &s_gptimer) != ESP_OK) return -1;
+    if (gptimer_set_alarm_action(s_gptimer, &alarm_config) != ESP_OK) { gptimer_del_timer(s_gptimer); s_gptimer = NULL; return -1; }
+    if (gptimer_register_event_callbacks(s_gptimer, &cbs, NULL) != ESP_OK) { gptimer_del_timer(s_gptimer); s_gptimer = NULL; return -1; }
+    if (gptimer_enable(s_gptimer) != ESP_OK) { gptimer_del_timer(s_gptimer); s_gptimer = NULL; return -1; }
+    if (gptimer_start(s_gptimer) != ESP_OK) { gptimer_disable(s_gptimer); gptimer_del_timer(s_gptimer); s_gptimer = NULL; return -1; }
+    return 1;
 }
 /**
  * @brief DeInitialize selected timer of timer group
  *      stop and deinit
- * @param group Timer Group number, index from 0
- * @param timer timer ID, index from 0
  */
-static void example_tg_timer_deinit(int group, int timer){
-    timer_pause(group, timer);
-    timer_deinit(group,timer);
+static void common_timer_deinit(void){
+    if (s_gptimer) {
+        gptimer_stop(s_gptimer);
+        gptimer_disable(s_gptimer);
+        gptimer_del_timer(s_gptimer);
+        s_gptimer = NULL;
+    }
 }
 
-static bool IRAM_ATTR timer_group_isr_callback(void *args){
-    timer_config_t *info = (timer_config_t *) args;
-    /* Prepare basic event data that will be then sent back to task */
-    uint64_t timer_counter_value = timer_group_get_counter_value_in_isr(TIMER_GROUP_0, TIMER_0);
-    if (!info->auto_reload) {
-        timer_group_set_alarm_value_in_isr(TIMER_GROUP_0, TIMER_0, timer_counter_value + (u32)(TIMER_SCALE));
-    }
+static bool IRAM_ATTR timer_group_isr_callback(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx){
+    (void)timer; (void)user_ctx;
+    /* edata->count_value holds the counter value at alarm time */
     if (common_timer_task_handle!=NULL){
-        ui32 prev_signal=0;
+        u32 prev_signal=0;
         int  higher_priority_task_woken;
-        task_notify_send_isr_overwrite(common_timer_task_handle,0,(u32)timer_counter_value,&prev_signal,&higher_priority_task_woken);
+        task_notify_send_isr_overwrite(common_timer_task_handle,0,(u32)edata->count_value,&prev_signal,&higher_priority_task_woken);
     }
     return pdTRUE; // return whether we need to yield at the end of ISR
 }
@@ -539,8 +531,8 @@ void common_timer_task(void *pvParameters ){
         signal_value = 0;
         task_notify_wait(0, &signal_value, WAIT_MAX_DELAY);
         semaphore_take(regs_access_mutex, portMAX_DELAY);{
-            u64_t sys_tick_counter;
-            timer_get_counter_value(TIMER_GROUP_0, TIMER_0, &sys_tick_counter);
+            u64 sys_tick_counter = 0;
+            gptimer_get_raw_count(s_gptimer, &sys_tick_counter);
             sys_tick_counter /=100;
             memcpy(&regs_global->vars.sys_tick_counter,&sys_tick_counter,sizeof(sys_tick_counter));
         }semaphore_release(regs_access_mutex);

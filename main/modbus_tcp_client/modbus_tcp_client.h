@@ -1,15 +1,15 @@
 /**
  * @file modbus_tcp_client.h
  * @author Shoma Gane <shomagan@gmail.com>
- *         
+ *
  * @defgroup inc
  * @ingroup inc
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 #ifndef MODBUS_TCP_CLIENT_H
 #define MODBUS_TCP_CLIENT_H 1
- 
+
 /*add includes below */
 #include "type_def.h"
 #include "os_type.h"
@@ -17,7 +17,7 @@
 #include "regs_description.h"
 
 /*add includes before */
-#ifdef __cplusplus 
+#ifdef __cplusplus
    extern "C" {
 #endif
 /*add functions and variable declarations below */
@@ -158,12 +158,12 @@ typedef struct{
 } area_node_t;
 
 #define MAX_NUMBER_OF_SLAVES 256
-typedef struct MCU_PACK{
+typedef struct {
     in_addr_t ip;
     u8 modbus_id;
 }slave_table_item_t;
 
-typedef struct MCU_PACK{
+typedef struct {
     task_handle_t task_id;
     const regs_description_t * first_regs_description;
     u32 size_in_words;
