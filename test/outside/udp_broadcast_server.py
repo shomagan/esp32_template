@@ -10,7 +10,7 @@ import msvcrt
 
 def udp_list(sock):
     print("start listening")
-    packet_number = 0    
+    packet_number = 0
     while 1:
         data, address = sock.recvfrom(1024)
         packet_number += 1
@@ -29,6 +29,7 @@ def main():
     # Enable broadcasting mode
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     sock.bind(("", udp_port_self))
+    print(f"UDP server ip - {socket.gethostbyname(socket.gethostname())}")
     thread.start_new_thread(udp_list, (sock,))
     message = b"UDP_REQUEST"
     while 1:

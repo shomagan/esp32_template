@@ -106,4 +106,18 @@
    },
 
 
+   "terminal.integrated.profiles.windows": {
+   "ESP-IDF PowerShell": {
+   "path": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+   "args": [
+   "-NoExit",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-NoProfile",
+   "-Command",
+   "& {. 'C:\\Espressif\\tools\\Microsoft.v6.0.PowerShell_profile.ps1'}"
+   ]
+   }
+   },
+   "terminal.integrated.defaultProfile.windows": "ESP-IDF PowerShell"
 }

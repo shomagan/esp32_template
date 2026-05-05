@@ -12,7 +12,7 @@
 
 #include "polisher.h"
 #include "pin_map.h"
-#include "hal/gpio_hal.h"
+#include "driver/gpio.h"
 #include "esp_log.h"
 #include "esp_check.h"
 #include "soc/rtc.h"
@@ -246,7 +246,7 @@ static esp_err_t step_motor_create_rmt(rmt_step_motor_t * rmt_step_motor)
    {
       return ESP_ERR_INVALID_ARG;
    }
-
+   rmt_step_motor->tx_chan = NULL;
    rmt_tx_channel_config_t tx_chan_cfg = {
       .gpio_num = GPIO_OUTPUT_STEP_MOTOR_STEP0,
       .clk_src = RMT_CLK_SRC_DEFAULT,
