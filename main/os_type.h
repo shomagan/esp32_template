@@ -64,8 +64,10 @@
 #define semaphore_handle_t SemaphoreHandle_t
 #define semaphore_create_binary vSemaphoreCreateBinary
 #define semaphore_delete     vSemaphoreDelete
-#define semaphore_take(mutex,time_ms) xSemaphoreTake(mutex,time_ms)
-#define semaphore_release(x) xSemaphoreGive(x)
+#define semaphore_take(mutex,time_ms) \
+   mutex != NULL ? xSemaphoreTake(mutex,time_ms) : pdFALSE
+#define semaphore_release(x) \
+   x != NULL ? xSemaphoreGive(x) : pdFALSE
 #define semaphore_release_ISR(sem,res) xSemaphoreGiveFromISR(sem,res)
 
 #define queue_handle_t   xQueueHandle

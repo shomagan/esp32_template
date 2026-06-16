@@ -1,11 +1,11 @@
 /**
  * @file modbus_tcp_client.c
  * @author Shoma Gane <shomagan@gmail.com>
- *         
+ *
  * @defgroup src
  * @ingroup src
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 #ifndef MODBUS_TCP_CLIENT_C
 #define MODBUS_TCP_CLIENT_C 1
@@ -106,7 +106,7 @@ static int modbus_master_init(void){
                     last_item_size = (regs_description_client[i-1].size*regs_size_in_byte(regs_description_client[i-1].type))/2;
                     //goes after an increment
                     modbus_first = RD_MDB_ADDRESS(modbus_tcp_client_slave_connections[number_separate_client_spaces].first_regs_description->modbus_description);
-                    if ((modbus_first >= 0) && (modbus_last >= 0) &&  
+                    if ((modbus_first >= 0) && (modbus_last >= 0) &&
                         (modbus_first <= modbus_last) && (modbus_last< 65535) && ((last_item_size+(modbus_last - modbus_first)) <= 65535) ){
                         modbus_tcp_client_slave_connections[number_separate_client_spaces].size_in_words = (modbus_last - modbus_first) + last_item_size;
                         name[11] = '0';
@@ -122,13 +122,13 @@ static int modbus_master_init(void){
                         main_error_message(TAG,"Failed %s:%d\n %u %u %u %lu",__FILE__,__LINE__,modbus_first,modbus_last,last_item_size,modbus_tcp_client_slave_connections[number_separate_client_spaces-1].size_in_words);
                     }
                     number_separate_client_spaces++;
-                } 
+                }
                 if(i==(NUM_OF_CLIENT_VARS-1)){
                     modbus_last = RD_MDB_ADDRESS(regs_description_client[i].modbus_description);
                     last_item_size = (regs_description_client[i].size*regs_size_in_byte(regs_description_client[i].type))/2;
                     //goes after an increment
                     modbus_first = RD_MDB_ADDRESS(modbus_tcp_client_slave_connections[number_separate_client_spaces].first_regs_description->modbus_description);
-                    if ((modbus_first >= 0) && (modbus_last >= 0) &&  
+                    if ((modbus_first >= 0) && (modbus_last >= 0) &&
                         (modbus_first <= modbus_last) && (modbus_last< 65535) && ((last_item_size+(modbus_last - modbus_first)) <= 65535) ){
                         modbus_tcp_client_slave_connections[number_separate_client_spaces].size_in_words = (modbus_last - modbus_first) + last_item_size;
                         name[11] = '0';
@@ -276,7 +276,7 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                 client_requests.resp_timeout = 2000;
                 client_requests.plcv_buffer = NULL;
                 client_requests.count = slave_connection->size_in_words;
-#if TIME_SYNC_MEASUREMENT_ENABLE                
+#if TIME_SYNC_MEASUREMENT_ENABLE
                 if (time_sync_active == MDB_CLIENT_GROUP_SYS_TICK_COUNTER){
                     regs_copy_safe(&start_transsmition_time,&regs_global->vars.sys_tick_counter,sizeof(start_transsmition_time));
                 }
@@ -286,7 +286,7 @@ FNCT_NO_RETURN void modbus_tcp_client_connection_task( void  * argument ){
                     errors_in_the_row++;
                     slave_connection->failed_requests++;
                 }else{
-#if TIME_SYNC_MEASUREMENT_ENABLE                            
+#if TIME_SYNC_MEASUREMENT_ENABLE
                     if (time_sync_active == MDB_CLIENT_GROUP_SYS_TICK_COUNTER){
                         regs_copy_safe(&end_transsmition_time,&regs_global->vars.sys_tick_counter,sizeof(end_transsmition_time));
                         if ((end_transsmition_time - start_transsmition_time) < MAX_TRANSMISSION_TIME){

@@ -49,10 +49,37 @@
 #ifdef __cplusplus
    extern "C" {
 #endif
+
+/*add functions and variable declarations below */
+
 #define PWM_STEP_CONTROL_ENABLE 0
 #define PWM_AIR_ENABLE 0
 
-/*add functions and variable declarations below */
+/**
+ * @brief main struct
+ * name variables uses for generate name in description file and then in get value by name
+ * and therefore use max size len name is 16 charackter \n
+ * coment style :   "" - description, \n
+ *                  &ro  - read only, \n
+ *                  &def -> have const varibale with struct like def_name, \n
+ *                  &save- will have saved in bkram, \n
+ *                  &crtcl- restart after change value, \n
+ *
+ * @ingroup regs
+ */
+/** #generator_use_description {"space_name" :"servo_control_part_t",  "address_space" :2, "modbus_type" :"server", "modbus_function" :"holding_registers", "register_start_address" :2000}*/
+typedef union{
+    struct MCU_PACK{
+        // start regs struct
+        float servo_0;                   //!<"servo pwm value [0;100]" &def &min &max
+        float servo_1;                   //!<"servo pwm value [0;100]" &def &min &max
+        float servo_2;                   //!<"servo pwm value [0;100]" &def &min &max
+        float servo_3;                   //!<"servo pwm value [0;100]" &def &min &max
+    }vars;
+    u8 bytes[32]; //for full bksram copy
+}servo_control_part_t;// #generator_use_description {"message":"end_struct"}
+extern servo_control_part_t * const servo_control_part;
+
 extern task_handle_t pwm_task_handle;
 void pwm_test_set(float duty_cycle);
 

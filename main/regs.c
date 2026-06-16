@@ -9,7 +9,7 @@
 #define REGS_C 1
 /**
   * @defgroup regs
-  * @brief Work with main vars regs
+  * @brief Work with vars regs goal is to have an access to internal registers for outcome interface such as modbus, http, mqtt etc.
   */
 #include "regs.h"
 #include "regs_description.h"
@@ -30,11 +30,11 @@
 static const char *TAG = "regs_c";
 /*global objects mapped in modbus and http memory*/
 regs_main_t regs_main;
-/*pointers to be used as a reference to global registers 
+/*pointers to be used as a reference to global registers
 usef in main regs_description structure */
 /*#generator_use_description {"regs_pointers":"start_struct"}*/
 main_vars_t * const regs_global = &regs_main.regs_global; //!< "main_vars_t"
-main_vars_part_1_t * const regs_global_part1 = &regs_main.regs_global_part1; //!< "main_vars_part_1_t"
+touch_regs_t * const touch_regs = &regs_main.touch_regs; //!< "touch_regs_t"
 servo_control_part_t * const servo_control_part = &regs_main.servo_control_part; //!< "servo_control_part_t"
 di_control_t * const di_control = &regs_main.di_control; //!< "di_control_t"
 sync_time_regs_t * const sync_time_regs = &regs_main.sync_time_regs; //!< "sync_time_regs_t"
@@ -126,7 +126,7 @@ int regs_set(void * reg_address,regs_access_t reg){
     return result;
 }
 /**
- * @brief regs_write_internal only for safety write 
+ * @brief regs_write_internal only for safety write
  * @param reg_address - in byte addressing
  * @param reg - struct for register access
  * @return  0 - OK, \n
@@ -143,7 +143,7 @@ int regs_write_internal(void * reg_address,regs_access_t reg){
 /**
  * @brief regs_write_access
  * @param byte_address - byte address
- * @return more than 0 if enabled access, <0 if not 
+ * @return more than 0 if enabled access, <0 if not
  */
 static int regs_write_access(void * reg_address){
     int res = -ILLEGAL_DATA_ADDRESS;
@@ -154,15 +154,13 @@ static int regs_write_access(void * reg_address){
              (regs_global->vars.permission & ENABLE_CREDENTIAL_FLAG))){
             res = index;
         }
-    }else{
-        res = -ILLEGAL_DATA_ADDRESS;
     }
     return res;
 }
 /**
  * @brief regs_write_value_check
- * @param temp_data_buffering - 
- * @return 
+ * @param temp_data_buffering -
+ * @return
  */
 static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
     int result = 0;
@@ -360,21 +358,13 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
     }
     return result;
 }
-/* @brief   copy data from global regs to local regs and vice versa
- * @param   reg_to - pointer to global or local regs
- * @param   reg_from - pointer to global or local regs
- * @param   size - size of regs for memcpy
- * @ingroup regs
- *
-*/
-void regs_copy_safe(void * reg_to,void * reg_from,u32 size){
-    if (regs_access_mutex!=NULL){
-        semaphore_take(regs_access_mutex, portMAX_DELAY);{
-            memcpy(reg_to,reg_from,size);
-        }semaphore_release(regs_access_mutex);
-    }else{
-        memcpy(reg_to,reg_from,size);
-    }
+
+void regs_copy_safe(void *reg_to, void *reg_from, u32 size) {
+   semaphore_take(regs_access_mutex, portMAX_DELAY);
+   {
+      memcpy(reg_to, reg_from, size);
+   }
+   semaphore_release(regs_access_mutex);
 }
 
 /**
@@ -386,18 +376,20 @@ void regs_copy_safe(void * reg_to,void * reg_from,u32 size){
  * @ingroup regs
  * @warning in param reg you should set flag space
  * */
-int regs_get(void * reg_address,regs_access_t* reg){
-    int result;
-    result = 0;
-    reg->value.op_u64 = 0;
-    if (regs_read_access(reg_address)==1){
-        semaphore_take(regs_access_mutex, portMAX_DELAY);{
-            memcpy(&reg->value.op_u64,reg_address,regs_size_in_byte(reg->flag));
-        }semaphore_release(regs_access_mutex);
-    }else{
-        result = -ILLEGAL_DATA_ADDRESS;
-    }
-    return result;
+int regs_get(void *reg_address, regs_access_t *reg) {
+   int result;
+   result = 0;
+   reg->value.op_u64 = 0;
+   if (regs_read_access(reg_address) == 1) {
+      semaphore_take(regs_access_mutex, portMAX_DELAY);
+      {
+         memcpy(&reg->value.op_u64, reg_address, regs_size_in_byte(reg->flag));
+      }
+      semaphore_release(regs_access_mutex);
+   } else {
+      result = -ILLEGAL_DATA_ADDRESS;
+   }
+   return result;
 }
 /**
  * @brief regs_read_access
@@ -506,13 +498,13 @@ static int regs_hadle_sets(void * reg_address,regs_access_t reg,u16 reg_index){
     int result;
     result = 0;
     void * end_addr = (void*)((u32)reg_address + regs_size_in_byte(reg.flag));
-    if (regs_description_is_saved(reg_index)){/*regs saved in mirror*/
+    if (regs_description_flag_check(&regs_template, SAVING)){/*regs saved in mirror*/
         main_printf(TAG,"\n register is saved %u reg_index", reg_index);
-        regs_template_t reg_template;
-        reg_template.ind = (u16)reg_index;
-        if(regs_description_get_by_ind(&reg_template)==0){
-            main_printf(TAG, "\n reg_template.saved_address %lu", reg_template.saved_address);
-            mirror_access_write(&reg_template);
+        regs_template_t regs_template;
+        regs_template.ind = (u16)reg_index;
+        if(regs_description_get_by_ind(&regs_template)==0){
+            main_printf(TAG, "\n regs_template.saved_address %lu", regs_template.saved_address);
+            mirror_access_write(&regs_template);
         }
     }else{
         main_printf(TAG,"\n register is not saved %u reg_index", reg_index);
@@ -524,8 +516,8 @@ static int regs_hadle_sets(void * reg_address,regs_access_t reg,u16 reg_index){
         ESP_LOGI(TAG, "ip has changed");
     } else if (end_addr == end_of_reg_addr(&regs_global->vars.command)){
         execute_main_command(regs_global->vars.command);
-    }else if(end_addr == end_of_reg_addr(&regs_global_part1->vars.test_pwm_value)){
-        pwm_test_set(regs_global_part1->vars.test_pwm_value);
+    }else if(end_addr == end_of_reg_addr(&touch_regs->vars.test_pwm_value)){
+        pwm_test_set(touch_regs->vars.test_pwm_value);
     }
     return result;
 }
@@ -542,11 +534,11 @@ int write_reg_to_mirror(void *reg){
     int result = 0;
     int index = regs_description_get_index_by_address(reg);
     if (index >= 0){
-        regs_template_t reg_template = {0};
-        reg_template.ind = (u16)index;
-        if(regs_description_get_by_ind(&reg_template)==0){
-            if(reg_template.property & SAVING){
-                mirror_access_write(&reg_template);
+        regs_template_t regs_template = {0};
+        regs_template.ind = (u16)index;
+        if(regs_description_get_by_ind(&regs_template)==0){
+            if(regs_template.property & SAVING){
+                mirror_access_write(&regs_template);
             }else{
                 result = -3;
             }
@@ -572,11 +564,11 @@ int read_reg_from_bkram(void *reg){
     int result = 0;
     int index = regs_description_get_index_by_address(reg);
     if (index >= 0){
-        regs_template_t reg_template = {0};
-        reg_template.ind = (u16)index;
-        if(regs_description_get_by_ind(&reg_template)==0){
-            if(reg_template.property & SAVING){
-                mirror_access_read((u16)reg_template.saved_address, reg_template.p_value, (u8)reg_template.size_in_bytes);
+        regs_template_t regs_template = {0};
+        regs_template.ind = (u16)index;
+        if(regs_description_get_by_ind(&regs_template)==0){
+            if(regs_template.property & SAVING){
+                mirror_access_read((u16)regs_template.saved_address, regs_template.p_value, (u8)regs_template.size_in_bytes);
             }else{
                 result = -2;
             }
@@ -599,12 +591,12 @@ int read_reg_from_bkram(void *reg){
  */
 static void * end_of_reg_addr(void * reg){
     void * addr = NULL;
-    regs_template_t reg_template = {0};
+    regs_template_t regs_template = {0};
     int index = regs_description_get_index_by_address(reg);
     if(index >= 0){
-        reg_template.ind = (u16)index;
-        if (regs_description_get_by_ind(&reg_template)>=0){
-            addr = reg_template.p_value + reg_template.size_in_bytes;
+        regs_template.ind = (u16)index;
+        if (regs_description_get_by_ind(&regs_template)>=0){
+            addr = regs_template.p_value + regs_template.size_in_bytes;
         }
     }
     return addr;

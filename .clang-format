@@ -12,7 +12,7 @@ ContinuationIndentWidth: 3
 ColumnLimit: 131
 
 # All braces {} shall be indented using the LLVM
-BreakBeforeBraces: LLVM
+BreakBeforeBraces: Attach
 
 # There shall be no white-space characters between a unary operator and its operand
 # There shall be a single space in between a binary operator and each of its operands

@@ -1,1 +1,26 @@
 driver/i2c.h to driver/i2c_master.h
+python script
+regs description
+    ind was removed
+    type moved
+    descriptions spread between files
+
+saved address how to keep order
+guid how to form
+regs_description_is_writable to change
+mirror_access_write to be changed
+
+what do we have
+
+    first call always with main self registers
+
+    then could be calls from main os but with aux registers like battery state if exist
+
+    then could be calls from user task with additional registers
+
+    max size ~15 of tables
+
+    ind removed
+
+    we can save table by table if it is littlefs based , then table should have a name and size
+    saved address should show address for own table only(starts from 0 for each table)

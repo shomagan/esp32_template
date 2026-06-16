@@ -63,6 +63,7 @@ task_handle_t pwm_task_handle;
 static int pwm_test_init(void);
 
 #if CONFIG_IDF_TARGET_ESP32
+
 typedef struct {
     mcpwm_timer_handle_t timer;
     mcpwm_oper_handle_t oper;
@@ -166,9 +167,9 @@ static int pwm_test_init(void){
                        GPIO_PWM0A_OUT,
                        GPIO_PWM0B_OUT,
                        22000u,
-                       regs_global_part1->vars.test_pwm_value,
-                       regs_global_part1->vars.test_pwm_value);
-    pwm_test_set(regs_global_part1->vars.test_pwm_value);
+                       touch_regs->vars.test_pwm_value,
+                       touch_regs->vars.test_pwm_value);
+    pwm_test_set(touch_regs->vars.test_pwm_value);
 #elif (PWM_STEP_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32)
     pwm_test_init_pair(&pwm_step_pair0,
                        0,
@@ -250,7 +251,7 @@ void pwm_control_task(void *arg){
         }
 #endif
 #if (PWM_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32C3)
-         uint16_t pwm_value = (uint16_t)regs_global_part1->vars.test_pwm_value;
+         uint16_t pwm_value = (uint16_t)touch_regs->vars.test_pwm_value;
          if(counter % 10 == 0) {
                main_printf(TAG, "PWM Test value: %d", pwm_value);
          }

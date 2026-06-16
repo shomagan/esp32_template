@@ -4,19 +4,19 @@
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
  * @defgroup free_rtos\lwip\src\apps\http
  * @ingroup free_rtos\lwip\src\apps\http
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 
 #ifndef HTTPD_SSI_CGI_H
 #define HTTPD_SSI_CGI_H 1
- 
+
 /*add includes below */
 #include "type_def.h"
 #include "regs_description.h"
 
 /*add includes before */
-#ifdef __cplusplus 
+#ifdef __cplusplus
    extern "C" {
 #endif
 /*add functions and variable declarations below */

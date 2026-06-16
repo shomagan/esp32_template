@@ -12,6 +12,7 @@
 #define REGS_DESCRIPTION_C 1
 
 #include "regs_description.h"
+#include "regs.h"
 #include "os_type.h"
 #include "mirror_storage.h"
 #include "credentials.h"
@@ -21,6 +22,12 @@
 #include <math.h>
 #include "esp_log.h"
 #include "esp_check.h"
+
+static const regs_description_t * bin_search_guid(u32 guid, const regs_description_t * regs_array, const u16 size);
+static const regs_description_t * bin_search_address(void * address, const regs_description_t * regs_array, const u16 size);
+
+#define LIST_DESCRIPTIONS_SIZE 32 /*max number of descriptions, restricted by number of u32 bits of table_to_save register */
+regs_description_list_t regs_description_list[LIST_DESCRIPTIONS_SIZE];/*array of descriptions of registers, each element is array of regs_template_t with num_of_vars size*/
 
 static const char *TAG = "regs_description";
 
@@ -162,27 +169,27 @@ regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.rssi_ap[0], 0,"wifi rssi of Access point","rssi_ap", I8_REGS_FLAG, 56, 360, 0x300b4, 2, 3, 0 },//!< "wifi rssi of Access point" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.primary_channel_ap[0], 0,"wifi channel used","primary_channel_ap", I8_REGS_FLAG, 57, 362, 0x300b5, 2, 3, 0 },//!< "wifi channel used" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.wake_up_cause, 0,"wake up reason","wake_up_cause", S32_REGS_FLAG, 58, 364, 0x300b6, 1, 3, 0 },//!< "wake up reason" &ro
-{ &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&regs_main.regs_global_part1.vars.test_pwm_value, 150,"test pwm value [0;100]","test_pwm_value", FLOAT_REGS_FLAG, 59, 368, 0x303e8, 1, 197, 1 },//!<"test pwm value [0;100]" &def &save &min &max
-{ &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&regs_main.regs_global_part1.vars.touch_0, 0,"touch_0","touch_0", U16_REGS_FLAG, 60, 372, 0x303ea, 1, 1, 1 },
-{ &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&regs_main.regs_global_part1.vars.touch_1, 0,"touch_1","touch_1", U16_REGS_FLAG, 61, 374, 0x303eb, 1, 1, 1 },
-{ &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&regs_main.regs_global_part1.vars.touch_2, 0,"touch_2","touch_2", U16_REGS_FLAG, 62, 376, 0x303ec, 1, 1, 1 },
-{ &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&regs_main.regs_global_part1.vars.touch_3, 0,"touch_3","touch_3", U16_REGS_FLAG, 63, 378, 0x303ed, 1, 1, 1 },
-{ NULL, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.water_counter, 154,"di counter","water_counter", U64_REGS_FLAG, 64, 380, 0x303ee, 1, 7, 1 },//!< "di counter" &save &ro
-{ &def_impulse_cost, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.impulse_cost, 162,"cost of di impulse in liters","impulse_cost", FLOAT_REGS_FLAG, 65, 388, 0x303f2, 1, 5, 1 },//!< "cost of di impulse in liters" &save &def
-{ NULL, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.liters, 166,"liters calculated","liters", FLOAT_REGS_FLAG, 66, 392, 0x303f4, 1, 5, 1 },//!< "liters calculated" &save
-{ &def_touch_1_count, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.touch_1_count, 170,"ms ","touch_1_count", U32_REGS_FLAG, 67, 396, 0x303f6, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_2_count, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.touch_2_count, 174,"ms ","touch_2_count", U32_REGS_FLAG, 68, 400, 0x303f8, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_3_count, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.touch_3_count, 178,"ms ","touch_3_count", U32_REGS_FLAG, 69, 404, 0x303fa, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_1_liters, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.touch_1_liters, 182,"ms ","touch_1_liters", FLOAT_REGS_FLAG, 70, 408, 0x303fc, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_2_liters, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.touch_2_liters, 186,"ms ","touch_2_liters", FLOAT_REGS_FLAG, 71, 412, 0x303fe, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_3_liters, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.touch_3_liters, 190,"ms ","touch_3_liters", FLOAT_REGS_FLAG, 72, 416, 0x30400, 1, 5, 1 },//!< "ms " &save &def
-{ &def_touch_0_trshld, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.touch_0_trshld, 194,"in percents","touch_0_trshld", FLOAT_REGS_FLAG, 73, 420, 0x30402, 1, 5, 1 },//!< "in percents" &save &def
-{ &def_touch_1_trshld, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.touch_1_trshld, 198,"in percents","touch_1_trshld", FLOAT_REGS_FLAG, 74, 424, 0x30404, 1, 5, 1 },//!< "in percents" &save &def
-{ &def_touch_2_trshld, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.touch_2_trshld, 202,"in percents","touch_2_trshld", FLOAT_REGS_FLAG, 75, 428, 0x30406, 1, 5, 1 },//!< "in percents" &save &def
-{ &def_touch_3_trshld, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.touch_3_trshld, 206,"in percents","touch_3_trshld", FLOAT_REGS_FLAG, 76, 432, 0x30408, 1, 5, 1 },//!< "in percents" &save &def
-{ NULL, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.filter_use, 210,"use inside filter fot touch sensors or not ","filter_use", U32_REGS_FLAG, 77, 436, 0x3040a, 1, 5, 1 },//!< "use inside filter fot touch sensors or not " &save
-{ &def_touch_handle_period, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.touch_handle_period, 214,"in ms period of handle touchs","touch_handle_period", U32_REGS_FLAG, 78, 440, 0x3040c, 1, 5, 1 },//!< "in ms period of handle touchs" &save &def
-{ &def_by_time, NULL, NULL, (u8*)&regs_main.regs_global_part1.vars.by_time, 218,"by time or counter","by_time", U32_REGS_FLAG, 79, 444, 0x3040e, 1, 5, 1 },//!< "by time or counter" &save &def
+{ &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&regs_main.touch_regs.vars.test_pwm_value, 150,"test pwm value [0;100]","test_pwm_value", FLOAT_REGS_FLAG, 59, 368, 0x303e8, 1, 197, 1 },//!<"test pwm value [0;100]" &def &save &min &max
+{ &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&regs_main.touch_regs.vars.touch_0, 0,"touch_0","touch_0", U16_REGS_FLAG, 60, 372, 0x303ea, 1, 1, 1 },
+{ &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&regs_main.touch_regs.vars.touch_1, 0,"touch_1","touch_1", U16_REGS_FLAG, 61, 374, 0x303eb, 1, 1, 1 },
+{ &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&regs_main.touch_regs.vars.touch_2, 0,"touch_2","touch_2", U16_REGS_FLAG, 62, 376, 0x303ec, 1, 1, 1 },
+{ &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&regs_main.touch_regs.vars.touch_3, 0,"touch_3","touch_3", U16_REGS_FLAG, 63, 378, 0x303ed, 1, 1, 1 },
+{ NULL, NULL, NULL, (u8*)&regs_main.touch_regs.vars.water_counter, 154,"di counter","water_counter", U64_REGS_FLAG, 64, 380, 0x303ee, 1, 7, 1 },//!< "di counter" &save &ro
+{ &def_impulse_cost, NULL, NULL, (u8*)&regs_main.touch_regs.vars.impulse_cost, 162,"cost of di impulse in liters","impulse_cost", FLOAT_REGS_FLAG, 65, 388, 0x303f2, 1, 5, 1 },//!< "cost of di impulse in liters" &save &def
+{ NULL, NULL, NULL, (u8*)&regs_main.touch_regs.vars.liters, 166,"liters calculated","liters", FLOAT_REGS_FLAG, 66, 392, 0x303f4, 1, 5, 1 },//!< "liters calculated" &save
+{ &def_touch_1_count, NULL, NULL, (u8*)&regs_main.touch_regs.vars.touch_1_count, 170,"ms ","touch_1_count", U32_REGS_FLAG, 67, 396, 0x303f6, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_2_count, NULL, NULL, (u8*)&regs_main.touch_regs.vars.touch_2_count, 174,"ms ","touch_2_count", U32_REGS_FLAG, 68, 400, 0x303f8, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_3_count, NULL, NULL, (u8*)&regs_main.touch_regs.vars.touch_3_count, 178,"ms ","touch_3_count", U32_REGS_FLAG, 69, 404, 0x303fa, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_1_liters, NULL, NULL, (u8*)&regs_main.touch_regs.vars.touch_1_liters, 182,"ms ","touch_1_liters", FLOAT_REGS_FLAG, 70, 408, 0x303fc, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_2_liters, NULL, NULL, (u8*)&regs_main.touch_regs.vars.touch_2_liters, 186,"ms ","touch_2_liters", FLOAT_REGS_FLAG, 71, 412, 0x303fe, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_3_liters, NULL, NULL, (u8*)&regs_main.touch_regs.vars.touch_3_liters, 190,"ms ","touch_3_liters", FLOAT_REGS_FLAG, 72, 416, 0x30400, 1, 5, 1 },//!< "ms " &save &def
+{ &def_touch_0_trshld, NULL, NULL, (u8*)&regs_main.touch_regs.vars.touch_0_trshld, 194,"in percents","touch_0_trshld", FLOAT_REGS_FLAG, 73, 420, 0x30402, 1, 5, 1 },//!< "in percents" &save &def
+{ &def_touch_1_trshld, NULL, NULL, (u8*)&regs_main.touch_regs.vars.touch_1_trshld, 198,"in percents","touch_1_trshld", FLOAT_REGS_FLAG, 74, 424, 0x30404, 1, 5, 1 },//!< "in percents" &save &def
+{ &def_touch_2_trshld, NULL, NULL, (u8*)&regs_main.touch_regs.vars.touch_2_trshld, 202,"in percents","touch_2_trshld", FLOAT_REGS_FLAG, 75, 428, 0x30406, 1, 5, 1 },//!< "in percents" &save &def
+{ &def_touch_3_trshld, NULL, NULL, (u8*)&regs_main.touch_regs.vars.touch_3_trshld, 206,"in percents","touch_3_trshld", FLOAT_REGS_FLAG, 76, 432, 0x30408, 1, 5, 1 },//!< "in percents" &save &def
+{ NULL, NULL, NULL, (u8*)&regs_main.touch_regs.vars.filter_use, 210,"use inside filter fot touch sensors or not ","filter_use", U32_REGS_FLAG, 77, 436, 0x3040a, 1, 5, 1 },//!< "use inside filter fot touch sensors or not " &save
+{ &def_touch_handle_period, NULL, NULL, (u8*)&regs_main.touch_regs.vars.touch_handle_period, 214,"in ms period of handle touchs","touch_handle_period", U32_REGS_FLAG, 78, 440, 0x3040c, 1, 5, 1 },//!< "in ms period of handle touchs" &save &def
+{ &def_by_time, NULL, NULL, (u8*)&regs_main.touch_regs.vars.by_time, 218,"by time or counter","by_time", U32_REGS_FLAG, 79, 444, 0x3040e, 1, 5, 1 },//!< "by time or counter" &save &def
 { &def_servo_0, &def_min_servo_0, &def_max_servo_0, (u8*)&regs_main.servo_control_part.vars.servo_0, 0,"servo pwm value [0;100]","servo_0", FLOAT_REGS_FLAG, 80, 448, 0x307d0, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
 { &def_servo_1, &def_min_servo_1, &def_max_servo_1, (u8*)&regs_main.servo_control_part.vars.servo_1, 0,"servo pwm value [0;100]","servo_1", FLOAT_REGS_FLAG, 81, 452, 0x307d2, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
 { &def_servo_2, &def_min_servo_2, &def_max_servo_2, (u8*)&regs_main.servo_control_part.vars.servo_2, 0,"servo pwm value [0;100]","servo_2", FLOAT_REGS_FLAG, 82, 456, 0x307d4, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
@@ -257,307 +264,227 @@ regs_description_t const regs_description_user[NUM_OF_CLIENT_VARS]={
 { NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_distance, 0,"current distance","cli_distance", FLOAT_REGS_FLAG, 149, 988, 0x31005, 1, 3, 0x1003 },//!< "current distance" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_lap, 0,"when we have sharp change of a distance, save it ","cli_lap", U64_REGS_FLAG, 150, 992, 0x31007, 1, 3, 0x1003 },//!< "when we have sharp change of a distance, save it " &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_lap_paired_dev, 0,"lap from paired device","cli_lap_paired_dev", U64_REGS_FLAG, 151, 1000, 0x3100b, 1, 3, 0x1003 },//!< "lap from paired device" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_distance_filtered, 0,"current distance filterd","cli_distance_filtered", FLOAT_REGS_FLAG, 152, 1008, 0x3100f, 1, 3, 0x1003 },//!< "current distance filterd" &ro
+{ NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_distance_filtered, 0,"current distance filtered","cli_distance_filtered", FLOAT_REGS_FLAG, 152, 1008, 0x3100f, 1, 3, 0x1003 },//!< "current distance filtered" &ro
 };
+
 const regs_description_t * regs_description_client = regs_description_user;
+static u32 num_of_list_descriptions = 0;
 
-static const regs_description_t * bin_search_guid(u32 guid,const regs_description_t * regs_array, const u32 size);
-/**
- * @brief regs_description_get_by_name gets full description by name
- * @param regs_template
- * @return
- */
-int regs_description_get_by_name(regs_template_t * regs_template){
-    int result;
-    u32 name_size;
-    u16 i;
-    result = -1;
-    name_size = strlen(regs_template->name);
-    if(name_size > REGS_MAX_NAME_SIZE){
-       name_size = REGS_MAX_NAME_SIZE;
-    }
-    for (i=0 ; i<NUM_OF_SELF_VARS + NUM_OF_CLIENT_VARS; i++){
-        if(i<NUM_OF_SELF_VARS){
-            if (memcmp(regs_template->name, regs_description[i].name, name_size) == 0){
-                memcpy(regs_template,&regs_description[i],sizeof(regs_description_t));
-                regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
-                result = 0;
-                break;
-            }
-        } else {
-            if (memcmp(regs_template->name, regs_description_user[i-NUM_OF_SELF_VARS].name, name_size) == 0){
-                memcpy(regs_template,&regs_description_user[i-NUM_OF_SELF_VARS],sizeof(regs_description_t));
-                regs_template->ind = regs_description_user[i-NUM_OF_SELF_VARS].ind+NUM_OF_SELF_VARS;
-                regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
-                result = 0;
-                break;
-            }
-        }
-    }
-    return result;
-}
-/**
- * @brief regs_description_get_by_ind get full description by ind
- * @param regs_template
- * @return
- */
-int regs_description_get_by_ind(regs_template_t * regs_template){
-    int result = 0;
-    if(regs_template->ind < NUM_OF_SELF_VARS + NUM_OF_CLIENT_VARS){
-        if(regs_template->ind<NUM_OF_SELF_VARS){
-            memcpy(regs_template,&regs_description[regs_template->ind],sizeof(regs_description_t));
-            regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
-        } else {
-            memcpy(regs_template,&regs_description_user[regs_template->ind-NUM_OF_SELF_VARS],sizeof(regs_description_t));
-            regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
-        }
-    }else{
-        result = -1;
-    }
-    return result;
-}
-/**
- * @brief regs_description_get_by_guid get full description by guid
- * @param regs_template
- * @return zero value if have found description
- */
-int regs_description_get_by_guid(regs_template_t * regs_template){
-    int result = -1;
-    const regs_description_t * reg_desc = bin_search_guid(regs_template->guid, regs_description, NUM_OF_SELF_VARS);
-    if (reg_desc != NULL){
-        memcpy(regs_template,reg_desc,sizeof(regs_description_t));
-        regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
-        result = 0;
-    }else{
-        reg_desc = bin_search_guid(regs_template->guid, regs_description_user, NUM_OF_CLIENT_VARS);
-        if (reg_desc != NULL){
-            memcpy(regs_template,reg_desc,sizeof(regs_description_t));
-            regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
-            result = 0;
-        }
-    }
-    return result;
-}
-static const regs_description_t * bin_search_guid(u32 guid, const regs_description_t * regs_array, const u32 size){
-    const regs_description_t * result = NULL;
-    int current;
-    int left = 0;
-    int right = size-1;
-    if(regs_array!= NULL){
-        while (left <= right){
-            current = (left + right)/2;
-            if (guid == regs_array[current].guid){
-                result = &regs_array[current];
-                break;
-            }else if (guid > regs_array[current].guid){
-                left = current + 1;
-            }else {
-                right =current - 1;
-            }
-        }
-    }
-    return result;
-}
-/**
- * @brief regs_description_write_value write value by info used in regs_template_to_write
- * @param regs_template_to_write presetted struct
- * @param value pointer to value for write
- * @return zero value if writed
- */
-int regs_description_write_value(regs_template_t * regs_template_to_write, const u8 * value){
-    int res = 0;
-    semaphore_take(regs_access_mutex, portMAX_DELAY );{
-        if ((regs_template_to_write->p_value != NULL) && (value != NULL)){
-            u32 size_in_byte = regs_size_in_byte(regs_template_to_write->type);
-            size_in_byte *= regs_template_to_write->size;
-            memcpy(regs_template_to_write->p_value,value,size_in_byte);
-            if (regs_template_to_write->property & SAVING){
-                /*!< save to mirror @todo add handl for flash saved vars*/
-                if ((regs_template_to_write->saved_address + size_in_byte) <= INTERNAL_FLASH_MIRROR_ITEM_SIZE){
-                    mirror_access_write(regs_template_to_write);
-                }
-            }
-        }else{
-            res = -1;
-        }
-    }semaphore_release(regs_access_mutex);
-    return res;
-}
-
-int regs_description_write_value_by_address(const void * address, const u8 * value){
-   int res = -1;
-   int reg_index = regs_description_get_index_by_address(address);
-   if (reg_index >= 0){
-      regs_template_t reg_template;
-      reg_template.ind = (u16)reg_index;
-      if(regs_description_get_by_ind(&reg_template)==0){
-         res = regs_description_write_value(&reg_template, value);
-      }
+int regs_description_list_add_new(regs_description_list_t regs_table){
+   int res = 0;
+   if ((regs_table.description != NULL) && (regs_table.num_of_regs > 0) && (num_of_list_descriptions < LIST_DESCRIPTIONS_SIZE)){
+      regs_description_list[num_of_list_descriptions] = regs_table;//!< add new description to list
+      num_of_list_descriptions++;
+   }else{
+      res = -2;//!< wrong input params or list full
    }
    return res;
 }
-/**
- * @brief reg_is_writeable
- * @param reg_index
- * @return 0 if RO, and 1 if writeable
- * @ingroup regs
-  * @todo check neccessary of this function
- */
-u8 regs_description_is_writable (u16 reg_index){
-    u8 result = 0;
-    if (reg_index < NUM_OF_SELF_VARS){
-        if(regs_description[reg_index].property & READ_ONLY){
-            result = 0;
-        }else{
-            result = 1;
-        }
-    }else{
-        if(regs_description_user[reg_index - NUM_OF_SELF_VARS].property & READ_ONLY){
-            result = 0;
-        }else{
-            result = 1;
-        }
-    }
-    return result;
-}
-/**
- * @brief regs_description_is_credential
- * @param reg_index
- * @return 1 if credential
- * @ingroup regs
-  * @todo check neccessary of this function
- */
-u8 regs_description_is_credential(u16 reg_index){
-    u8 result = 0;
-    if (reg_index < NUM_OF_SELF_VARS){
-        if(regs_description[reg_index].property & CREDENTIAL_FLAG){
-            result = 1;
-        }else{
-            result = 0;
-        }
-    }else{
-        if(regs_description_user[reg_index - NUM_OF_SELF_VARS].property & CREDENTIAL_FLAG){
-            result = 1;
-        }else{
-            result = 0;
-        }
-    }
-    return result;
-}
-/**
- * @brief regs_description_is_saved
- * @param reg_index
- * @return 1 if saving
- * @ingroup regs
-  * @todo check neccessary of this function
- */
-u8 regs_description_is_saved(u16 reg_index){
-    u8 result = 0;
-    if (reg_index < NUM_OF_SELF_VARS){
-        if(regs_description[reg_index].property & SAVING){
-            result = 1;
-        }else{
-            result = 0;
-        }
-    }else{
-        if(regs_description_user[reg_index - NUM_OF_SELF_VARS].property & SAVING){
-            result = 1;
-        }else{
-            result = 0;
-        }
-    }
-    return result;
-}
-/**
- * @brief regs_description_flag_check
- * @param index
- * @param flag
- * @return  1 if flag exist
- */
-u8 regs_description_flag_check (u16 reg_index, u8 flag){
-    u8 result = 0;
-    if (reg_index < NUM_OF_SELF_VARS){
-        if(regs_description[reg_index].property & flag){
-            result = 1;
-        }else{
-            result = 0;
-        }
-    }else{
-        if(regs_description_user[reg_index - NUM_OF_SELF_VARS].property & flag){
-            result = 1;
-        }else{
-            result = 0;
-        }
-    }
-    return result;
+
+const char *regs_description_list_get_space_name(u8 ind){
+   const char * result = NULL;
+   if (ind < num_of_list_descriptions){
+      result = regs_description_list[ind].space_name;
+   }
+   return result;
 }
 
-/**
- * @brief regs_get_index_by_byte_address return index of regs by byte address
- * @param byte_address - byte number
- * @return
- */
-int regs_description_get_index_by_guid(u32 byte_address){
-    int result = -1;
-    for (int i = 0;i<NUM_OF_SELF_VARS;i++){
-        if ((byte_address>= regs_description[i].guid) &&
-            (byte_address < (regs_description[i].guid+regs_size_in_byte(regs_description[i].type)*regs_description[i].size))){
-            result = i;
-            break;
-        }
-    }
-    if (result == -1){
-        for (int i = 0;i<NUM_OF_CLIENT_VARS;i++){
-            if ((byte_address>= regs_description_user[i].guid) &&
-                (byte_address < (regs_description_user[i].guid+regs_size_in_byte(regs_description_user[i].type)*regs_description_user[i].size))){
-                result = i + NUM_OF_SELF_VARS;
-                break;
+u32 regs_description_list_get_num_of_regs(u8 ind){
+   u32 result = 0;
+   if (ind < num_of_list_descriptions){
+      result = regs_description_list[ind].num_of_regs;
+   }
+   return result;
+}
+
+u8 * regs_description_list_get_buffer(u8 ind){
+   u8 * result = NULL;
+   if (ind < num_of_list_descriptions){
+      result = (u8*)regs_description_list[ind].saved_regs_buffer;
+   }
+   return result;
+}
+size_t regs_description_list_get_saved_buffer_size(u8 ind){
+   size_t result = 0;
+   if (ind < num_of_list_descriptions){
+      result = regs_description_list[ind].saved_regs_buffer_size;
+   }
+   return result;
+}
+int regs_description_get_by_index(regs_template_t * regs_template, u8 ind){
+   int result = -1;
+   if ((regs_template->table_ind < num_of_list_descriptions) && (regs_template != NULL)){
+      const regs_description_t * reg_desc = &regs_description_list[regs_template->table_ind].description[ind];
+      if(reg_desc != NULL){
+         memcpy(regs_template, reg_desc, sizeof(regs_description_t));
+         regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
+         result = 0;
+      }
+   }
+   return result;
+}
+int regs_description_get_by_name(regs_template_t *regs_template) {
+   int result = -1;
+   u32 name_size = strlen(regs_template->name);
+   regs_template->table_ind = 0;
+
+   if (name_size > REGS_MAX_NAME_SIZE) {
+      name_size = REGS_MAX_NAME_SIZE;
+   }
+   for (int i = 0; i < LIST_DESCRIPTIONS_SIZE; i++) {
+      if (regs_description_list[i].description != NULL) {
+         const regs_description_t *reg_desc = &regs_description_list[i].description[0]; //!< take first element of list for search
+         for (int j = 0; j < regs_description_list[i].num_of_regs; j++) {
+            if ((name_size > 0) && (reg_desc[j].name[name_size] == '\0') &&
+                (memcmp(regs_template->name, reg_desc[j].name, name_size) == 0)) {
+               memcpy(regs_template, &reg_desc[j], sizeof(regs_description_t));
+               regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
+               regs_template->table_ind = i;
+               result = 0;
+               break;
             }
-        }
-    }
-    return result;
+         }
+         if (result == 0) {
+            break; //!< if we have found description, we have no need to search in other lists
+         }
+      } else {
+         break; //!< if we have empty description, we have no more descriptions in list
+      }
+   }
+   return result;
 }
 
-/**
- * @brief regs_get_index_by_byte_address return index of regs by byte address
- * @param byte_address - byte number
- * @return
- */
-int regs_description_get_index_by_address(const void * address){
-    int result = -1;
-    int current;
-    int left = 0;
-    int right = NUM_OF_SELF_VARS-1;
-    while (left <= right){  //binary search
-        current = (left + right)/2;
-        if ((address >= (void*)regs_description[current].p_value) &&
-            (address < (void*)(regs_description[current].p_value+regs_size_in_byte(regs_description[current].type)*regs_description[current].size))){
-            result = current;
+int regs_description_get_by_guid(regs_template_t * regs_template){
+   int result = -1;
+   regs_template->table_ind = 0;
+   for (int i = 0; i < LIST_DESCRIPTIONS_SIZE; i++){
+      if (regs_description_list[i].description != NULL){
+         const regs_description_t * reg_desc = bin_search_guid(regs_template->guid,
+                                                                  regs_description_list[i].description,
+                                                                  regs_description_list[i].num_of_regs);
+         if (reg_desc != NULL){
+               memcpy(regs_template, reg_desc, sizeof(regs_description_t));
+               regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
+               regs_template->table_ind = i;
+               result = 0;
+               break;
+         }
+      }else{
+         break;//!< no more descriptions in list
+      }
+   }
+   return result;
+}
+
+
+static const regs_description_t * bin_search_guid(u32 guid, const regs_description_t * regs_array, const u16 size){
+   const regs_description_t * result = NULL;
+   int left = 0;
+   int right = size-1;
+   int current = (left + right)/2;
+   if(regs_array!= NULL){
+      while (left <= right){
+         current = (left + right)/2;
+         if (guid == regs_array[current].guid){
+               result = &regs_array[current];
+               break;
+         }else if (guid > regs_array[current].guid){
+               left = current + 1;
+         }else {
+               right =current - 1;
+         }
+      }
+   }
+   return result;
+}
+
+int regs_description_get_by_address(regs_template_t * regs_template){
+   int result = -1;
+   regs_template->table_ind = 0;
+   for (int i = 0; i < LIST_DESCRIPTIONS_SIZE; i++){
+      if (regs_description_list[i].description != NULL){
+         const regs_description_t * reg_desc = bin_search_address(regs_template->p_value,
+                                                                  regs_description_list[i].description,
+                                                                  regs_description_list[i].num_of_regs);
+         if (reg_desc != NULL){
+            memcpy(regs_template, reg_desc, sizeof(regs_description_t));
+            regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
+            regs_template->table_ind = i;
+            result = 0;
             break;
-        }else if (address > (void*)regs_description[current].p_value){
+         }
+      }else{
+         break;//!< no more descriptions in list
+      }
+   }
+   return result;
+}
+
+static const regs_description_t * bin_search_address(void * address, const regs_description_t * regs_array, const u16 size){
+   const regs_description_t * result = NULL;
+   int left = 0;
+   int right = size-1;
+   int current = (left + right)/2;
+   if(regs_array!= NULL){
+      while (left <= right){
+         current = (left + right)/2;
+         if ((address >= (void*)regs_array[current].p_value) &&
+            (address < (void*)(regs_array[current].p_value+regs_size_in_byte(regs_array[current].type)*regs_array[current].size))){
+            result = &regs_array[current];
+            break;
+         }else if (address > (void*)regs_array[current].p_value){
             left = current + 1;
-        }else {
+         }else {
             right =current - 1;
-        }
-    }
-    if (result == -1){
-        left = 0;
-        right = NUM_OF_CLIENT_VARS-1;
-        while (left <= right){  //binary search
-            current = (left + right)/2;
-            if ((address >= (void*)regs_description_user[current].p_value) &&
-                (address < (void*)(regs_description_user[current].p_value+regs_size_in_byte(regs_description_user[current].type)*regs_description_user[current].size))){
-                result = current + NUM_OF_SELF_VARS;;
-                break;
-            }else if (address > (void*)regs_description_user[current].p_value){
-                left = current + 1;
-            }else {
-                right =current - 1;
-            }
+         }
+      }
+   }
+   return result;
+}
+int regs_description_write_value(regs_template_t * regs_template, const u8 * value){
+   int res = 0;
+   semaphore_take(regs_access_mutex, portMAX_DELAY );{
+      if ((regs_template->p_value != NULL) && (value != NULL)){
+         memcpy(regs_template->p_value,value,regs_template->size_in_bytes);
+         if (regs_template->property & SAVING){
+            mirror_access_write(regs_template);
+         }
+      }else{
+         res = -1;
+      }
+   }semaphore_release(regs_access_mutex);
+   return res;
+}
+int regs_description_write_value_by_address(const void * address, const u8 * value){
+   int res = -1;
+   regs_template_t regs_template;
+   regs_template.p_value = (void *)address;
+   if(regs_description_get_by_address(&regs_template)==0){
+      res = regs_description_write_value(&regs_template, value);
+   }
+   return res;
+}
+
+u8 regs_description_is_writable (regs_template_t *regs_template){
+   return !regs_description_flag_check(regs_template, READ_ONLY);
+}
+
+u8 regs_description_is_credential(regs_template_t *regs_template){
+   return regs_description_flag_check(regs_template, CREDENTIAL_FLAG);
+}
+
+u8 regs_description_flag_check (regs_template_t *regs_template, u8 flag){
+    u8 result = 0;
+    if (regs_template != NULL){
+        if(regs_template->property & flag){
+            result = 1;
+        }else{
+            result = 0;
         }
     }
     return result;
 }
+
 u32 regs_description_get_regs_string_value(u16 reg_id,u8 reg_num, char * buffer, u32 buffer_size){
    u32 result = 0;
    u64 val_u64 = 0;
@@ -567,50 +494,50 @@ u32 regs_description_get_regs_string_value(u16 reg_id,u8 reg_num, char * buffer,
    s64 temp_i64 = 0;
    float val_float = 0.0f;
    double val_double = 0.0;
-   regs_template_t reg_template = {0};
-   reg_template.ind = reg_id;
+   regs_template_t regs_template = {0};
+   regs_template.ind = reg_id;
    u32 pos = 0;
    char temp_buf[96] = {0};
    u32 temp_buf_len = 0;
    if (buffer != NULL || buffer_size != 0){
       for(u32 i=0; i<reg_num; i++){
-         if (regs_description_get_by_ind(&reg_template) == 0){
-            temp_buf_len+=sprintf(temp_buf,"%s: ",reg_template.name);
-            for (u16 i = 0; i < reg_template.size; i++) {
-               switch (reg_template.type){
+         if (regs_description_get_by_ind(&regs_template) == 0){
+            temp_buf_len+=sprintf(temp_buf,"%s: ",regs_template.name);
+            for (u16 i = 0; i < regs_template.size; i++) {
+               switch (regs_template.type){
                case U8_REGS_FLAG:
                case U16_REGS_FLAG:
                case U32_REGS_FLAG:
                case U64_REGS_FLAG:
                case TIME_REGS_FLAG:
                    val_u64 = 0;
-                   memcpy(&val_u64,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
+                   memcpy(&val_u64,(regs_template.p_value + i*regs_size_in_byte(regs_template.type)),regs_size_in_byte(regs_template.type));
                    temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%llu,",val_u64);
                    break;
                case I8_REGS_FLAG:
                    temp_i8 = 0;
-                   memcpy(&temp_i8,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
+                   memcpy(&temp_i8,(regs_template.p_value + i*regs_size_in_byte(regs_template.type)),regs_size_in_byte(regs_template.type));
                    temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%i,",temp_i8);
                    break;
                case S16_REGS_FLAG:
                    temp_i16 = 0;
-                   memcpy(&temp_i16,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
+                   memcpy(&temp_i16,(regs_template.p_value + i*regs_size_in_byte(regs_template.type)),regs_size_in_byte(regs_template.type));
                    temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%i,",temp_i16);
                    break;
                case S32_REGS_FLAG:
                case INT_REGS_FLAG:
                    temp_i32 = 0;
-                   memcpy(&temp_i32,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
+                   memcpy(&temp_i32,(regs_template.p_value + i*regs_size_in_byte(regs_template.type)),regs_size_in_byte(regs_template.type));
                    temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%li,",temp_i32);
                    break;
                case S64_REGS_FLAG:
                    temp_i64 = 0;
-                   memcpy(&temp_i64,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
+                   memcpy(&temp_i64,(regs_template.p_value + i*regs_size_in_byte(regs_template.type)),regs_size_in_byte(regs_template.type));
                    temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%lli,",temp_i64);
                    break;
                case FLOAT_REGS_FLAG:
                    val_float = 0.0f;
-                   memcpy(&val_float,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
+                   memcpy(&val_float,(regs_template.p_value + i*regs_size_in_byte(regs_template.type)),regs_size_in_byte(regs_template.type));
                    if(isnanf(val_float) || isinff(val_float)){
                      temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"\"%f\",",(double)val_float);
                    }else{
@@ -619,7 +546,7 @@ u32 regs_description_get_regs_string_value(u16 reg_id,u8 reg_num, char * buffer,
                    break;
                case DOUBLE_REGS_FLAG:
                    val_double = 0.0;
-                   memcpy(&val_double,(reg_template.p_value + i*regs_size_in_byte(reg_template.type)),regs_size_in_byte(reg_template.type));
+                   memcpy(&val_double,(regs_template.p_value + i*regs_size_in_byte(regs_template.type)),regs_size_in_byte(regs_template.type));
                    if(isnanf((float)val_double) || isinff((float)val_double)){
                      temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"\"%f\",",val_double);
                    }else{
@@ -642,7 +569,7 @@ u32 regs_description_get_regs_string_value(u16 reg_id,u8 reg_num, char * buffer,
          }else{
             break;
          }
-         reg_template.ind++;
+         regs_template.ind++;
       }
 
    }
@@ -681,58 +608,35 @@ void * regs_description_get_pointer_by_modbus(u16 modbus_address, u8 modbus_func
     }
     return p_value;
 }
-
-/**
- * @brief set_regs_def_values
- * @return 1 if self vars was changed
- */
-int set_regs_def_values (void){
-    int res = 0;
-    regs_template_t reg_template = {0};
-    for (u16 i=0; i<NUM_OF_SELF_VARS; i++){
-        reg_template.ind = i;
-        if(regs_description_get_by_ind(&reg_template)==0){
-            if(reg_template.p_default == NULL){
-                memset(reg_template.p_value,0,reg_template.size_in_bytes);
-            }else{
-                memcpy(reg_template.p_value,reg_template.p_default,reg_template.size_in_bytes);
-            }
-        }
-    }
-    for (u16 i=0; i<NUM_OF_CLIENT_VARS; i++){
-        reg_template.ind = i + NUM_OF_SELF_VARS;
-        if(regs_description_get_by_ind(&reg_template)==0){
-            if(reg_template.p_default == NULL){
-                memset(reg_template.p_value,0,reg_template.size_in_bytes);
-            }else{
-                memcpy(reg_template.p_value,reg_template.p_default,reg_template.size_in_bytes);
-            }
-        }
-    }
-
-    return res;
+int set_regs_def_values(u16 table_ind) {
+   int res = 0;
+   regs_template_t regs_template = { 0 };
+   regs_template.table_ind = table_ind;
+   u32 num_of_regs = regs_description_list_get_num_of_regs(table_ind);
+   for (u32 i = 0; i < num_of_regs; i++) {
+      if (regs_description_get_by_index(&regs_template, i) == 0) {
+         if (regs_template.p_default == NULL) {
+            memset(regs_template.p_value, 0, regs_template.size_in_bytes);
+         } else {
+            memcpy(regs_template.p_value, regs_template.p_default, regs_template.size_in_bytes);
+         }
+      }
+   }
+   return res;
 }
-/**
- * @brief return ind of savig address of register in bkram
- * @param reg_end_address - pointer to register
- * @return  ind of savig bkram address, \n
- *          -1 - reg description not find
- * @ingroup regs
- */
-int end_of_saved_reg_addr(void * reg_end_address){
-    u16 i;
-    int result = -1;
-    regs_template_t regs_template;
-    for (i=0 ; i < NUM_OF_SELF_VARS + NUM_OF_CLIENT_VARS; i++){
-        regs_template.ind = i;
-        regs_description_get_by_ind(&regs_template);
-        if ((regs_template.property & SAVING) &&
-            (reg_end_address == (regs_template.p_value + regs_template.size_in_bytes))){
-            result = i;
-            break;
-        }
-    }
-    return result;
+int end_of_saved_reg_addr(void *reg_end_address) {
+   u16 i;
+   int result = -1;
+   regs_template_t regs_template;
+   for (i = 0; i < NUM_OF_SELF_VARS + NUM_OF_CLIENT_VARS; i++) {
+      regs_template.ind = i;
+      regs_description_get_by_ind(&regs_template);
+      if ((regs_template.property & SAVING) && (reg_end_address == (regs_template.p_value + regs_template.size_in_bytes))) {
+         result = i;
+         break;
+      }
+   }
+   return result;
 }
 /**
  * @brief regs_fill_temp_buffer - fillng temp buff
@@ -744,17 +648,17 @@ int end_of_saved_reg_addr(void * reg_end_address){
  */
 int regs_fill_temp_buffer(void * reg_address,regs_access_t reg,temp_data_buffering_t * temp_data_buffering, int index){
     int res = 0;
-    regs_template_t reg_template = {0};
-    reg_template.ind = (u16)index;
-    if (regs_description_get_by_ind(&reg_template)>=0){
+    regs_template_t regs_template = {0};
+    regs_template.ind = (u16)index;
+    if (regs_description_get_by_ind(&regs_template)>=0){
         u8 reg_write_size = regs_size_in_byte(reg.flag);
-        u32 shift = (u32)reg_address - (u32)reg_template.p_value;
-        u8 regs_item_size = regs_size_in_byte(reg_template.type);
+        u32 shift = (u32)reg_address - (u32)regs_template.p_value;
+        u8 regs_item_size = regs_size_in_byte(regs_template.type);
         u8 start_byte = shift % regs_item_size;/*0-7*/
         if ((u32)temp_data_buffering->reg_address != ((u32)reg_address - start_byte)){
             temp_data_buffering->reg_address = (void*)((u32)reg_address - start_byte);
             temp_data_buffering->byte_writed_flags = 0;
-            temp_data_buffering->type = reg_template.type;
+            temp_data_buffering->type = regs_template.type;
             temp_data_buffering->index = (u16)index;
             memset(temp_data_buffering->data.bytes,0,8);
         }
@@ -777,10 +681,10 @@ int regs_fill_temp_buffer(void * reg_address,regs_access_t reg,temp_data_bufferi
  */
 int regs_check_temp_buffer(temp_data_buffering_t * temp_data_buffering, int index){
     int res = 0;
-    regs_template_t reg_template = {0};
-    reg_template.ind = (u16)index;
-    if (regs_description_get_by_ind(&reg_template)>=0){
-        u8 regs_item_size = regs_size_in_byte(reg_template.type);
+    regs_template_t regs_template = {0};
+    regs_template.ind = (u16)index;
+    if (regs_description_get_by_ind(&regs_template)>=0){
+        u8 regs_item_size = regs_size_in_byte(regs_template.type);
         res = 1;
         for(u32 i=0;i<regs_item_size;i++){
             if ((temp_data_buffering->byte_writed_flags & BIT(i)) == 0){

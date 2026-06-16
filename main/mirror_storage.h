@@ -53,57 +53,14 @@
 extern semaphore_handle_t global_vars_mirror_mutex;
 extern u8 global_vars_mirror[];
 int mirror_storage_init(void);
-   /**
-    * @brief size of bkram
-    * @return size bkram space availble in byte
-    * @ingroup bkram
-    * */
 u32 mirror_access_get_size(void);
-/**
- * @brief write data to bkram
- * @param address - bkram start address
- * @param data - pointer to data
- * @param size - data size in bytes
- * @return  0 - successfully, \n
- *          -1 - out of bkram address range
- * @ingroup bkram
- */
 int mirror_access_write(regs_template_t * regs_template);
-/**
- * @brief bkram_space_is_changing
- * @param address
- * @param data
- * @param size
- * @return 1 if change 0 - not, less then zero if error
- */
-int mirror_space_is_changing(u16 address,const u8* data,u16 size);
-/**
- * @brief read data from bkram
- * @param address - bkram start address
- * @param data - pointer to where the read data will be written
- * @param size - data size in bytes
- * @return  0 - successfully, \n
- *          -1 - out of bkram address range
- * @ingroup bkram
- */
-int mirror_access_read(u16 address,u8* data,u16 size);
-/**
- * @brief bkram_access_recalc_crc calculate crc and write to bkram(last 4 byte)
- * @return
- */
-int mirror_recalc_crc(void);
-/**
- * @brief internal_flash_save_bkram_to_flash
- * @return zero if bkram saved to flash succed
- */
-int internal_flash_save_mirror_to_flash(void);
-/**
- * @brief internal_flash_restore_bkram_from_flash
- * @return
- */
-int internal_flash_restore_mirror_from_flash(void);
-
-void preinit_global_vars(void);
+int mirror_space_is_changing(regs_template_t *regs_template);
+int mirror_access_read(regs_template_t *regs_template);
+int internal_flash_save_mirror_to_flash(u16 table_ind);
+int internal_flash_restore_mirror_from_flash(u16 table_ind);
+void print_nvs_files(void);
+void preinit_global_vars(u16 table_ind);
 
 /*add functions and variable declarations before */
 

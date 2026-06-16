@@ -2,6 +2,8 @@ credentials.h
 build/
 generator/.idea/
 generator/__pycache__/
+generator/failed.txt
+generator/passed.txt
 CMakeLists.txt.user
 *.bin
 *.o

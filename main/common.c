@@ -98,82 +98,86 @@ static void display_statistic(void);
 #if MORSE
 static void display_morse(u8 udp_bradcast_msg_received);
 #endif
-/**
- * @brief duty_task - do several common functions
- * @param pvParameters
- */
-void common_duty_task(void *pvParameters ){
-    /* Remove compiler warning about unused parameter. */
-    (void) pvParameters;
-    /* Init internal ADC service channels */
-    /* Initialise xNextWakeTime - this only needs to be done once. */
-    u32 prepare_time = 0u;
-    u32 task_tick = 0u;
-    u32 signal_value;
-    u8 udp_bradcast_msg_received = 0;
-    if(common_duty_init()<0){
-        led_blink_on(5000);
-    }
-    while(1){
-        /* Place this task in the blocked state until it is time to run again. */
-        signal_value = 0;
-        if(pdTRUE == task_notify_wait(STOP_CHILD_PROCCES|PREPARE_TO_RESET|UDB_BROADCAST_MSG_RECEIVED, &signal_value, DUTY_TASK_PERIOD_MS)){
-            /*by signal*/
-            if (signal_value & STOP_CHILD_PROCCES){
-                common_deinit();
-                task_delete(task_get_id());
-            }else if(signal_value & PREPARE_TO_RESET){
-                prepare_time = task_get_time_ms();
-            }else if(signal_value & UDB_BROADCAST_MSG_RECEIVED){
-                udp_bradcast_msg_received = 1;
-            }
-        }
-        if(led_os_blink_on_time ){
-            gpio_set_level(CONFIG_LED_BLINK_GPIO, 1u);
-            led_os_blink_on_time = led_os_blink_on_time>DUTY_TASK_PERIOD_MS?led_os_blink_on_time-DUTY_TASK_PERIOD_MS:0;
-        }else{
-            gpio_set_level(CONFIG_LED_BLINK_GPIO, 0u);
-        }
-        if(((task_tick)%(1000u/DUTY_TASK_PERIOD_MS))==0u){
-            // rtc time update start
-            semaphore_take(regs_access_mutex, portMAX_DELAY);{
-                regs_global->vars.live_time++;
-            }semaphore_release(regs_access_mutex);
-            led_blink_on(250u);
-            display_update(task_tick, udp_bradcast_msg_received);
-            udp_bradcast_msg_received = 0;
-            main_printf(TAG,"tick %u",task_tick);
-            struct timeval tv;
-            if (gettimeofday(&tv, NULL)!= 0) {
-                main_error_message(TAG,"Failed to obtain time");
-            }else{
-                regs_global->vars.seconds_of_the_day = (u32)tv.tv_sec;
-                main_debug(TAG,"seconds%lu",tv.tv_sec);
-            }
-            regs_copy_safe(&regs_global->vars.unix_time,&tv.tv_sec,sizeof(regs_global->vars.unix_time));
-        }
-        udp_broabcast_update(task_tick);
 
-        regs_access_t async_flags;
-        async_flags.flag = U64_REGS_FLAG;
-        regs_get(&regs_global->vars.async_flags,&async_flags);
-        if (async_flags.value.op_u64 & ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH){
-            async_flags.value.op_u64 &= ~ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
-            (void)regs_write_internal(&regs_global->vars.async_flags, async_flags);
-            if (internal_flash_save_mirror_to_flash()!=0u){
-                main_printf(TAG, "Failed %d\n",__LINE__);
-            }else{
-                main_printf(TAG, "bkram file saved to flash succes");
-            }
-        }
-        if (prepare_time){
-            if ((task_get_time_ms() - prepare_time) > TIME_FOR_PREPARE_RESET_MS){
-                main_printf(TAG, "reset trough common duty task");
-                esp_restart();
-            }
-        }
-        task_tick++;
-    }
+void common_duty_task(void *pvParameters) {
+   /* Remove compiler warning about unused parameter. */
+   (void)pvParameters;
+   /* Init internal ADC service channels */
+   /* Initialise xNextWakeTime - this only needs to be done once. */
+   u32 prepare_time = 0u;
+   u32 task_tick = 0u;
+   u32 signal_value;
+   u8 udp_bradcast_msg_received = 0;
+   if (common_duty_init() < 0) {
+      led_blink_on(5000);
+   }
+   while (1) {
+      /* Place this task in the blocked state until it is time to run again. */
+      signal_value = 0;
+      if (pdTRUE == task_notify_wait(STOP_CHILD_PROCCES | PREPARE_TO_RESET | UDB_BROADCAST_MSG_RECEIVED, &signal_value,
+                                     DUTY_TASK_PERIOD_MS)) {
+         /*by signal*/
+         if (signal_value & STOP_CHILD_PROCCES) {
+            common_deinit();
+            task_delete(task_get_id());
+         } else if (signal_value & PREPARE_TO_RESET) {
+            prepare_time = task_get_time_ms();
+         } else if (signal_value & UDB_BROADCAST_MSG_RECEIVED) {
+            udp_bradcast_msg_received = 1;
+         }
+      }
+      if (led_os_blink_on_time) {
+         gpio_set_level(CONFIG_LED_BLINK_GPIO, 1u);
+         led_os_blink_on_time = led_os_blink_on_time > DUTY_TASK_PERIOD_MS ? led_os_blink_on_time - DUTY_TASK_PERIOD_MS : 0;
+      } else {
+         gpio_set_level(CONFIG_LED_BLINK_GPIO, 0u);
+      }
+      if (((task_tick) % (1000u / DUTY_TASK_PERIOD_MS)) == 0u) {
+         // rtc time update start
+         semaphore_take(regs_access_mutex, portMAX_DELAY);
+         {
+            regs_global->vars.live_time++;
+         }
+         semaphore_release(regs_access_mutex);
+         led_blink_on(250u);
+         display_update(task_tick, udp_bradcast_msg_received);
+         udp_bradcast_msg_received = 0;
+         main_printf(TAG, "tick %u", task_tick);
+         struct timeval tv;
+         if (gettimeofday(&tv, NULL) != 0) {
+            main_error_message(TAG, "Failed to obtain time");
+         } else {
+            regs_global->vars.seconds_of_the_day = (u32)tv.tv_sec;
+            main_debug(TAG, "seconds%lu", tv.tv_sec);
+         }
+         regs_copy_safe(&regs_global->vars.unix_time, &tv.tv_sec, sizeof(regs_global->vars.unix_time));
+      }
+      udp_broabcast_update(task_tick);
+
+      u32 async_flags;
+      u32 table_to_save = 0u;
+      regs_copy_safe(&async_flags, &regs_global->vars.async_flags, sizeof(async_flags));
+      regs_copy_safe(&table_to_save, &regs_global->vars.table_to_save, sizeof(table_to_save));
+
+      if (async_flags & ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH) {
+         async_flags &= ~ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
+         regs_copy_safe(&regs_global->vars.async_flags, &async_flags, sizeof(async_flags));
+         int table_ind = 0;
+         /*table to save is a bitfield, need to check all bits and convert to indexes*/
+         while (table_to_save) {
+            table_ind = __builtin_ctz(table_to_save); // Get the index of the least significant set bit
+            internal_flash_save_mirror_to_flash(table_ind);
+            table_to_save = table_to_save & (table_to_save - 1);/*like a hamming weight calculation */
+         }
+      }
+      if (prepare_time) {
+         if ((task_get_time_ms() - prepare_time) > TIME_FOR_PREPARE_RESET_MS) {
+            main_printf(TAG, "reset trough common duty task");
+            esp_restart();
+         }
+      }
+      task_tick++;
+   }
 }
 /**
  * @brief common_init

@@ -36,6 +36,9 @@
  * Author: Shoma Gane <shomagan@gmail.com>
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
  */
+#include "os_type.h"
+#include "regs_description.c"
+#include "regs_description.h"
 #ifndef MIRROR_STORAGE_C
 #define MIRROR_STORAGE_C 1
 #include "mirror_storage.h"
@@ -47,238 +50,209 @@
 static const char *TAG = "mirror_storage";
 static const char *mirror_key = "mirror_key";
 semaphore_handle_t global_vars_mirror_mutex = NULL;
-u8 global_vars_mirror[INTERNAL_FLASH_MIRROR_ITEM_SIZE];
+/**
+ * @brief bkram_access_recalc_crc calculate crc and write to bkram(last 4 byte)
+ * @return
+ */
+int mirror_recalc_crc(u8 * data, u32 size);
+
 int mirror_storage_init(){
     int res = 0;
     semaphore_create_binary(global_vars_mirror_mutex)
     return res;
 }
-/**
- * @brief size of bkram
- * @return size bkram space availble in byte
- * @ingroup bkram
- * */
+
 u32 mirror_access_get_size(){
     return (INTERNAL_FLASH_MIRROR_ITEM_SIZE);
 }
-
-/**
- * @brief write data to bkram
- * @param address - bkram start address
- * @param data - pointer to data
- * @param size - data size in bytes
- * @return  1 - writed
- *          0 - successfully, \n
- *          -1 -error
- * @ingroup bkram
- */
-int mirror_access_write(regs_template_t * regs_template){
-    int res = 0;
-    if(mirror_space_is_changing((u16)regs_template->saved_address,regs_template->p_value,regs_template->size_in_bytes) == 1){
-        main_printf(TAG, "mirror_access_write: mirror_space_is_changing");
-        if(regs_template->saved_address+regs_template->size_in_bytes<= mirror_access_get_size()){
-            if (global_vars_mirror_mutex!=NULL){
-                semaphore_take(global_vars_mirror_mutex, portMAX_DELAY );
-            }
-            memcpy(&global_vars_mirror[regs_template->saved_address],regs_template->p_value,regs_template->size_in_bytes);
-            if (global_vars_mirror_mutex!=NULL){
-                semaphore_release(global_vars_mirror_mutex);
-            }
-            res = 1;
-        }else{
+int mirror_access_init_buffer(u16 table_ind){
+   int res = 0;
+   u32 num_of_regs = regs_description_list_get_num_of_regs(table_ind);
+   u8 * data = regs_description_list_get_buffer(table_ind);
+   int size = regs_description_list_get_saved_buffer_size(table_ind);
+   for(u32 i = 0; i < num_of_regs && res == 0; i++){
+      regs_template_t regs_template = {0};
+      regs_template.table_ind = table_ind;
+      regs_description_get_by_index(&regs_template, i);
+      if (regs_description_flag_check(&regs_template, SAVING)) {
+         if (data && (regs_template.saved_address + regs_template.size_in_bytes <= size)) {
+            semaphore_take(global_vars_mirror_mutex, portMAX_DELAY);
+            memcpy(&data[regs_template.saved_address], regs_template.p_value, regs_template.size_in_bytes);
+            semaphore_release(global_vars_mirror_mutex);
+         } else {
             res = -1;
-        }
-        mirror_recalc_crc();
-        if (regs_description_flag_check(regs_template->ind, SAVING)){
-            main_printf(TAG,"set ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH");
-            regs_global->vars.async_flags |= ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
-        }
-    }
-    return  res;
+         }
+      }
+   }
+   mirror_recalc_crc(data, size);
+   return res;
 }
-/**
- * @brief bkram_space_is_changing
- * @param address
- * @param data
- * @param size
- * @return 1 if change 0 - not, less then zero if error
- */
-int mirror_space_is_changing(u16 address,const u8* data,u16 size){
-    int res = 0;
-    if(address+size <= mirror_access_get_size()){
-        u16 i = 0;
-        if (global_vars_mirror_mutex!=NULL){
-            semaphore_take(global_vars_mirror_mutex, portMAX_DELAY );
-        }
-        for(i = 0; i < size; i++){
-            if (global_vars_mirror[address+i] != data[i]){
-                res = 1;
-                break;
-            }
-        }
-        if (global_vars_mirror_mutex!=NULL){
-            semaphore_release(global_vars_mirror_mutex);
-        }
-    }else{
-        res = -1;
-    }
-    return res;
+int mirror_access_write(regs_template_t *regs_template)
+{
+   int res = 0;
+   if (regs_template && regs_description_flag_check(regs_template, SAVING)) {
+      u8 * data = regs_description_list_get_buffer(regs_template->table_ind);
+      int size = regs_description_list_get_saved_buffer_size(regs_template->table_ind);
+      if (data && (regs_template->saved_address + regs_template->size_in_bytes <= size)) {
+         semaphore_take(global_vars_mirror_mutex, portMAX_DELAY);
+         if(memcmp(&data[regs_template->saved_address], regs_template->p_value, regs_template->size_in_bytes) != 0){
+            main_printf(TAG, "mirror_access_write: mirror_space_is_changing");
+            memcpy(&data[regs_template->saved_address], regs_template->p_value, regs_template->size_in_bytes);
+            mirror_recalc_crc(data, size);
+            main_printf(TAG, "set ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH");
+            regs_global->vars.async_flags |= ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
+            res = 1;
+         }
+         semaphore_release(global_vars_mirror_mutex);
+      } else {
+         res = -1;
+      }
+   }
+   return res;
+}
+int mirror_space_is_changing(regs_template_t *regs_template) {
+   int res = 0;
+   u8 * data = regs_description_list_get_buffer(regs_template->table_ind);
+   int size = regs_description_list_get_saved_buffer_size(regs_template->table_ind);
+   if (data && (regs_template->saved_address + regs_template->size_in_bytes <= size)) {
+      semaphore_take(global_vars_mirror_mutex, portMAX_DELAY);
+      if(memcmp(&data[regs_template->saved_address], regs_template->p_value, regs_template->size_in_bytes) != 0){
+         res = 1;
+      }
+      semaphore_release(global_vars_mirror_mutex);
+   } else {
+      res = -1;
+   }
+   return res;
 }
 
-/**
- * @brief read data from bkram
- * @param address - bkram start address
- * @param data - pointer to where the read data will be written
- * @param size - data size in bytes
- * @return  0 - successfully, \n
- *          -1 - out of bkram address range
- * @ingroup bkram
- */
-int mirror_access_read(u16 address,u8* data,u16 size){
-    if(address+size <= mirror_access_get_size()){
-        if (global_vars_mirror_mutex!=NULL){
-            semaphore_take(global_vars_mirror_mutex, portMAX_DELAY );
-        }
-        for(u16 i = 0; i < size; i++){
-            data[i] = global_vars_mirror[address+i];
-        }
-        if (global_vars_mirror_mutex!=NULL){
-            semaphore_release(global_vars_mirror_mutex);
-        }
-        return 0;
-    }else{
-        return  -1;
-    }
+int mirror_access_read(regs_template_t *regs_template) {
+   u8 *data = regs_description_list_get_buffer(regs_template->table_ind);
+   int size = regs_description_list_get_saved_buffer_size(regs_template->table_ind);
+   if (data && (regs_template->saved_address + regs_template->size_in_bytes <= size)) {
+      semaphore_take(global_vars_mirror_mutex, portMAX_DELAY);
+      memcpy(regs_template->p_value, &data[regs_template->saved_address], regs_template->size_in_bytes);
+      semaphore_release(global_vars_mirror_mutex);
+      return 0;
+   } else {
+      return -1;
+   }
 }
-/**
- * @brief bkram_access_recalc_crc calculate crc and write to bkram(last 4 byte)
- * @return
- */
-int mirror_recalc_crc(void){
-    if (global_vars_mirror_mutex!=NULL){
-        semaphore_take(global_vars_mirror_mutex, portMAX_DELAY );
-    }
-    u32 crc = calc_crc_for_u32((void*)&global_vars_mirror[0], (INTERNAL_FLASH_MIRROR_ITEM_SIZE-4)/4);
-    for(u16 i = 0; i < sizeof(u32); i++){
-        global_vars_mirror[INTERNAL_FLASH_MIRROR_ITEM_SIZE-sizeof(u32)+i] = (u8)(crc>>(i*8));
-    }
-    if (global_vars_mirror_mutex!=NULL){
-        semaphore_release(global_vars_mirror_mutex);
-    }
+
+int mirror_recalc_crc(u8 * data, u32 size){
+    semaphore_take(global_vars_mirror_mutex, portMAX_DELAY );
+    u32 crc = calc_crc_for_u32((void*)data, (size-4)/4);
+    memcpy(&data[size-sizeof(u32)], &crc, sizeof(u32));
+    semaphore_release(global_vars_mirror_mutex);
     return 0;
 }
-/**
- * @brief internal_flash_save_bkram_to_flash
- * @return zero if bkram saved to flash succed
- */
-int internal_flash_save_mirror_to_flash(void){
-    int res = 0;
-    if (global_vars_mirror_mutex!=NULL){
-        semaphore_take(global_vars_mirror_mutex, portMAX_DELAY );
-    }
-    {
-        regs_global->vars.flash_write_number = (regs_global->vars.flash_write_number<0xffffffff)?(regs_global->vars.flash_write_number+1):regs_global->vars.flash_write_number;
-        main_printf(TAG, "mirror is saving to flash");
-        nvs_handle_t my_handle;
-        res = nvs_open("storage", NVS_READWRITE, &my_handle);
-        if (res == ESP_OK) {
-            size_t len = INTERNAL_FLASH_MIRROR_ITEM_SIZE;
-            u8 temp_mirror[INTERNAL_FLASH_MIRROR_ITEM_SIZE];
-            res = nvs_get_blob(my_handle,mirror_key,temp_mirror,&len);
-            if(memcmp(temp_mirror, global_vars_mirror, INTERNAL_FLASH_MIRROR_ITEM_SIZE)!=0){
-                nvs_set_blob(my_handle,mirror_key,global_vars_mirror,INTERNAL_FLASH_MIRROR_ITEM_SIZE);
-                res = nvs_commit(my_handle);
-                if (res >= 0){
-                    main_printf(TAG, "mirror saved to flash");
-                }
-            }else{
-                main_printf(TAG, "mirror is the same, no needs to save");
-            }
-            nvs_close(my_handle);
-        }
-    }
-    if (global_vars_mirror_mutex!=NULL){
-        semaphore_release(global_vars_mirror_mutex);
-    }
-    return res;
-}
-/**
- * @brief internal_flash_restore_bkram_from_flash
- * @return
- */
-int internal_flash_restore_mirror_from_flash(void){
-    int res = 0;
-    if (global_vars_mirror_mutex!=NULL){
-        semaphore_take(global_vars_mirror_mutex, portMAX_DELAY );
-    }
-    {
-        nvs_handle_t my_handle;
-        main_printf(TAG, "mirror is getting from flash");
-        res = nvs_open("storage", NVS_READWRITE, &my_handle);
-        if (res == ESP_OK) {
-            size_t len = INTERNAL_FLASH_MIRROR_ITEM_SIZE;
-            res = nvs_get_blob(my_handle,mirror_key,global_vars_mirror,&len);
-            nvs_close(my_handle);
-        }
-    }
-    if (global_vars_mirror_mutex!=NULL){
-        semaphore_release(global_vars_mirror_mutex);
-    }
-    return res;
+void print_nvs_files(void) {
+   /*finds all files in NVS and print out names*/
+   nvs_iterator_t it = NULL;
+   esp_err_t err = nvs_entry_find(NVS_DEFAULT_PART_NAME, NULL, NVS_TYPE_ANY, &it);
+   while (err == ESP_OK) {
+      nvs_entry_info_t info;
+      nvs_entry_info(it, &info);
+      main_printf(TAG, "namespace: '%s', key: '%s', type: %d", info.namespace_name, info.key, info.type);
+      err = nvs_entry_next(&it);
+   }
+   nvs_release_iterator(it);
 }
 
-void preinit_global_vars(){
-    regs_template_t reg_template = {0};
-    if(internal_flash_restore_mirror_from_flash()==0){
-        main_printf(TAG, "regs inited from saved space");
-        for (u16 i=0; i<NUM_OF_SELF_VARS; i++){
-            reg_template.ind = i;
-            if(regs_description_get_by_ind(&reg_template)==0){
-                if(reg_template.property & SAVING){
-                    memcpy(reg_template.p_value, &global_vars_mirror[reg_template.saved_address], regs_size_in_byte(reg_template.type)*reg_template.size);
-                }else{
-                    if(reg_template.p_default == NULL){
-                        memset(reg_template.p_value,0,regs_size_in_byte(reg_template.type)*reg_template.size);
-                    }else{
-                        memcpy(reg_template.p_value,reg_template.p_default,regs_size_in_byte(reg_template.type)*reg_template.size);
-                    }
-                }
+int internal_flash_save_mirror_to_flash(u16 table_ind) {
+   int res = 0;
+   const char *space_name = regs_description_list_get_space_name(table_ind);
+   semaphore_take(global_vars_mirror_mutex, portMAX_DELAY);
+   {
+      regs_global->vars.flash_write_number = (regs_global->vars.flash_write_number < 0xffffffff)
+                                                ? (regs_global->vars.flash_write_number + 1)
+                                                : regs_global->vars.flash_write_number;
+      main_printf(TAG, "mirror is saving to flash");
+      nvs_handle_t my_handle = {0};
+      res = nvs_open(space_name, NVS_READWRITE, &my_handle);
+      size_t size = regs_description_list_get_saved_buffer_size(table_ind);
+      const u8 *data = regs_description_list_get_buffer(table_ind);
+      if (res == ESP_OK) {
+         u8 temp_mirror[size];
+         res = nvs_get_blob(my_handle, mirror_key, temp_mirror, &size);
+         if (memcmp(temp_mirror, data, INTERNAL_FLASH_MIRROR_ITEM_SIZE) != 0) {
+            nvs_set_blob(my_handle, mirror_key, data, INTERNAL_FLASH_MIRROR_ITEM_SIZE);
+            res = nvs_commit(my_handle);
+            if (res >= 0) {
+               main_printf(TAG, "mirror %s saved to flash", space_name);
             }
-        }
-    }else{
-        main_printf(TAG, "regs inited by default");
-        set_regs_def_values();
-        for (u16 i=0; i<NUM_OF_SELF_VARS; i++){
-            reg_template.ind = i;
-            if(regs_description_get_by_ind(&reg_template)==0){
-                if(reg_template.property & SAVING){
-                    mirror_access_write(&reg_template);
-                }
+         } else {
+            main_printf(TAG, "mirror is the same, no needs to save");
+         }
+         nvs_close(my_handle);
+      } else {
+         main_error_message(TAG, "Error opening NVS handle! Error code: %s , %d", space_name, res);
+      }
+   }
+   semaphore_release(global_vars_mirror_mutex);
+   return res;
+}
+
+int internal_flash_restore_mirror_from_flash(u16 table_ind) {
+   int res = 0;
+   const char *space_name = regs_description_list_get_space_name(table_ind);
+   if(space_name){
+      semaphore_take(global_vars_mirror_mutex, portMAX_DELAY);
+      {
+         nvs_handle_t my_handle = {0};
+         main_printf(TAG, "mirror is getting from flash");
+         res = nvs_open(space_name, NVS_READWRITE, &my_handle);
+         if (res == ESP_OK) {
+            size_t size = regs_description_list_get_saved_buffer_size(table_ind);
+            u8 *data = regs_description_list_get_buffer(table_ind);
+            res = nvs_get_blob(my_handle, mirror_key, data, &size);
+            nvs_close(my_handle);
+         }
+      }
+      semaphore_release(global_vars_mirror_mutex);
+   }else{
+      res = -1;
+   }
+   return res;
+}
+
+void preinit_global_vars(u16 table_ind) {
+   regs_template_t regs_template = { 0 };
+   regs_template.table_ind = (u16)table_ind;
+   if (internal_flash_restore_mirror_from_flash(table_ind) == 0) {
+      main_printf(TAG, "regs inited from saved space");
+      u32 num_of_regs = regs_description_list_get_num_of_regs(table_ind);
+      for (u32 i = 0; i < num_of_regs; i++) {
+         if (regs_description_get_by_index(&regs_template, i) == 0) {
+            if (regs_template.property & SAVING) {
+               memcpy(regs_template.p_value, &global_vars_mirror[regs_template.saved_address],
+                      regs_size_in_byte(regs_template.type) * regs_template.size);
+            } else {
+               if (regs_template.p_default == NULL) {
+                  memset(regs_template.p_value, 0, regs_size_in_byte(regs_template.type) * regs_template.size);
+               } else {
+                  memcpy(regs_template.p_value, regs_template.p_default,
+                         regs_size_in_byte(regs_template.type) * regs_template.size);
+               }
             }
-        }
-    }
-    regs_global->vars.reset_num++;
-    if ((is_ascii_symbol_or_digital((u8*)&regs_global->vars.wifi_name,WIFI_NAME_LEN)<=0)||
-        (is_ascii_symbol_or_digital((u8*)&regs_global->vars.wifi_password,WIFI_PASSWORD_LEN)<=0)||
-        (strlen((char*)&regs_global->vars.wifi_router_name)==0)||
-        (strlen((char*)&regs_global->vars.wifi_router_password)==0)||
-            (regs_global->vars.table_version!=def_table_version)){
-        set_regs_def_values();
-        for (u16 i=0; i<NUM_OF_SELF_VARS; i++){
-            reg_template.ind = i;
-            if(regs_description_get_by_ind(&reg_template)==0){
-                if(reg_template.property & SAVING){
-                    mirror_access_write(&reg_template);
-                }
-            }
-        }
-    }
-    int index = regs_description_get_index_by_address(&regs_global->vars.reset_num);
-    if (index>=0){
-        reg_template.ind = (u16)index;
-        if (regs_description_get_by_ind(&reg_template)==0){
-            mirror_access_write(&reg_template);
-        }
-    }
+         }
+      }
+   } else {
+      main_printf(TAG, "regs init by default");
+      set_regs_def_values(table_ind);
+      mirror_access_init_buffer(table_ind);
+   }
+   regs_global->vars.reset_num++;
+   if ((is_ascii_symbol_or_digital((u8 *)&regs_global->vars.wifi_name, WIFI_NAME_LEN) <= 0) ||
+       (is_ascii_symbol_or_digital((u8 *)&regs_global->vars.wifi_password, WIFI_PASSWORD_LEN) <= 0) ||
+       (strlen((char *)&regs_global->vars.wifi_router_name) == 0) ||
+       (strlen((char *)&regs_global->vars.wifi_router_password) == 0) || (regs_global->vars.table_version != def_table_version)) {
+      set_regs_def_values(table_ind);
+      mirror_access_init_buffer(table_ind);
+   }
+   regs_template.p_value = (u8 *)&regs_global->vars.reset_num;
+   if (regs_description_get_by_address(&regs_template) == 0) {
+      mirror_access_write(&regs_template);
+   }
 }
 #endif //MIRROR_STORAGE_C
