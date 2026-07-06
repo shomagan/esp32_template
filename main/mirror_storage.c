@@ -56,11 +56,6 @@ semaphore_handle_t global_vars_mirror_mutex = NULL;
  */
 int mirror_recalc_crc(u8 * data, u32 size);
 
-int mirror_storage_init(){
-    int res = 0;
-    semaphore_create_binary(global_vars_mirror_mutex)
-    return res;
-}
 
 u32 mirror_access_get_size(){
     return (INTERNAL_FLASH_MIRROR_ITEM_SIZE);
@@ -70,10 +65,11 @@ int mirror_access_init_buffer(u16 table_ind){
    u32 num_of_regs = regs_description_list_get_num_of_regs(table_ind);
    u8 * data = regs_description_list_get_buffer(table_ind);
    int size = regs_description_list_get_saved_buffer_size(table_ind);
+   semaphore_create_binary(global_vars_mirror_mutex)
    for(u32 i = 0; i < num_of_regs && res == 0; i++){
       regs_template_t regs_template = {0};
       regs_template.table_ind = table_ind;
-      regs_description_get_by_index(&regs_template, i);
+      regs_description_get_by_index_in_table(&regs_template, i);
       if (regs_description_flag_check(&regs_template, SAVING)) {
          if (data && (regs_template.saved_address + regs_template.size_in_bytes <= size)) {
             semaphore_take(global_vars_mirror_mutex, portMAX_DELAY);
@@ -219,13 +215,14 @@ int internal_flash_restore_mirror_from_flash(u16 table_ind) {
 void preinit_global_vars(u16 table_ind) {
    regs_template_t regs_template = { 0 };
    regs_template.table_ind = (u16)table_ind;
+   u8 * saved_space =  regs_description_list_get_buffer(table_ind);
    if (internal_flash_restore_mirror_from_flash(table_ind) == 0) {
       main_printf(TAG, "regs inited from saved space");
       u32 num_of_regs = regs_description_list_get_num_of_regs(table_ind);
       for (u32 i = 0; i < num_of_regs; i++) {
-         if (regs_description_get_by_index(&regs_template, i) == 0) {
+         if (regs_description_get_by_index_in_table(&regs_template, i) == 0) {
             if (regs_template.property & SAVING) {
-               memcpy(regs_template.p_value, &global_vars_mirror[regs_template.saved_address],
+               memcpy(regs_template.p_value, &saved_space[regs_template.saved_address],
                       regs_size_in_byte(regs_template.type) * regs_template.size);
             } else {
                if (regs_template.p_default == NULL) {

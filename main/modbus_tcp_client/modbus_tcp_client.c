@@ -65,19 +65,6 @@ static int handleset_wait_ready(unsigned int timeout_ms,int socket);
 static int close_socket_connection(int * socket);
 static inline int ip_addresses_were_changed(u8 * server_ip_arg,u8 * own_ip_arg,u8 modbus_id);
 static FNCT_NO_RETURN void modbus_tcp_client_connection_task(void * argument);
-/**
- * @brief connection_proccess
- *             if we have server ip address try connect to him
- *  bsd sockets steps
- *  addr_info
- *  socket
- *  connect
- *  send recv
- *  close
- *
- *
- * @return less then 0 if error occured
- */
 static inline int connection_proccess(u8 dest_ip[4],int * socket_id,struct sockaddr_in * server_address,file_desc_set_t file_desc_set,
 ip_addr_t * s_hostent_addr,ip_addr_t **s_phostent_addr);
 static inline int connect_to_address(u8 dest_ip[4],struct sockaddr_in * server_address,file_desc_set_t file_desc_set,ip_addr_t * s_hostent_addr,ip_addr_t **s_phostent_addr);

@@ -68,113 +68,93 @@ queue_handle_t regs_event_queue = NULL;
  */
 static void * end_of_reg_addr(void * regs_global);
 static void execute_main_command(u16 command);
-static int regs_write_access(void * reg_address);
-static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering);
-static int regs_read_access(void * byte_address);
+static int regs_write_access(regs_template_t *regs_template);
+static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering, regs_template_t *regs_template);
 static temp_data_buffering_t temp_data_buffering = {.data = {{0}},.byte_writed_flags = 0,.reg_address = NULL};
-static int regs_hadle_sets(void * reg_address,regs_access_t reg,u16 reg_index);
+static int regs_hadle_sets(regs_access_t reg, regs_template_t * regs_template);
 static void execute_main_command(u16 command);
-/**
- * @brief regs_init
- * @return
- */
-int regs_init(){
-    semaphore_create_binary(regs_access_mutex)
-    return 0;
+const char * const global_space_name = "GLOBAL_SPACE";
+
+const regs_description_list_t regs_table_global = {
+    .description = regs_description_global,
+    .num_of_regs = NUM_OF_SELF_VARS,
+    .table_version = &def_table_version,
+    .space_name = global_space_name,
+    .saved_regs_buffer = global_vars_mirror,
+    .saved_regs_buffer_size = INTERNAL_FLASH_MIRROR_ITEM_SIZE
+};
+
+int regs_init() {
+   semaphore_create_binary(regs_access_mutex);
+   return regs_description_list_add_new(regs_table_global);
 }
-/**
- * @brief write new value in register, only for registers with write access
- *    only to be used by connection interfaces (modbus, http etc)
- * @param reg_address - in byte addressing
- * @param reg - struct for register access
- * @return  0 - OK, \n
- *          -1 - reg.flag error
- * @ingroup regs
- *
- * One writer or several reader \n
- * If we have writer dont read \n
- * If have reader dont write \n
- *
- * @warning special DO_CTRL register processing
- */
-int regs_set(void * reg_address,regs_access_t reg){
-    int result;
-    result = 0;
-    int writable_var_index = regs_write_access(reg_address);
-    if (writable_var_index>=0){
-        main_printf(TAG,"regs_set: writable_var_index=%d", writable_var_index);
-        if (regs_fill_temp_buffer(reg_address,reg,&temp_data_buffering, writable_var_index)<0){
-            result = -ILLEGAL_DATA_VALUE;
-        }
-        if (regs_check_temp_buffer(&temp_data_buffering, writable_var_index)>0){
-            main_printf(TAG,"regs_set: regs_check_temp_buffer OK");
-            if (regs_write_value_check(&temp_data_buffering)){
-                semaphore_take(regs_access_mutex, portMAX_DELAY );{
-                    memcpy(temp_data_buffering.reg_address, temp_data_buffering.data.bytes,
-                           regs_size_in_byte(temp_data_buffering.type));
-                }semaphore_release(regs_access_mutex);
-            }else{
-                result = -ILLEGAL_DATA_VALUE;
+
+int regs_set(void *reg_address, regs_access_t reg) {
+   int result;
+   result = 0;
+   regs_template_t regs_template;
+   regs_template.p_value = reg_address;
+   result = regs_write_access(&regs_template); /*regs template filled */
+   if (result > 0) {
+      if (regs_fill_temp_buffer(&regs_template, reg, &temp_data_buffering) < 0) {
+         result = -ILLEGAL_DATA_VALUE;
+      }
+      if (regs_check_temp_buffer(&temp_data_buffering, &regs_template) > 0) {
+         main_printf(TAG, "regs_set: regs_check_temp_buffer OK");
+         if (regs_write_value_check(&temp_data_buffering, &regs_template) > 0) {
+            semaphore_take(regs_access_mutex, portMAX_DELAY);
+            {
+               memcpy(temp_data_buffering.reg_address, temp_data_buffering.data.bytes,
+                      regs_size_in_byte(temp_data_buffering.type));
             }
-            regs_clear_temp_buffer(&temp_data_buffering);
-            regs_hadle_sets(reg_address, reg, (u16)writable_var_index);
-        }
-    }else{
-        main_error_message(TAG,"regs_set: no write access");
-        result = -ILLEGAL_DATA_ADDRESS;
-    }
-    return result;
+            semaphore_release(regs_access_mutex);
+         } else {
+            result = -ILLEGAL_DATA_VALUE;
+         }
+         regs_clear_temp_buffer(&temp_data_buffering);
+         regs_hadle_sets(reg, &regs_template);
+      }
+   } else {
+      main_error_message(TAG, "regs_set: no write access");
+      result = -ILLEGAL_DATA_ADDRESS;
+   }
+   return result;
 }
-/**
- * @brief regs_write_internal only for safety write
- * @param reg_address - in byte addressing
- * @param reg - struct for register access
- * @return  0 - OK, \n
- *          -1 - reg.flag error
- * @ingroup regs
- */
-int regs_write_internal(void * reg_address,regs_access_t reg){
+
+int regs_write_internal(void *reg_address, regs_access_t reg) {
+   int result = 0;
+   semaphore_take(regs_access_mutex, portMAX_DELAY);
+   {
+      memcpy(reg_address, &reg.value.op_u64, regs_size_in_byte(reg.flag));
+   }
+   semaphore_release(regs_access_mutex);
+   return result;
+}
+
+static int regs_write_access(regs_template_t *regs_template) {
+   int res = -ILLEGAL_DATA_ADDRESS;
+   if (regs_template != NULL) {
+      if (regs_description_get_by_address(regs_template) >= 0) {
+         if (regs_description_is_writable(regs_template) ||
+             (regs_description_is_credential(regs_template) == 1 && (regs_global->vars.permission & ENABLE_CREDENTIAL_FLAG))) {
+            res = TRUE;
+         }
+      }
+   }
+   return res;
+}
+
+static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering, regs_template_t *regs_template){
     int result = 0;
-    semaphore_take(regs_access_mutex, portMAX_DELAY);{
-        memcpy(reg_address, &reg.value.op_u64, regs_size_in_byte(reg.flag));
-    }semaphore_release(regs_access_mutex);
-    return result;
-}
-/**
- * @brief regs_write_access
- * @param byte_address - byte address
- * @return more than 0 if enabled access, <0 if not
- */
-static int regs_write_access(void * reg_address){
-    int res = -ILLEGAL_DATA_ADDRESS;
-    int index = regs_description_get_index_by_address(reg_address);
-    if (index>=0){
-        if (regs_description_is_writable((u16)index)||
-            (regs_description_is_credential((u16)index)==1 &&
-             (regs_global->vars.permission & ENABLE_CREDENTIAL_FLAG))){
-            res = index;
-        }
-    }
-    return res;
-}
-/**
- * @brief regs_write_value_check
- * @param temp_data_buffering -
- * @return
- */
-static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
-    int result = 0;
-    regs_template_t regs_template = {0};
-    regs_template.ind = temp_data_buffering->index;
-    if (regs_description_get_by_ind(&regs_template)>=0){
-        u32 array_number = (u32)temp_data_buffering->reg_address - (u32)regs_template.p_value;
-        array_number /= regs_size_in_byte(regs_template.type);
+    if (regs_template != NULL && regs_template->p_value != NULL && temp_data_buffering != NULL){
+        u32 array_number = (u32)temp_data_buffering->reg_address - (u32)regs_template->p_value;
+        array_number /= regs_size_in_byte(regs_template->type);
         result = 1;
-        if (regs_template.p_max_value!=NULL){
-            switch(regs_template.type){
+        if (regs_template->p_max_value!=NULL){
+            switch(regs_template->type){
             case U8_REGS_FLAG:
             {
-                const u8 * max_value = (const void*)regs_template.p_max_value;
+                const u8 * max_value = (const void*)regs_template->p_max_value;
                 if (temp_data_buffering->data.operand.op_u8 > max_value[array_number]){
                     temp_data_buffering->data.operand.op_u8 = max_value[array_number];
                 }
@@ -182,7 +162,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             case I8_REGS_FLAG:
             {
-                const i8 * max_value = (const void*)regs_template.p_max_value;
+                const i8 * max_value = (const void*)regs_template->p_max_value;
                 if (temp_data_buffering->data.operand.op_i8 > max_value[array_number]){
                     temp_data_buffering->data.operand.op_i8 = max_value[array_number];
                 }
@@ -190,7 +170,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             case U16_REGS_FLAG:
             {
-                const u16 * max_value = (const void*)regs_template.p_max_value;
+                const u16 * max_value = (const void*)regs_template->p_max_value;
                 if (temp_data_buffering->data.operand.op_u16 > max_value[array_number]){
                     temp_data_buffering->data.operand.op_u16 = max_value[array_number];
                 }
@@ -198,7 +178,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             case S16_REGS_FLAG:
             {
-                const s16 * max_value = (const void*)regs_template.p_max_value;
+                const s16 * max_value = (const void*)regs_template->p_max_value;
                 if (temp_data_buffering->data.operand.op_i16 > max_value[array_number]){
                     temp_data_buffering->data.operand.op_i16 = max_value[array_number];
                 }
@@ -207,7 +187,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
             case TIME_REGS_FLAG:
             case U32_REGS_FLAG:
             {
-                const u32 * max_value = (const void*)regs_template.p_max_value;
+                const u32 * max_value = (const void*)regs_template->p_max_value;
                 if (temp_data_buffering->data.operand.op_u32 > max_value[array_number]){
                     temp_data_buffering->data.operand.op_u32 = max_value[array_number];
                 }
@@ -216,7 +196,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
             case S32_REGS_FLAG:
             case INT_REGS_FLAG:
             {
-                const s32 * max_value = (const void*)regs_template.p_max_value;
+                const s32 * max_value = (const void*)regs_template->p_max_value;
                 if (temp_data_buffering->data.operand.op_s32 > max_value[array_number]){
                     temp_data_buffering->data.operand.op_s32 = max_value[array_number];
                 }
@@ -224,7 +204,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             case FLOAT_REGS_FLAG:
             {
-                const float * max_value = (const void*)regs_template.p_max_value;
+                const float * max_value = (const void*)regs_template->p_max_value;
                 if (temp_data_buffering->data.operand.op_f > max_value[array_number]){
                     temp_data_buffering->data.operand.op_f = max_value[array_number];
                 }
@@ -232,7 +212,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             case U64_REGS_FLAG:
             {
-                const u64 * max_value = (const void*)regs_template.p_max_value;
+                const u64 * max_value = (const void*)regs_template->p_max_value;
                 if (temp_data_buffering->data.operand.op_u64 > max_value[array_number]){
                     temp_data_buffering->data.operand.op_u64 = max_value[array_number];
                 }
@@ -240,7 +220,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             case S64_REGS_FLAG:
             {
-                const s64 * max_value = (const void*)regs_template.p_max_value;
+                const s64 * max_value = (const void*)regs_template->p_max_value;
                 if (temp_data_buffering->data.operand.op_s64 > max_value[array_number]){
                     temp_data_buffering->data.operand.op_s64 = max_value[array_number];
                 }
@@ -248,7 +228,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             case DOUBLE_REGS_FLAG:
             {
-                const double * max_value = (const void*)regs_template.p_max_value;
+                const double * max_value = (const void*)regs_template->p_max_value;
                 if (temp_data_buffering->data.operand.op_d > max_value[array_number]){
                     temp_data_buffering->data.operand.op_d = max_value[array_number];
                 }
@@ -257,11 +237,11 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
             }
 
         }
-        if (regs_template.p_min_value!=NULL){
-            switch(regs_template.type){
+        if (regs_template->p_min_value!=NULL){
+            switch(regs_template->type){
             case U8_REGS_FLAG:
             {
-                const u8 * min_value = (const void*)regs_template.p_min_value;
+                const u8 * min_value = (const void*)regs_template->p_min_value;
                 if (temp_data_buffering->data.operand.op_u8 < min_value[array_number]){
                     temp_data_buffering->data.operand.op_u8 = min_value[array_number];
                 }
@@ -269,7 +249,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             case I8_REGS_FLAG:
             {
-                const i8 * min_value = (const void*)regs_template.p_min_value;
+                const i8 * min_value = (const void*)regs_template->p_min_value;
                 if (temp_data_buffering->data.operand.op_i8 < min_value[array_number]){
                     temp_data_buffering->data.operand.op_i8 = min_value[array_number];
                 }
@@ -277,7 +257,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             case U16_REGS_FLAG:
             {
-                const u16 * min_value = (const void*)regs_template.p_min_value;
+                const u16 * min_value = (const void*)regs_template->p_min_value;
                 if (temp_data_buffering->data.operand.op_u16 < min_value[array_number]){
                     temp_data_buffering->data.operand.op_u16 = min_value[array_number];
                 }
@@ -285,7 +265,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             case S16_REGS_FLAG:
             {
-                const s16 * min_value = (const void*)regs_template.p_min_value;
+                const s16 * min_value = (const void*)regs_template->p_min_value;
                 if (temp_data_buffering->data.operand.op_i16 < min_value[array_number]){
                     temp_data_buffering->data.operand.op_i16 = min_value[array_number];
                 }
@@ -294,7 +274,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
             case TIME_REGS_FLAG:
             case U32_REGS_FLAG:
             {
-                const u32 * min_value = (const void*)regs_template.p_min_value;
+                const u32 * min_value = (const void*)regs_template->p_min_value;
                 if (temp_data_buffering->data.operand.op_u32 < min_value[array_number]){
                     temp_data_buffering->data.operand.op_u32 = min_value[array_number];
                 }
@@ -303,7 +283,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
             case S32_REGS_FLAG:
             case INT_REGS_FLAG:
             {
-                const s32 * min_value = (const void*)regs_template.p_min_value;
+                const s32 * min_value = (const void*)regs_template->p_min_value;
                 if (temp_data_buffering->data.operand.op_s32 < min_value[array_number]){
                     temp_data_buffering->data.operand.op_s32 = min_value[array_number];
                 }
@@ -311,7 +291,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             case FLOAT_REGS_FLAG:
             {
-                const float * min_value = (const void*)regs_template.p_min_value;
+                const float * min_value = (const void*)regs_template->p_min_value;
                 if (temp_data_buffering->data.operand.op_f < min_value[array_number]){
                     temp_data_buffering->data.operand.op_f = min_value[array_number];
                 }
@@ -319,7 +299,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             case U64_REGS_FLAG:
             {
-                const u64 * min_value = (const void*)regs_template.p_min_value;
+                const u64 * min_value = (const void*)regs_template->p_min_value;
                 if (temp_data_buffering->data.operand.op_u64 < min_value[array_number]){
                     temp_data_buffering->data.operand.op_u64 = min_value[array_number];
                 }
@@ -327,7 +307,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             case S64_REGS_FLAG:
             {
-                const s64 * min_value = (const void*)regs_template.p_min_value;
+                const s64 * min_value = (const void*)regs_template->p_min_value;
                 if (temp_data_buffering->data.operand.op_s64 < min_value[array_number]){
                     temp_data_buffering->data.operand.op_s64 = min_value[array_number];
                 }
@@ -335,7 +315,7 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             case DOUBLE_REGS_FLAG:
             {
-                const double * min_value = (const void*)regs_template.p_min_value;
+                const double * min_value = (const void*)regs_template->p_min_value;
                 if (temp_data_buffering->data.operand.op_d < min_value[array_number]){
                     temp_data_buffering->data.operand.op_d = min_value[array_number];
                 }
@@ -343,11 +323,11 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering){
                 break;
             }
         }
-        if (regs_template.p_value == regs_global->vars.wifi_name ||
-            regs_template.p_value == regs_global->vars.wifi_password||
-            regs_template.p_value == regs_global->vars.wifi_router_password||
-            regs_template.p_value == regs_global->vars.wifi_router_name){
-            if (is_ascii_symbol_or_digital((u8*)&temp_data_buffering->data.operand.op_u64, regs_size_in_byte(regs_template.type))==1){
+        if (regs_template->p_value == regs_global->vars.wifi_name ||
+            regs_template->p_value == regs_global->vars.wifi_password||
+            regs_template->p_value == regs_global->vars.wifi_router_password||
+            regs_template->p_value == regs_global->vars.wifi_router_name){
+            if (is_ascii_symbol_or_digital((u8*)&temp_data_buffering->data.operand.op_u64, regs_size_in_byte(regs_template->type))==1){
                 result = 1;
             }else{
                 result = 0;
@@ -367,65 +347,23 @@ void regs_copy_safe(void *reg_to, void *reg_from, u32 size) {
    semaphore_release(regs_access_mutex);
 }
 
-/**
- * @brief pull data from main vars to template reg
- * @param reg_address - in byte addressing
- * @param reg - pointer to value when we will set data
- * @return  0 - OK, \n
- *          -1 - reg.flag error
- * @ingroup regs
- * @warning in param reg you should set flag space
- * */
 int regs_get(void *reg_address, regs_access_t *reg) {
-   int result;
-   result = 0;
-   reg->value.op_u64 = 0;
-   if (regs_read_access(reg_address) == 1) {
+   int result = -1;
+   if(reg != NULL && reg_address != NULL){
+      reg->value.op_u64 = 0;
       semaphore_take(regs_access_mutex, portMAX_DELAY);
-      {
-         memcpy(&reg->value.op_u64, reg_address, regs_size_in_byte(reg->flag));
-      }
+      memcpy(&reg->value.op_u64, reg_address, regs_size_in_byte(reg->flag));
       semaphore_release(regs_access_mutex);
-   } else {
-      result = -ILLEGAL_DATA_ADDRESS;
    }
    return result;
 }
-/**
- * @brief regs_read_access
- * @param byte_address - byte address
- * @return 1 if enabled access, 0 if disabled , <0 if error occured
- */
-static int regs_read_access(void * byte_address){
-    int res = 0;
-    int index = regs_description_get_index_by_address(byte_address);
-    if (index>=0){
-        res = 1;
-    }else{
-        res = -ILLEGAL_DATA_ADDRESS;
-    }
-    return res;
-}
-/**
- * @brief read vars in buffer
- * @param reg_address - in byte addressing
- * @param buffer_to - pointer to buffer for reading data
- * @param byte_numm - number of reading bytes
- * @return 0
- * @ingroup regs
- * @todo add asserts for byte_numm,buffer_to
- */
-int regs_get_buffer(void * reg_address,u8* buffer_to,u16 byte_numm){
-    int result;
-    regs_access_t reg;
-    reg.flag = U8_REGS_FLAG;
-    result =0;
-    for(u16 i=0; i<byte_numm; i++){
-        result = regs_get((void*)((u32)reg_address+i),&reg);
-        if(result!=0){
-            break;
-        }
-        memcpy((u8*)(buffer_to+i),&reg.value.op_u8,1);
+
+int regs_get_buffer(void * reg_address,u8* buffer_to,u16 byte_num){
+    int result = -1;
+    if(reg_address != NULL && buffer_to != NULL && byte_num != 0){
+        memcpy(buffer_to,reg_address,byte_num);
+
+        result = 0;
     }
     return result;
 }
@@ -494,138 +432,88 @@ int regs_set_buffer(void * reg_address,u8* buffer_from,u16 byte_numm){
  * @ingroup regs
  * @example rewrite rtc time or ethernet settings drive to write in peripherial hardware or change external setting
  */
-static int regs_hadle_sets(void * reg_address,regs_access_t reg,u16 reg_index){
-    int result;
-    result = 0;
-    void * end_addr = (void*)((u32)reg_address + regs_size_in_byte(reg.flag));
-    if (regs_description_flag_check(&regs_template, SAVING)){/*regs saved in mirror*/
-        main_printf(TAG,"\n register is saved %u reg_index", reg_index);
-        regs_template_t regs_template;
-        regs_template.ind = (u16)reg_index;
-        if(regs_description_get_by_ind(&regs_template)==0){
-            main_printf(TAG, "\n regs_template.saved_address %lu", regs_template.saved_address);
-            mirror_access_write(&regs_template);
-        }
-    }else{
-        main_printf(TAG,"\n register is not saved %u reg_index", reg_index);
-    }
-    /*special*/
-    if ((end_addr == end_of_reg_addr(&regs_global->vars.ip))||
-        (end_addr == end_of_reg_addr(&regs_global->vars.gate))||
-        (end_addr == end_of_reg_addr(&regs_global->vars.netmask))){
-        ESP_LOGI(TAG, "ip has changed");
-    } else if (end_addr == end_of_reg_addr(&regs_global->vars.command)){
-        execute_main_command(regs_global->vars.command);
-    }else if(end_addr == end_of_reg_addr(&touch_regs->vars.test_pwm_value)){
-        pwm_test_set(touch_regs->vars.test_pwm_value);
-    }
-    return result;
+static int regs_hadle_sets(regs_access_t reg, regs_template_t * regs_template){
+   int result;
+   result = 0;
+   if(regs_template != NULL || regs_template->p_value != NULL){
+      void * end_addr = (void*)((u32)regs_template->p_value + regs_size_in_byte(reg.flag));
+      if (regs_description_flag_check(regs_template, SAVING)){/*regs saved in mirror*/
+         main_printf(TAG,"\n register is saved %u reg_index", reg_index);
+         main_printf(TAG, "\n regs_template.saved_address %lu", regs_template.saved_address);
+         mirror_access_write(&regs_template);
+      }else{
+         main_printf(TAG,"\n register is not saved %u reg_index", reg_index);
+      }
+      /*special - hmmm*/
+      if ((end_addr == end_of_reg_addr(&regs_global->vars.ip))||
+         (end_addr == end_of_reg_addr(&regs_global->vars.gate))||
+         (end_addr == end_of_reg_addr(&regs_global->vars.netmask))){
+         ESP_LOGI(TAG, "ip has changed");
+      } else if (end_addr == end_of_reg_addr(&regs_global->vars.command)){
+         execute_main_command(regs_global->vars.command);
+      }else if(end_addr == end_of_reg_addr(&touch_regs->vars.test_pwm_value)){
+         pwm_test_set(touch_regs->vars.test_pwm_value);
+      }
+      return result;
+
+   }
 }
-/**
- * @brief write register to mirror
- * @param reg - pointer to register
- * @return  0 - OK, \n
- *          -1 - reg description not find, \n
- *          -2 - register not saving
- * @ingroup regs
- * @warning in debug mode enabled checking after write to mirror
- */
-int write_reg_to_mirror(void *reg){
-    int result = 0;
-    int index = regs_description_get_index_by_address(reg);
-    if (index >= 0){
-        regs_template_t regs_template = {0};
-        regs_template.ind = (u16)index;
-        if(regs_description_get_by_ind(&regs_template)==0){
-            if(regs_template.property & SAVING){
-                mirror_access_write(&regs_template);
-            }else{
-                result = -3;
-            }
-        }else {
-            main_printf(TAG,"\nFailed %s:%d",__FILE__,__LINE__);
-            result = -2;
-        }
-    }else{
-        main_printf(TAG,"\nFailed %s:%d",__FILE__,__LINE__);
-        result = -1;
-    }
-    return result;
+
+int write_reg_to_mirror(void *p_to_value) {
+   int result = 0;
+   regs_template_t regs_template = { 0 };
+   regs_template.p_value = p_to_value;
+   result = regs_description_get_by_address(&regs_template);
+   if (result >= 0) {
+      mirror_access_write(&regs_template);
+   } else {
+      main_printf(TAG, "\nFailed %s:%d", __FILE__, __LINE__);
+      result = -1;
+   }
+   return result;
 }
-/**
- * @brief restore register value from bkram
- * @param reg - pointer to register
- * @return  0 - OK, \n
- *          -1 - reg description not find, \n
- *          -2 - register not saving
- * @ingroup regs
- */
-int read_reg_from_bkram(void *reg){
-    int result = 0;
-    int index = regs_description_get_index_by_address(reg);
-    if (index >= 0){
-        regs_template_t regs_template = {0};
-        regs_template.ind = (u16)index;
-        if(regs_description_get_by_ind(&regs_template)==0){
-            if(regs_template.property & SAVING){
-                mirror_access_read((u16)regs_template.saved_address, regs_template.p_value, (u8)regs_template.size_in_bytes);
-            }else{
-                result = -2;
-            }
-        }else {
-            main_printf(TAG,"\nFailed %s:%d",__FILE__,__LINE__);
-            result = -2;
-        }
-    }else{
-        main_printf(TAG,"\nFailed %s:%d",__FILE__,__LINE__);
-        result = -1;
-    }
-    return result;
+int read_reg_from_bkram(void *p_to_value) {
+   int result = 0;
+   regs_template_t regs_template = { 0 };
+   regs_template.p_value = p_to_value;
+   result = regs_description_get_by_address(&regs_template);
+   if (result >= 0) {
+      if (regs_template.property & SAVING) {
+         mirror_access_read((u16)regs_template.saved_address, regs_template.p_value, (u8)regs_template.size_in_bytes);
+      }
+   } else {
+      main_printf(TAG, "\nFailed %s:%d", __FILE__, __LINE__);
+      result = -1;
+   }
+   return result;
 }
-/**
- * @brief return end of register address
- * @param reg - pointer to register
- * @return  end of register address, \n
- *          0 - reg description not find
- * @ingroup regs
- */
-static void * end_of_reg_addr(void * reg){
-    void * addr = NULL;
-    regs_template_t regs_template = {0};
-    int index = regs_description_get_index_by_address(reg);
-    if(index >= 0){
-        regs_template.ind = (u16)index;
-        if (regs_description_get_by_ind(&regs_template)>=0){
-            addr = regs_template.p_value + regs_template.size_in_bytes;
-        }
-    }
-    return addr;
+
+static void *end_of_reg_addr(void *p_to_value) {
+   void *addr = NULL;
+   regs_template_t regs_template = { 0 };
+   regs_template.p_value = p_to_value;
+   int result = regs_description_get_by_address(&regs_template);
+   if (result >= 0) {
+      addr = regs_template.p_value + regs_template.size_in_bytes;
+   }
+   return addr;
 }
-/**
- * @brief regs_of_bkram_and_have_def_value
- * @param reg_address
- * @return  1 if vars in saved space and have def value in description
- */
-int regs_saved_and_have_def_value(const void * reg_address){
-    int res = 0;
-    regs_template_t regs_template;
-    int index = regs_description_get_index_by_address(reg_address);
-    if (index>=0){
-        regs_template.ind = (u16)index;
-        regs_description_get_by_ind(&regs_template);
-        if (regs_template.property & SAVING) {
-            if (regs_template.p_default) {    /*reg have default value*/
-                res = 1;
-            }
-        }
-    }
-    return res;
+
+int regs_saved_and_have_def_value(const void *p_to_value) {
+   int res = 0;
+   regs_template_t regs_template = { 0 };
+   regs_template.p_value = (void *)p_to_value;
+   res = regs_description_get_by_address(&regs_template);
+   if (res >= 0) {
+      if (regs_template.property & SAVING) {
+         if (regs_template.p_default) { /*reg have default value*/
+            res = 1;
+         }
+      }
+   }
+   return res;
 }
-/**
- * @brief execute command
- * @param command - command from command_list
- * @ingroup regs
- */
+
 static void execute_main_command(u16 command){
     int res = 0;
     uint32_t prev_value = 0;
@@ -643,7 +531,7 @@ static void execute_main_command(u16 command){
         break;
     case SET_DEFAULT_VALUES_COMM:
         ESP_LOGI(TAG, "SET_DEFAULT_VALUES_COMM");
-        res = set_regs_def_values();
+        res = set_regs_def_values(regs_global->vars.table_id);
         if (res == 1){
             main_printf(TAG,"task notify to prepare reset");
             task_notify_send(common_duty_task_handle,PREPARE_TO_RESET,&prev_value);

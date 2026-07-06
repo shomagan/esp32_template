@@ -88,7 +88,7 @@ typedef struct MCU_PACK {
 typedef struct{
    const regs_description_t * description;   /*pointer to array of regs_description_t*/
    const u32 num_of_regs;                    /*number of registers*/
-   const u32 table_version;                  /*version of description table to check in saved memory*/
+   const u32 * table_version;                  /*version of description table to check in saved memory*/
    const char * space_name;                  /*should start with SOFI_ always, space name for user vars, and for own client*/
    u8 * saved_regs_buffer;                 /*pointer to buffer for save vars, size should be calculated by generator, 32 bit aligned*/
    const u32 saved_regs_buffer_size;         /*size of buffer for save vars, should be calculated by generator, 32 bit aligned*/
@@ -101,77 +101,34 @@ typedef enum{
     GUID_USER_HEAD      =    0x10000000,
     GUID_USER_MDB_FIELD_MASK =    0x0F000000,/*!< modbus field mask*/
     GUID_USER_IS_01_MD  =    0x01000000,/*!< its belong modbus coils areas 01*/
-    GUID_USER_IS_02_MD  =    0x02000000,/*!< its belong modbus input descretes areas 02*/
+    GUID_USER_IS_02_MD  =    0x02000000,/*!< its belong modbus input discretes areas 02*/
     GUID_USER_IS_03_MD  =    0x04000000,/*!< its belong modbus holdings regs areas 03*/
     GUID_USER_IS_04_MD  =    0x08000000,/*!< its belong modbus input regs areas 04*/
 }regs_description_guid;
 
-extern regs_description_t const regs_description[];
+extern regs_description_t const regs_description_global[];
 extern regs_description_t const regs_description_user[];
-extern const regs_description_t * regs_description_client;
+extern regs_description_t const regs_description_client[];
 extern const u16 def_table_id;
+int regs_description_list_add_new(regs_description_list_t regs_table);
 u8 * regs_description_list_get_buffer(u8 ind);
 int regs_description_list_get_saved_buffer_size(u8 ind);
-
-int regs_description_get_by_index(regs_template_t * regs_template, u8 ind);
-
+int regs_description_get_index_by_name(regs_template_t *regs_template);
+int regs_description_get_by_index(regs_template_t * regs_template, u32 index);
+int regs_description_get_by_index_in_table(regs_template_t * regs_template, u32 ind);
+int regs_description_get_by_address(regs_template_t * regs_template);
 int regs_description_get_by_name(regs_template_t * regs_template);
 int regs_description_get_by_guid(regs_template_t * regs_template);
 int regs_description_add_user_vars(const regs_description_t * user_description, u16 num_of_user_vars);
-u8 regs_description_is_writable (u16 reg_index);
-u8 regs_description_is_credential(u16 reg_index);
+u8 regs_description_is_writable (regs_template_t *regs_template);
+u8 regs_description_is_credential(regs_template_t *regs_template);
 u8 regs_description_flag_check (regs_template_t *regs_template, u8 flag);
-
-
-/**
- * @brief regs_description_get_pointer_by_modbus
- * @param modbus_address [0;65635]
- * @param modbus_function {1,2,3,4}
- * @return  non NULL pointer if matched
- */
 void * regs_description_get_pointer_by_modbus(u16 modbus_address, u8 modbus_function);
-
-/**
- * @brief return ind of savig address of register in bkram
- * @param reg_end_address - pointer to register
- * @return  ind of savig bkram address, \n
- *          -1 - reg description not find
- * @ingroup regs
- */
-int end_of_saved_reg_addr(void * reg_end_address);
-/**
- * @brief regs_fill_temp_buffer - fillng temp buff
- * @param reg_address   - pointer to data where will write
- * @param reg   - write struct
- * @param temp_data_buffering - global temp buffer for writing data
- * @param index - index of register
- * @return
- */
-int regs_fill_temp_buffer(void * reg_address,regs_access_t reg,temp_data_buffering_t * temp_data_buffering, int index);
-/**
- * @brief regs_check_temp_buffer
- * @param temp_data_buffering
- * @param index
- * @return positive value if register is full filling
- */
-int regs_check_temp_buffer(temp_data_buffering_t * temp_data_buffering, int index);
+int regs_fill_temp_buffer(regs_template_t *regs_template, regs_access_t reg, temp_data_buffering_t * temp_data_buffering);
+int regs_check_temp_buffer(temp_data_buffering_t * temp_data_buffering, regs_template_t * regs_template);
 int set_regs_def_values (u16 table_ind);
-/**
- * @brief regs_clear_temp_buffer clining
- * @param temp_data_buffering
- * @param index
- * @return positive value if register is full filling
- */
 int regs_clear_temp_buffer(temp_data_buffering_t * temp_data_buffering);
-/*
-* @brief regs_description_get_string
-* @param reg_id - index of register
-* @param reg_num - number of registers to get after reg_id
-* @param buffer - pointer to buffer for string
-* @param buffer_size - size of buffer
-* @return number of bytes written to buffer, or 0 if no data written
-*/
-u32 regs_description_get_regs_string_value(u16 reg_id, u8 reg_num, char * buffer, u32 buffer_size);
+u32 regs_description_get_regs_string_value(regs_template_t *regs_template, u8 reg_num, char *buffer, u32 buffer_size);
 int regs_description_write_value_by_address(const void * address, const u8 * value);
 /*add functions and variable declarations before */
 #ifdef __cplusplus

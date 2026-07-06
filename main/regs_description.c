@@ -109,7 +109,7 @@ static const u16 def_scd41_measur_interval = 1;
 static const u16 def_min_scd41_measur_interval = 1;
 static const u16 def_max_scd41_measur_interval = 120;
 
-regs_description_t const regs_description[NUM_OF_SELF_VARS]={
+regs_description_t const regs_description_global[NUM_OF_SELF_VARS]={
 { &def_mdb_addr, NULL, NULL, (u8*)&regs_main.regs_global.vars.mdb_addr, 16,"modbus address","mdb_addr", U16_REGS_FLAG, 0, 0, 0x30000, 1, 5, 0 },//!<"modbus address" &save &def
 { &def_ip, NULL, NULL, (u8*)&regs_main.regs_global.vars.ip[0], 18,"device ip address, warning!!! changes can lead to lost connection","ip", U8_REGS_FLAG, 1, 2, 0x30001, 4, 5, 0 },//!<"device ip address, warning!!! changes can lead to lost connection" &save &def &crtcl
 { &def_netmask, NULL, NULL, (u8*)&regs_main.regs_global.vars.netmask[0], 22,"netmask address for main wifi net","netmask", U8_REGS_FLAG, 2, 6, 0x30003, 4, 5, 0 },//!<"netmask address for main wifi net", &save , &def , &crtcl
@@ -243,29 +243,7 @@ regs_description_t const regs_description[NUM_OF_SELF_VARS]={
 { NULL, NULL, NULL, (u8*)&regs_main.scd41_reg.vars.scd41_index_in_array, 254,"Index in array","scd41_index_in_array", U16_REGS_FLAG, 130, 824, 0x312c7, 1, 7, 11 },//!< "Index in array" &ro &save
 { NULL, NULL, NULL, (u8*)&regs_main.scd41_reg.vars.scd41_co2_array[0], 256,"CO2 level in ppm","scd41_co2_array", U16_REGS_FLAG, 131, 826, 0x312c8, 48, 7, 11 },//!< "CO2 level in ppm" &ro &save
 };
-regs_description_t const regs_description_user[NUM_OF_CLIENT_VARS]={
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_mdb_addr, 0,"modbus address","cli_mdb_addr", U16_REGS_FLAG, 132, 922, 0x30000, 1, 1, 0xc03 },//!<"modbus address"
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_ip[0], 0,"device ip address, warning!!! ","cli_ip", U8_REGS_FLAG, 133, 924, 0x30001, 4, 1, 0xc03 },//!<"device ip address, warning!!! "
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_netmask[0], 0,"netmask address for main wifi net","cli_netmask", U8_REGS_FLAG, 134, 928, 0x30003, 4, 1, 0xc03 },//!<"netmask address for main wifi net",
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_gate[0], 0,"gateaway address, warning!!! ","cli_gate", U8_REGS_FLAG, 135, 932, 0x30005, 4, 1, 0xc03 },//!<"gateaway address, warning!!! "
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_slip_ip[0], 0,"ip address for local net","cli_slip_ip", U8_REGS_FLAG, 136, 936, 0x30007, 4, 1, 0xc03 },//!<"ip address for local net",
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_slip_netmask[0], 0,"netmask address for local net","cli_slip_netmask", U8_REGS_FLAG, 137, 940, 0x30009, 4, 1, 0xc03 },//!<"netmask address for local net",
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_slip_gate[0], 0,"gateaway address for local net","cli_slip_gate", U8_REGS_FLAG, 138, 944, 0x3000b, 4, 1, 0xc03 },//!<"gateaway address for local net",
-{ NULL, NULL, NULL, (u8*)&regs_main.sync_time_client.vars.sys_tick_slave, 0,"time read from slave","sys_tick_slave", U64_REGS_FLAG, 139, 948, 0x3003f, 1, 3, 0xd03 },//!< "time read from slave" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_1.vars.cli_num_of_vars, 0,"cli_num_of_vars","cli_num_of_vars", U16_REGS_FLAG, 140, 956, 0x30050, 1, 3, 0xe03 },//!<"number of vars self + config(user) &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.client_part_1.vars.cli_client_num_of_vars, 0,"number of client vars self","cli_client_num_of_vars", U16_REGS_FLAG, 141, 958, 0x30051, 1, 3, 0xe03 },//!<"number of client vars self" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs_from_client.vars.cli_sys_tick_dev, 0,"deviation between master and slave","cli_sys_tick_dev", S32_REGS_FLAG, 142, 960, 0x30fa0, 1, 3, 0xf03 },//!< "deviation between master and slave" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs_from_client.vars.cli_sys_tick_slave, 0,"time read from slave","cli_sys_tick_slave", U64_REGS_FLAG, 143, 964, 0x30fa2, 1, 3, 0xf03 },//!< "time read from slave" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs_from_client.vars.cli_sys_tick_master, 0,"time read from master","cli_sys_tick_master", U64_REGS_FLAG, 144, 972, 0x30fa6, 1, 3, 0xf03 },//!< "time read from master" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs_from_client.vars.cli_average_time_ms, 0,"average send receive time ","cli_average_time_ms", U16_REGS_FLAG, 145, 980, 0x30faa, 1, 3, 0xf03 },//!< "average send receive time " &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs_from_client.vars.cli_last_req_time_ms, 0,"last send receive time ","cli_last_req_time_ms", U16_REGS_FLAG, 146, 982, 0x30fab, 1, 3, 0xf03 },//!< "last send receive time " &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sync_time_regs_from_client.vars.cli_sync_state, 0,"activated measurement","cli_sync_state", U16_REGS_FLAG, 147, 984, 0x30fac, 1, 3, 0xf03 },//!< "activated measurement" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_state, 0,"state sr04, bit0 - activated, bit1 - echo signal received","cli_state", U16_REGS_FLAG, 148, 986, 0x31004, 1, 3, 0x1003 },//!< "state sr04, bit0 - activated, bit1 - echo signal received" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_distance, 0,"current distance","cli_distance", FLOAT_REGS_FLAG, 149, 988, 0x31005, 1, 3, 0x1003 },//!< "current distance" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_lap, 0,"when we have sharp change of a distance, save it ","cli_lap", U64_REGS_FLAG, 150, 992, 0x31007, 1, 3, 0x1003 },//!< "when we have sharp change of a distance, save it " &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_lap_paired_dev, 0,"lap from paired device","cli_lap_paired_dev", U64_REGS_FLAG, 151, 1000, 0x3100b, 1, 3, 0x1003 },//!< "lap from paired device" &ro
-{ NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_distance_filtered, 0,"current distance filtered","cli_distance_filtered", FLOAT_REGS_FLAG, 152, 1008, 0x3100f, 1, 3, 0x1003 },//!< "current distance filtered" &ro
-};
+
 
 const regs_description_t * regs_description_client = regs_description_user;
 static u32 num_of_list_descriptions = 0;
@@ -274,44 +252,67 @@ int regs_description_list_add_new(regs_description_list_t regs_table){
    int res = 0;
    if ((regs_table.description != NULL) && (regs_table.num_of_regs > 0) && (num_of_list_descriptions < LIST_DESCRIPTIONS_SIZE)){
       regs_description_list[num_of_list_descriptions] = regs_table;//!< add new description to list
+      preinit_global_vars(num_of_list_descriptions);//!< preinit global vars for new description
       num_of_list_descriptions++;
    }else{
       res = -2;//!< wrong input params or list full
    }
    return res;
 }
+regs_description_t * regs_description_list_get_description(u16 table_ind){
+   regs_description_t * result = NULL;
+   if (table_ind < num_of_list_descriptions){
+      result = regs_description_list[table_ind].description;
+   }
+   return result;
+}
 
-const char *regs_description_list_get_space_name(u8 ind){
+const char *regs_description_list_get_space_name(u16 table_ind){
    const char * result = NULL;
-   if (ind < num_of_list_descriptions){
-      result = regs_description_list[ind].space_name;
+   if (table_ind < num_of_list_descriptions){
+      result = regs_description_list[table_ind].space_name;
    }
    return result;
 }
 
-u32 regs_description_list_get_num_of_regs(u8 ind){
+u32 regs_description_list_get_num_of_regs(u16 table_ind){
    u32 result = 0;
-   if (ind < num_of_list_descriptions){
-      result = regs_description_list[ind].num_of_regs;
+   if (table_ind < num_of_list_descriptions){
+      result = regs_description_list[table_ind].num_of_regs;
    }
    return result;
 }
 
-u8 * regs_description_list_get_buffer(u8 ind){
+u8 * regs_description_list_get_buffer(u16 table_ind){
    u8 * result = NULL;
-   if (ind < num_of_list_descriptions){
-      result = (u8*)regs_description_list[ind].saved_regs_buffer;
+   if (table_ind < num_of_list_descriptions){
+      result = (u8*)regs_description_list[table_ind].saved_regs_buffer;
    }
    return result;
 }
-size_t regs_description_list_get_saved_buffer_size(u8 ind){
+size_t regs_description_list_get_saved_buffer_size(u16 table_ind){
    size_t result = 0;
-   if (ind < num_of_list_descriptions){
-      result = regs_description_list[ind].saved_regs_buffer_size;
+   if (table_ind < num_of_list_descriptions){
+      result = regs_description_list[table_ind].saved_regs_buffer_size;
    }
    return result;
 }
-int regs_description_get_by_index(regs_template_t * regs_template, u8 ind){
+int regs_description_get_by_index(regs_template_t * regs_template, u32 index){
+   int result = -1;
+   u32 max_register_index = 0;
+   u32 max_register_index_prev = 0;
+   for(int i = 0; i < num_of_list_descriptions; i++){
+      max_register_index += regs_description_list[i].num_of_regs;
+      if(index < max_register_index){
+         regs_template->table_ind = i;
+         result = regs_description_get_by_index_in_table(regs_template, index - max_register_index_prev);
+         break;
+      }
+      max_register_index_prev = max_register_index;
+   }
+   return result;
+}
+int regs_description_get_by_index_in_table(regs_template_t * regs_template, u32 ind){
    int result = -1;
    if ((regs_template->table_ind < num_of_list_descriptions) && (regs_template != NULL)){
       const regs_description_t * reg_desc = &regs_description_list[regs_template->table_ind].description[ind];
@@ -323,6 +324,7 @@ int regs_description_get_by_index(regs_template_t * regs_template, u8 ind){
    }
    return result;
 }
+
 int regs_description_get_by_name(regs_template_t *regs_template) {
    int result = -1;
    u32 name_size = strlen(regs_template->name);
@@ -354,6 +356,37 @@ int regs_description_get_by_name(regs_template_t *regs_template) {
    return result;
 }
 
+int regs_description_get_index_by_name(regs_template_t *regs_template) {
+   int result = -1;
+   u32 name_size = strlen(regs_template->name);
+   u32 index = 0;
+   regs_template->table_ind = 0;
+   if (name_size > REGS_MAX_NAME_SIZE) {
+      name_size = REGS_MAX_NAME_SIZE;
+   }
+   for (int i = 0; i < LIST_DESCRIPTIONS_SIZE; i++) {
+      if (regs_description_list[i].description != NULL) {
+         const regs_description_t *reg_desc = &regs_description_list[i].description[0]; //!< take first element of list for search
+         for (int j = 0; j < regs_description_list[i].num_of_regs; j++) {
+            if ((name_size > 0) && (reg_desc[j].name[name_size] == '\0') &&
+                (memcmp(regs_template->name, reg_desc[j].name, name_size) == 0)) {
+               memcpy(regs_template, &reg_desc[j], sizeof(regs_description_t));
+               regs_template->size_in_bytes = regs_template->size * regs_size_in_byte(regs_template->type);
+               regs_template->table_ind = i;
+               result = index;
+               break;
+            }
+            index++;
+         }
+         if (result >= 0) {
+            break; //!< if we have found description, we have no need to search in other lists
+         }
+      } else {
+         break; //!< if we have empty description, we have no more descriptions in list
+      }
+   }
+   return result;
+}
 int regs_description_get_by_guid(regs_template_t * regs_template){
    int result = -1;
    regs_template->table_ind = 0;
@@ -485,7 +518,7 @@ u8 regs_description_flag_check (regs_template_t *regs_template, u8 flag){
     return result;
 }
 
-u32 regs_description_get_regs_string_value(u16 reg_id,u8 reg_num, char * buffer, u32 buffer_size){
+u32 regs_description_get_regs_string_value(regs_template_t *regs_template, u8 reg_num, char *buffer, u32 buffer_size) {
    u32 result = 0;
    u64 val_u64 = 0;
    s32 temp_i32 = 0;
@@ -494,98 +527,85 @@ u32 regs_description_get_regs_string_value(u16 reg_id,u8 reg_num, char * buffer,
    s64 temp_i64 = 0;
    float val_float = 0.0f;
    double val_double = 0.0;
-   regs_template_t regs_template = {0};
-   regs_template.ind = reg_id;
    u32 pos = 0;
-   char temp_buf[96] = {0};
+   char temp_buf[128] = { 0 };
    u32 temp_buf_len = 0;
-   if (buffer != NULL || buffer_size != 0){
-      for(u32 i=0; i<reg_num; i++){
-         if (regs_description_get_by_ind(&regs_template) == 0){
-            temp_buf_len+=sprintf(temp_buf,"%s: ",regs_template.name);
-            for (u16 i = 0; i < regs_template.size; i++) {
-               switch (regs_template.type){
-               case U8_REGS_FLAG:
-               case U16_REGS_FLAG:
-               case U32_REGS_FLAG:
-               case U64_REGS_FLAG:
-               case TIME_REGS_FLAG:
-                   val_u64 = 0;
-                   memcpy(&val_u64,(regs_template.p_value + i*regs_size_in_byte(regs_template.type)),regs_size_in_byte(regs_template.type));
-                   temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%llu,",val_u64);
-                   break;
-               case I8_REGS_FLAG:
-                   temp_i8 = 0;
-                   memcpy(&temp_i8,(regs_template.p_value + i*regs_size_in_byte(regs_template.type)),regs_size_in_byte(regs_template.type));
-                   temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%i,",temp_i8);
-                   break;
-               case S16_REGS_FLAG:
-                   temp_i16 = 0;
-                   memcpy(&temp_i16,(regs_template.p_value + i*regs_size_in_byte(regs_template.type)),regs_size_in_byte(regs_template.type));
-                   temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%i,",temp_i16);
-                   break;
-               case S32_REGS_FLAG:
-               case INT_REGS_FLAG:
-                   temp_i32 = 0;
-                   memcpy(&temp_i32,(regs_template.p_value + i*regs_size_in_byte(regs_template.type)),regs_size_in_byte(regs_template.type));
-                   temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%li,",temp_i32);
-                   break;
-               case S64_REGS_FLAG:
-                   temp_i64 = 0;
-                   memcpy(&temp_i64,(regs_template.p_value + i*regs_size_in_byte(regs_template.type)),regs_size_in_byte(regs_template.type));
-                   temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%lli,",temp_i64);
-                   break;
-               case FLOAT_REGS_FLAG:
-                   val_float = 0.0f;
-                   memcpy(&val_float,(regs_template.p_value + i*regs_size_in_byte(regs_template.type)),regs_size_in_byte(regs_template.type));
-                   if(isnanf(val_float) || isinff(val_float)){
-                     temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"\"%f\",",(double)val_float);
-                   }else{
-                     temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%f,",(double)val_float);
-                   }
-                   break;
-               case DOUBLE_REGS_FLAG:
-                   val_double = 0.0;
-                   memcpy(&val_double,(regs_template.p_value + i*regs_size_in_byte(regs_template.type)),regs_size_in_byte(regs_template.type));
-                   if(isnanf((float)val_double) || isinff((float)val_double)){
-                     temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"\"%f\",",val_double);
-                   }else{
-                     temp_buf_len+=sprintf(&temp_buf[temp_buf_len],"%f,",val_double);
-                   }
-                   break;
-               }
-               if (temp_buf_len > 0u){
-                  if (pos + temp_buf_len < buffer_size){
-                     memcpy(buffer + pos, temp_buf, temp_buf_len);
-                     pos += temp_buf_len;
-                     temp_buf_len = 0;
-                     result = pos;
-                  }else{
-                     result = pos;
-                     return result; //buffer overflow
-                  }
-               }
-           }
-         }else{
+   if (buffer != NULL || buffer_size != 0) {
+      temp_buf_len += sprintf(temp_buf, "%s: ", regs_template.name);
+      for (u16 i = 0; i < regs_template.size; i++) {
+         switch (regs_template.type) {
+         case U8_REGS_FLAG:
+         case U16_REGS_FLAG:
+         case U32_REGS_FLAG:
+         case U64_REGS_FLAG:
+         case TIME_REGS_FLAG:
+            val_u64 = 0;
+            memcpy(&val_u64, (regs_template.p_value + i * regs_size_in_byte(regs_template.type)),
+                   regs_size_in_byte(regs_template.type));
+            temp_buf_len += sprintf(&temp_buf[temp_buf_len], "%llu,", val_u64);
+            break;
+         case I8_REGS_FLAG:
+            temp_i8 = 0;
+            memcpy(&temp_i8, (regs_template.p_value + i * regs_size_in_byte(regs_template.type)),
+                   regs_size_in_byte(regs_template.type));
+            temp_buf_len += sprintf(&temp_buf[temp_buf_len], "%i,", temp_i8);
+            break;
+         case S16_REGS_FLAG:
+            temp_i16 = 0;
+            memcpy(&temp_i16, (regs_template.p_value + i * regs_size_in_byte(regs_template.type)),
+                   regs_size_in_byte(regs_template.type));
+            temp_buf_len += sprintf(&temp_buf[temp_buf_len], "%i,", temp_i16);
+            break;
+         case S32_REGS_FLAG:
+         case INT_REGS_FLAG:
+            temp_i32 = 0;
+            memcpy(&temp_i32, (regs_template.p_value + i * regs_size_in_byte(regs_template.type)),
+                   regs_size_in_byte(regs_template.type));
+            temp_buf_len += sprintf(&temp_buf[temp_buf_len], "%li,", temp_i32);
+            break;
+         case S64_REGS_FLAG:
+            temp_i64 = 0;
+            memcpy(&temp_i64, (regs_template.p_value + i * regs_size_in_byte(regs_template.type)),
+                   regs_size_in_byte(regs_template.type));
+            temp_buf_len += sprintf(&temp_buf[temp_buf_len], "%lli,", temp_i64);
+            break;
+         case FLOAT_REGS_FLAG:
+            val_float = 0.0f;
+            memcpy(&val_float, (regs_template.p_value + i * regs_size_in_byte(regs_template.type)),
+                   regs_size_in_byte(regs_template.type));
+            if (isnanf(val_float) || isinff(val_float)) {
+               temp_buf_len += sprintf(&temp_buf[temp_buf_len], "\"%f\",", (double)val_float);
+            } else {
+               temp_buf_len += sprintf(&temp_buf[temp_buf_len], "%f,", (double)val_float);
+            }
+            break;
+         case DOUBLE_REGS_FLAG:
+            val_double = 0.0;
+            memcpy(&val_double, (regs_template.p_value + i * regs_size_in_byte(regs_template.type)),
+                   regs_size_in_byte(regs_template.type));
+            if (isnanf((float)val_double) || isinff((float)val_double)) {
+               temp_buf_len += sprintf(&temp_buf[temp_buf_len], "\"%f\",", val_double);
+            } else {
+               temp_buf_len += sprintf(&temp_buf[temp_buf_len], "%f,", val_double);
+            }
             break;
          }
-         regs_template.ind++;
       }
-
+      if(temp_buf_len < buffer_size){
+         memcpy(buffer, temp_buf, temp_buf_len);
+         result = temp_buf_len;
+      }
    }
    return result;
 }
-/**
- * @brief regs_description_get_pointer_by_modbus
- * @param modbus_address [0;65635]
- * @param modbus_function {1,2,3,4}
- * @return  non NULL pointer if matched
- */
-void * regs_description_get_pointer_by_modbus(u16 modbus_address, u8 modbus_function){
+
+static void * regs_description_get_pointer_by_modbus_in_table(u16 modbus_address, u8 modbus_function, u16 table_ind){
     void * p_value= NULL;
     int current;
     int left = 0;
-    int right = NUM_OF_SELF_VARS-1;
+    int right;
+    regs_description_t * regs_description = regs_description_list_get_description(table_ind);
+    right = regs_description_list_get_num_of_regs(table_ind)-1;
     while (left <= right){  //binary search
         current = (left + right)/2;
         u8 reg_mdb_function = RD_MDB_FUNCTION(regs_description[current].modbus_description);
@@ -608,13 +628,26 @@ void * regs_description_get_pointer_by_modbus(u16 modbus_address, u8 modbus_func
     }
     return p_value;
 }
+
+void * regs_description_get_pointer_by_modbus(u16 modbus_address, u8 modbus_function){
+    void * p_value= NULL;
+    /*search for all tables */
+    for(u32 i = 0; i < num_of_list_descriptions; i++){
+        p_value = regs_description_get_pointer_by_modbus_in_table(modbus_address, modbus_function, i);
+        if (p_value != NULL){
+            break;
+        }
+    }
+    return p_value;
+}
+
 int set_regs_def_values(u16 table_ind) {
    int res = 0;
    regs_template_t regs_template = { 0 };
    regs_template.table_ind = table_ind;
    u32 num_of_regs = regs_description_list_get_num_of_regs(table_ind);
    for (u32 i = 0; i < num_of_regs; i++) {
-      if (regs_description_get_by_index(&regs_template, i) == 0) {
+      if (regs_description_get_by_index_in_table(&regs_template, i) == 0) {
          if (regs_template.p_default == NULL) {
             memset(regs_template.p_value, 0, regs_template.size_in_bytes);
          } else {
@@ -624,42 +657,18 @@ int set_regs_def_values(u16 table_ind) {
    }
    return res;
 }
-int end_of_saved_reg_addr(void *reg_end_address) {
-   u16 i;
-   int result = -1;
-   regs_template_t regs_template;
-   for (i = 0; i < NUM_OF_SELF_VARS + NUM_OF_CLIENT_VARS; i++) {
-      regs_template.ind = i;
-      regs_description_get_by_ind(&regs_template);
-      if ((regs_template.property & SAVING) && (reg_end_address == (regs_template.p_value + regs_template.size_in_bytes))) {
-         result = i;
-         break;
-      }
-   }
-   return result;
-}
-/**
- * @brief regs_fill_temp_buffer - fillng temp buff
- * @param reg_address   - pointer to data where will write
- * @param reg   - write struct
- * @param temp_data_buffering - global temp buffer for writing data
- * @param index - index of register
- * @return
- */
-int regs_fill_temp_buffer(void * reg_address,regs_access_t reg,temp_data_buffering_t * temp_data_buffering, int index){
+
+int regs_fill_temp_buffer(regs_template_t *regs_template, regs_access_t reg, temp_data_buffering_t * temp_data_buffering){
     int res = 0;
-    regs_template_t regs_template = {0};
-    regs_template.ind = (u16)index;
-    if (regs_description_get_by_ind(&regs_template)>=0){
+    if (regs_template != NULL && regs_template->p_value != NULL && temp_data_buffering != NULL){
         u8 reg_write_size = regs_size_in_byte(reg.flag);
-        u32 shift = (u32)reg_address - (u32)regs_template.p_value;
-        u8 regs_item_size = regs_size_in_byte(regs_template.type);
+        u32 shift = (u32)reg_address - (u32)regs_template->p_value;
+        u8 regs_item_size = regs_size_in_byte(regs_template->type);
         u8 start_byte = shift % regs_item_size;/*0-7*/
         if ((u32)temp_data_buffering->reg_address != ((u32)reg_address - start_byte)){
             temp_data_buffering->reg_address = (void*)((u32)reg_address - start_byte);
             temp_data_buffering->byte_writed_flags = 0;
-            temp_data_buffering->type = regs_template.type;
-            temp_data_buffering->index = (u16)index;
+            temp_data_buffering->type = regs_template->type;
             memset(temp_data_buffering->data.bytes,0,8);
         }
         reg_write_size = reg_write_size>(regs_item_size-start_byte)?(regs_item_size-start_byte):reg_write_size;
@@ -673,18 +682,11 @@ int regs_fill_temp_buffer(void * reg_address,regs_access_t reg,temp_data_bufferi
     }
     return res;
 }
-/**
- * @brief regs_check_temp_buffer
- * @param temp_data_buffering
- * @param index
- * @return positive value if register is full filled
- */
-int regs_check_temp_buffer(temp_data_buffering_t * temp_data_buffering, int index){
+
+int regs_check_temp_buffer(temp_data_buffering_t * temp_data_buffering, regs_template_t * regs_template){
     int res = 0;
-    regs_template_t regs_template = {0};
-    regs_template.ind = (u16)index;
-    if (regs_description_get_by_ind(&regs_template)>=0){
-        u8 regs_item_size = regs_size_in_byte(regs_template.type);
+    if (regs_template != NULL && regs_template->p_value != NULL && temp_data_buffering != NULL){
+        u8 regs_item_size = regs_size_in_byte(regs_template->type);
         res = 1;
         for(u32 i=0;i<regs_item_size;i++){
             if ((temp_data_buffering->byte_writed_flags & BIT(i)) == 0){
@@ -697,12 +699,7 @@ int regs_check_temp_buffer(temp_data_buffering_t * temp_data_buffering, int inde
     }
     return res;
 }
-/**
- * @brief regs_clear_temp_buffer clining
- * @param temp_data_buffering
- * @param index
- * @return positive value if register is full filling
- */
+
 int regs_clear_temp_buffer(temp_data_buffering_t * temp_data_buffering){
     int res = 0;
     if (temp_data_buffering!=NULL){

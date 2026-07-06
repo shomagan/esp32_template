@@ -74,7 +74,7 @@ slip_handle_config_t wifi_slip_config;
 
 int main_init_tasks(esp_sleep_wakeup_cause_t * esp_sleep_wakeup_cause);
 static int common_init_gpio(void);
-static esp_sleep_wakeup_cause_t esp_sleep_wakeup_cause;
+static esp_sleep_wakeup_cause_t esp_sleep_wakeup_causes;
 /**
  * @brief app_main
  */
@@ -92,28 +92,26 @@ void app_main(void){
     wifi_slip_config.status = 0;
     wifi_slip_config.reserv0 = 0;
     wifi_slip_config.reserv1 = 1;
-#if CONFIG_IDF_TARGET_ESP32    
+#if CONFIG_IDF_TARGET_ESP32
     wifi_slip_config.uart_dev = 2;
 #else
     wifi_slip_config.uart_dev = 0;
-#endif 
+#endif
     wifi_slip_config.uart_tx_pin = 17;
     wifi_slip_config.uart_rx_pin = 16;
-#if CONFIG_IDF_TARGET_ESP32    
+#if CONFIG_IDF_TARGET_ESP32
     wifi_slip_config.uart_baud = 400000;
 #else
     wifi_slip_config.uart_baud = 115200;
 #endif
     wifi_slip_config.recv_buffer_len = 0;
     regs_init();
-    mirror_storage_init();
     dinamic_address = os_pool_create(&pool_dinamic_addr_def);
-    preinit_global_vars();
-#if SLIP_ENABLE    
+#if SLIP_ENABLE
     ESP_ERROR_CHECK(esp_slip_init(&wifi_slip_config));
 #endif
     common_init_gpio();
-    esp_sleep_wakeup_cause = esp_sleep_get_wakeup_cause(); 
+    esp_sleep_wakeup_cause = esp_sleep_get_wakeup_causes();
 #if DISPLAY
     init_display();
 #endif
@@ -139,7 +137,7 @@ int main_init_tasks(esp_sleep_wakeup_cause_t * esp_sleep_wakeup_cause){
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create slip to wifi flow control task failed");
     }
-#if SLIP_ENABLE    
+#if SLIP_ENABLE
     res = task_create(slip_flow_control_task, "wifi2slip_flow_ctl", 2048, NULL, (tskIDLE_PRIORITY + 2), &wifi_slip_config.slip_flow_control_handle);
     if (res != pdTRUE) {
         ESP_LOGE(TAG, "create wifi to slip flow control task failed");
@@ -289,7 +287,7 @@ static int common_init_gpio(void){
         .pull_down_en = 1,
         .intr_type = GPIO_INTR_DISABLE
     };
-    ESP_ERROR_CHECK(gpio_config(&config));    
+    ESP_ERROR_CHECK(gpio_config(&config));
 #endif /*ENABLE_DEEP_SLEEP*/
     return 0;
 }

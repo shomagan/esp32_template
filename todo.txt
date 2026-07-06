@@ -5,10 +5,15 @@ regs description
     type moved
     descriptions spread between files
 
-saved address how to keep order
 guid how to form
-regs_description_is_writable to change
-mirror_access_write to be changed
+
+figure out what to do with  link message functions vs queue functions
+
+telegram change index to guid.
+
+regs_description_list_add_new should init it immediatly
+
+space_number unite with table_ind
 
 what do we have
 

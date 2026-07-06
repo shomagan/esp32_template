@@ -7,6 +7,7 @@
  * @version 0.1
  * @brief  TODO!!! write brief in
  */
+#include "regs_description.c"
 #ifndef TELEGRAM_C
 #define TELEGRAM_C 1
 
@@ -52,6 +53,7 @@ static int telegram_init(){
    regs_global->vars.current_state[0] |= CS0_TASK_ACTIVE_TELEGRAM;
    return result;
 }
+
 static int telegram_deinit(){
    int result = 0;
    regs_global->vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_TELEGRAM);
@@ -59,7 +61,8 @@ static int telegram_deinit(){
 }
 
 esp_tls_cfg_t cfg = {0};
-
+#define MAX_HTTP_REQUEST_SIZE 1024
+#define MAX_CONTENT_SIZE 512u
 void telegram_task(void *arg){
    (void)arg;
    uint32_t signal_value;
@@ -75,23 +78,22 @@ void telegram_task(void *arg){
    cfg.keep_alive_cfg = &keep_alive_cfg;
    cfg.timeout_ms = 9000; // Set timeout for TLS connection
    telegram_init();
-   char http_request[768];
+   char http_request[MAX_HTTP_REQUEST_SIZE];
    int header_len = 0;
    header_len += sprintf(&http_request[header_len],
       "POST /bot%s/sendMessage HTTP/1.1\r\n"
       "Host: api.telegram.org\r\n"
       "Content-Type: application/x-www-form-urlencoded\r\n", tel_bot_api);
-
-
    while(1){
       if(task_notify_wait(0xffffffff, &signal_value, TELEGRAM_TASK_PERIOD)==pdTRUE){
          /*by signal*/
          if (signal_value & TELEGRAM_SEND_REG_BY_ID){
             u8 attempts = 10u;
             while(attempts){
+               /*temporary keep it for main registers only*/
                uint16_t reg_id = (signal_value >> 16u) & 0xffff;
                uint16_t reg_num = (signal_value >> 8u) & 0xff;
-               char content[256] = {0};
+               char content[MAX_CONTENT_SIZE] = {0};
                int content_len = 0;
                int len = 0;
                ESP_LOGI(TAG, "Connecting to %d URLs", MAX_URLS);
@@ -108,24 +110,37 @@ void telegram_task(void *arg){
                esp_tls_t *tls = esp_tls_init();
                if(tls != NULL){
                   if(esp_tls_conn_http_new_sync(web_url, &cfg, tls)==1){
+                     regs_template_t regs_template = {0};
+                     regs_template.table_ind = 0;
                      task_delay_ms(25);
                      main_printf(TAG, "Connection established to %s", web_url);
                      conn_count++;
                      content_len += sprintf(&content[content_len],"chat_id=%s&text=", tel_home_id);
-                     content_len += regs_description_get_regs_string_value(reg_id, reg_num, &content[content_len], sizeof(content) - content_len);
-                     len = header_len;
-                     len += sprintf(&http_request[len],
-                        "Content-Length: %d\r\n\r\n"
-                        "%s", content_len, content);
-                     if (esp_tls_conn_write(tls, http_request, strlen(http_request)) > 0) {
-                        main_printf(TAG, "Request sent successfully %s", http_request);
-                        attempts = 0; // Exit loop on successful send
-                     } else {
-                        task_delay_ms(10000u);
-                        main_printf(TAG, "Failed to send request");
+                     for(u32 i=0;i<reg_num;i++){
+                        regs_description_get_by_index_in_table(&regs_template, reg_id+i);
+                        if(content_len >= MAX_CONTENT_SIZE){
+                           main_error_message(TAG, "critical!!! Content size exceeded, truncating message");
+                           break;
+                        }
+                        content_len += regs_description_get_regs_string_value(&regs_template, reg_num, &content[content_len], sizeof(content) - content_len);
                      }
-                     esp_tls_conn_destroy(tls);
-                     main_printf(TAG,"TELEGRAM_SEND_REG_BY_ID %u", reg_id);
+                     len = header_len;
+                     if(content_len < MAX_HTTP_REQUEST_SIZE - header_len){
+                        len += sprintf(&http_request[len],
+                           "Content-Length: %d\r\n\r\n"
+                           "%s", content_len, content);
+                        if (esp_tls_conn_write(tls, http_request, strlen(http_request)) > 0) {
+                           main_printf(TAG, "Request sent successfully %s", http_request);
+                           attempts = 0; // Exit loop on successful send
+                        } else {
+                           task_delay_ms(10000u);
+                           main_printf(TAG, "Failed to send request");
+                        }
+                        esp_tls_conn_destroy(tls);
+                        main_printf(TAG,"TELEGRAM_SEND_REG_BY_ID %u", reg_id);
+                     } else {
+                        main_error_message(TAG, "critical!!! HTTP request size exceeded, truncating message");
+                     }
                   }
                } else {
                   task_delay_ms(10000u);

@@ -161,17 +161,16 @@ static int handle_feeding(u32 minutes_of_the_day, int * feeded_minute, rmt_step_
          result = run_feeder(rmt_step_motor);
          if(result > 0){
             feeder_reg->vars.feeder_counter++;
-            int index = regs_description_get_index_by_address(&feeder_reg->vars.feeder_counter);
-            if (index>=0){
-                regs_template_t regs_template;
-                regs_template.ind =(u16)index;
-                if(regs_description_get_by_ind(&regs_template)>=0){
-                    if (mirror_access_write(&regs_template)>=0){
-                        main_debug(TAG, "succes wrote feeder_counter to mirror");
-                    }else{
-                        main_debug(TAG, "unsucces writing feeder_counter to mirror");
-                    }
-                }
+            regs_template_t regs_template = {0};
+            regs_template.p_value = &feeder_reg->vars.feeder_counter;
+
+            result = regs_description_get_by_address(&regs_template);
+            if (result >= 0){
+               if (mirror_access_write(&regs_template)>=0){
+                  main_debug(TAG, "succes wrote feeder_counter to mirror");
+               }else{
+                  main_debug(TAG, "unsucces writing feeder_counter to mirror");
+               }
             }
          }
       }

@@ -164,10 +164,6 @@ typedef union {
     s64 op_s64;
 } operand_t;
 
-/**
-  * @brief global register type flag
-  * @ingroup regs
-  */
 typedef enum {
     U8_REGS_FLAG = (1<<0),/*!<unsigned char type(1 byte) */
     U16_REGS_FLAG = (1<<1),/*!<unsigned short type(2 byte) */
@@ -183,19 +179,11 @@ typedef enum {
     TIME_REGS_FLAG = (1<<11)/*!<unsigned int type(4 byte) */
 }regs_flag_t;
 
-/**
-  * @brief struct for regs access
-  * @ingroup regs
-  */
 typedef struct {
     regs_flag_t flag;
     operand_t value;
 } regs_access_t;
-/**
-  * @addtogroup
-  * @todo determine which group to include
-  * @{
-  */
+
 #define FW_VERSION_SIZE 4
 #define FW_VERSION {0,10,0,0}
 #define FW_VERSION_STR "0.10.0-beta.0"
@@ -271,7 +259,6 @@ typedef union{
         u64 slip_packet_counter;    //!< "count all slip packet"
         u16 ap_connections_number; //!< "number of connections" &ro
         u16 sta_connect; //!< "sta connect state" &ro
-        u32 table_version;     //!< "change value in def_table_version for drop all regs to default value" &ro &def &save
         u16 iirls_pairing_status; //!< "status" &ro
         u8  iirls_paired_ip[4];              //!< "ip address of paired device" &ro
         u16 modbus_master_test_value; //!< "status" &ro
@@ -294,6 +281,9 @@ typedef union{
         s8  rssi_ap[2];//!< "wifi rssi of Access point" &ro
         s8  primary_channel_ap[2];//!< "wifi channel used" &ro
         s32 wake_up_cause;//!< "wake up reason" &ro
+        u32 table_version;     //!< "version of main table change value in def_table_version for drop all regs to default value" &ro &def &save
+        u16 table_id;          //!< "support variable for SET_DEFAULT_VALUES_COMM"
+
     }vars;
     u8 bytes[GLOBAL_UNION_SIZE]; //for full bksram copy
 }main_vars_t;// #generator_use_description {"message":"end_struct"}
@@ -429,7 +419,6 @@ typedef struct {
     u8 byte_writed_flags;
     void * reg_address;
     u16 type;
-    u16 index;
 }temp_data_buffering_t;
 
 typedef enum {
@@ -479,12 +468,6 @@ void regs_event_handler (const void *pvParameters)FNCT_NO_RETURN;
 int write_reg_to_mirror(void *main_reg);
 int read_reg_from_bkram(void *main_reg);
 u8 write_comm_to_bkp (main_command_t command);
-
-/**
- * @brief regs_of_bkram_and_have_def_value
- * @param reg_address
- * @return  1 if vars in saved space and have def value in description
- */
 int regs_saved_and_have_def_value(const void * reg_address);
 int regs_set(void * reg_address,regs_access_t reg);
 int regs_set_buffer(void * reg_address,u8* buffer_from,u16 byte_numm);
@@ -492,13 +475,6 @@ int regs_get(void * reg_address,regs_access_t* reg);
 int regs_get_buffer(void * reg_address,u8* buffer_to,u16 byte_numm);
 u8  regs_size_in_byte(regs_flag_t type);
 int regs_write_internal(void * reg_address,regs_access_t reg);
-/* @brief   copy data from global regs to local regs and vice versa
- * @param   reg_to - pointer to global or local regs
- * @param   reg_from - pointer to global or local regs
- * @param   size - size of regs for memcpy
- * @ingroup regs
- *
-*/
 void regs_copy_safe(void * reg_to,void * reg_from,u32 size);
 
 #ifdef __cplusplus
