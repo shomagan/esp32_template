@@ -1,11 +1,11 @@
 /**
  * @file sleep_control.c
  * @author Shoma Gane <shomagan@gmail.com>
- *         
+ *
  * @defgroup main
  * @ingroup main
- * @version 0.1 
- * @brief  TODO!!! write brief in 
+ * @version 0.1
+ * @brief  TODO!!! write brief in
  */
 #ifndef SLEEP_CONTROL_C
 #define SLEEP_CONTROL_C 1
@@ -37,7 +37,7 @@ static int sleep_control_init(){
    int result = 0;
    regs_global->vars.current_state[0] |= CS0_TASK_ACTIVE_SLEEP_CONTROL;
    return result;
-}  
+}
 static int sleep_control_deinit(){
    int result = 0;
    regs_global->vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_SLEEP_CONTROL);
@@ -95,12 +95,14 @@ void sleep_control_task(void *arg){
          }
          if (sleep_time){/*sleep time should be set by side component*/
             task_notify_send(wireless_control_handle_id, WIRELESS_TASK_STOP_WIFI,&prev_signal);
+            u32 table_to_save = 0xffffffff;
+            regs_copy_safe(&regs_global->vars.table_to_save, &table_to_save, sizeof(table_to_save));
             main_printf(TAG,"set ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH");
             regs_global->vars.async_flags |= ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
             task_delay_ms(300u);
             rtc_setup_wakeup_pin();
             if (ESP_OK != rtc_setup_wakeup_timer(sleep_time)){
-               main_error_message(TAG,"wake up seting problem");  
+               main_error_message(TAG,"wake up seting problem");
             }
             display_good_bye_message();
             esp_deep_sleep_start();
@@ -114,6 +116,8 @@ void sleep_control_task(void *arg){
       if (signal_in_process & SLEEP_TASK_DEEP_SLEEP){
          signal_in_process &= ~((uint32_t)SLEEP_TASK_DEEP_SLEEP);
          task_notify_send(wireless_control_handle_id, WIRELESS_TASK_STOP_WIFI,&prev_signal);
+         u32 table_to_save = 0xffffffff;
+         regs_copy_safe(&regs_global->vars.table_to_save, &table_to_save, sizeof(table_to_save));
          main_printf(TAG,"set ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH");
          regs_global->vars.async_flags |= ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
          task_delay_ms(300u);
@@ -131,7 +135,7 @@ void sleep_control_task(void *arg){
 /*set up wakeup source*/
 static void rtc_setup_wakeup_pin(void){
     main_printf(TAG,"Enabling EXT0 wakeup on pin GPIO%d\n", EXT_WAKEUP_PIN);
-#if CONFIG_IDF_TARGET_ESP32    
+#if CONFIG_IDF_TARGET_ESP32
     ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(EXT_WAKEUP_PIN, 1u));
     // Configure pullup/downs via RTCIO to tie wakeup pins to inactive level during deepsleep.
     // EXT0 resides in the same power domain (RTC_PERIPH) as the RTC IO pullup/downs.
@@ -148,7 +152,7 @@ static void rtc_setup_wakeup_pin(void){
     };
     ESP_ERROR_CHECK(gpio_config(&config));
     ESP_ERROR_CHECK(esp_deep_sleep_enable_gpio_wakeup(BIT(EXT_WAKEUP_PIN), 1u));
-#endif    
+#endif
 }
 static int rtc_setup_wakeup_timer(u16 seconds){
    u64 useconds = seconds;
@@ -159,7 +163,7 @@ static int rtc_setup_wakeup_timer(u16 seconds){
 
 static void display_good_bye_message(void){
    main_printf(TAG, "deep sleep in sleep task");
-#if DISPLAY   
+#if DISPLAY
    char temp_buff[64] = {0u};
    sprintf(temp_buff,"going to sleep");
    u8g2_ClearBuffer(&u8g2);
@@ -167,15 +171,15 @@ static void display_good_bye_message(void){
    u8g2_DrawStr(&u8g2, 0,22u, temp_buff);
    u8g2_SendBuffer(&u8g2);
    u8g2_SetPowerSave(&u8g2, 1/*power save on*/); // wake down display
-#if NOKIA_5110   
+#if NOKIA_5110
    gpio_set_level(NOKIA_PIN_BL, 0u);
-#endif   
+#endif
 
 #endif
 }
 /*
 * @brief wake_up_control - control wake up
-* @return   
+* @return
 */
 static int wake_up_control(esp_sleep_wakeup_cause_t  esp_sleep_wakeup_cause){
    int result = WAKE_UP_CANCELED;

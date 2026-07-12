@@ -29,6 +29,11 @@
 static const char *TAG = "scd41";
 task_handle_t scd41_task_handle = NULL;
 
+/* Default values for scd41_measur_interval (used in regs_description_user.c) */
+const u16 def_scd41_measur_interval     = 60u;    /* minutes */
+const u16 def_min_scd41_measur_interval = 5u;     /* minutes */
+const u16 def_max_scd41_measur_interval = 1440u;  /* 1 day in minutes */
+
 static int scd41_task_init(void);
 static int scd41_task_deinit(void);
 static int handle_sleeping(u32 minutes_of_the_day);

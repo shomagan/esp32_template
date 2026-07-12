@@ -11,7 +11,9 @@
 #define INTERRUPT_C 1
 #include "common.h"
 #include "pin_map.h"
+#if TOUCH_HANDLE_ENABLE
 #include "touch_handle.h"
+#endif
 #include "driver/gpio.h"
 #include "driver/gptimer.h"
 #include "sr04.h"

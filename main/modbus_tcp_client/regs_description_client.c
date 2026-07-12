@@ -1,4 +1,8 @@
-regs_description_t const regs_description_user[NUM_OF_CLIENT_VARS]={
+#ifndef REGS_DESCRIPTION_CLIENT_C
+#define REGS_DESCRIPTION_CLIENT_C 1
+#include "regs_description.h"
+#include "regs.h"
+regs_description_t const regs_description_client[NUM_OF_CLIENT_VARS]={
 { NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_mdb_addr, 0,"modbus address","cli_mdb_addr", U16_REGS_FLAG, 132, 922, 0x30000, 1, 1, 0xc03 },//!<"modbus address"
 { NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_ip[0], 0,"device ip address, warning!!! ","cli_ip", U8_REGS_FLAG, 133, 924, 0x30001, 4, 1, 0xc03 },//!<"device ip address, warning!!! "
 { NULL, NULL, NULL, (u8*)&regs_main.client_part_0.vars.cli_netmask[0], 0,"netmask address for main wifi net","cli_netmask", U8_REGS_FLAG, 134, 928, 0x30003, 4, 1, 0xc03 },//!<"netmask address for main wifi net",
@@ -21,3 +25,4 @@ regs_description_t const regs_description_user[NUM_OF_CLIENT_VARS]={
 { NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_lap_paired_dev, 0,"lap from paired device","cli_lap_paired_dev", U64_REGS_FLAG, 151, 1000, 0x3100b, 1, 3, 0x1003 },//!< "lap from paired device" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.sr04_reg_client.vars.cli_distance_filtered, 0,"current distance filtered","cli_distance_filtered", FLOAT_REGS_FLAG, 152, 1008, 0x3100f, 1, 3, 0x1003 },//!< "current distance filtered" &ro
 };
+#endif /* REGS_DESCRIPTION_CLIENT_C */

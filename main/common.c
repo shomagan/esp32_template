@@ -37,6 +37,7 @@
  * Author: Shoma Gane <shomagan@gmail.com>
  *         Ayrat Girfanov <girfanov.ayrat@yandex.ru>
  */
+#include "os_type.h"
 #ifndef COMMON_C
 #define COMMON_C 1
 /**
@@ -56,19 +57,22 @@
 #include "mirror_storage.h"
 #include "esp_wifi.h"
 #include "esp_sleep.h"
-#include "pwm_test.h"
 #include "main_config.h"
+#if MORSE
+#include "morse.h"
+#endif
 #include "common.h"
 #include "modbus_tcp_client.h"
 #include "wifi_slip_main.h"
-#include "modbus_tcp_client.h"
+#if SR04_MODULE
+#include "radar/sr04.h"
+#endif
 #include "driver/rtc_io.h"
 #include "time.h"
 #if UDP_BROADCAST_ENABLE
 #include "udp_broadcast.h"
 #endif
 #include "u8g2_esp32_hal.h"
-#include "morse.h"
 
 #define DUTY_TASK_PERIOD_MS 100u
 #define TEMP_BUFFER_SIZE 64u
@@ -93,8 +97,12 @@ static void common_timer_deinit(void);
 static int common_duty_init(void);
 static void display_update(u32 task_tick, u8 udp_bradcast_msg_received);
 static void udp_broabcast_update(u32 task_tick);
+#if DISPLAY_TIME_DIFF && SR04_MODULE
 static void display_time_diff(void);
+#endif
+#if DISPLAY && SR04_MODULE && MODBUS_MASTER_ENABLE
 static void display_statistic(void);
+#endif
 #if MORSE
 static void display_morse(u8 udp_bradcast_msg_received);
 #endif
@@ -162,10 +170,12 @@ void common_duty_task(void *pvParameters) {
       if (async_flags & ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH) {
          async_flags &= ~ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
          regs_copy_safe(&regs_global->vars.async_flags, &async_flags, sizeof(async_flags));
+         main_printf(TAG, "mirror is saving to flash table_to_save %d", table_to_save);
          int table_ind = 0;
          /*table to save is a bitfield, need to check all bits and convert to indexes*/
          while (table_to_save) {
             table_ind = __builtin_ctz(table_to_save); // Get the index of the least significant set bit
+            main_printf(TAG, "mirror is saving to flash table_ind %d", table_ind);
             internal_flash_save_mirror_to_flash(table_ind);
             table_to_save = table_to_save & (table_to_save - 1);/*like a hamming weight calculation */
          }
@@ -243,6 +253,7 @@ static void display_update(u32 task_tick, u8 udp_bradcast_msg_received){
 #endif  // DISPLAY_TIME_DIFF
 #endif
 }
+#if DISPLAY_TIME_DIFF && SR04_MODULE
 static void display_time_diff(void){
     char temp_buff[TEMP_BUFFER_SIZE] = {0u};
     u8 position = BOX_SHIFT;
@@ -307,6 +318,8 @@ static void display_time_diff(void){
     u8g2_DrawStr(&u8g2, 0,32u, temp_buff);
     u8g2_SendBuffer(&u8g2);
 }
+#endif /* DISPLAY_TIME_DIFF && SR04_MODULE */
+#if DISPLAY && SR04_MODULE && MODBUS_MASTER_ENABLE
 static void display_statistic(void){
     char temp_buff[TEMP_BUFFER_SIZE] = {0u};
     u16 sync_active_temp;
@@ -337,6 +350,7 @@ static void display_statistic(void){
     u8g2_DrawStr(&u8g2, 0,30u, temp_buff);
     u8g2_SendBuffer(&u8g2);
 }
+#endif /* DISPLAY && SR04_MODULE && MODBUS_MASTER_ENABLE */
 #if MORSE
 static void display_morse(u8 udp_bradcast_msg_received){
     static u8 counter = 0;

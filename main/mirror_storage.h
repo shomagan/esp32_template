@@ -52,7 +52,8 @@
 /*add functions and variable declarations below */
 extern semaphore_handle_t global_vars_mirror_mutex;
 extern u8 global_vars_mirror[];
-int mirror_storage_init(void);
+int mirror_access_init_buffer(u16 table_ind);
+esp_err_t mirror_storage_init(void);
 u32 mirror_access_get_size(void);
 int mirror_access_write(regs_template_t * regs_template);
 int mirror_space_is_changing(regs_template_t *regs_template);
@@ -60,7 +61,7 @@ int mirror_access_read(regs_template_t *regs_template);
 int internal_flash_save_mirror_to_flash(u16 table_ind);
 int internal_flash_restore_mirror_from_flash(u16 table_ind);
 void print_nvs_files(void);
-void preinit_global_vars(u16 table_ind);
+void preinit_table_vars(u16 table_ind);
 
 /*add functions and variable declarations before */
 

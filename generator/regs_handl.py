@@ -1,4 +1,5 @@
 ﻿import re
+import os
 import base_object
 import json
 
@@ -77,7 +78,7 @@ def short_name(name):
 
 
 class RegsHand(base_object.Base):
-    
+
     REGS_DESCRIPTION_SETTINGS = MIN_VALUE_FLAG | MAX_VALUE_FLAG
 
     def __init__(self, os_type):
@@ -107,9 +108,73 @@ class RegsHand(base_object.Base):
         self.modbus_structures_description = []
         self.current_struct_json = {}
         self.modbus_areas = {}
-        self.last_modbus_address = -1 #all modbus adresses should be in an upraising order 
-        self.last_modbus_address_client = -1 #all modbus adresses should be in an upraising order
-        
+        self.last_modbus_address = -1
+        self.last_modbus_address_client = -1
+        self.user_task_entries = {}
+        self.user_task_saved_sizes = {}
+
+    def regs_file_handling_user_task(self, path_to_file):
+        regs_file = open(path_to_file, 'r', errors='ignore')
+        struct_started = 0
+        line_number = 0
+        for line_full in regs_file:
+            line_number += 1
+            json_str = self.check_generator_descriptions(line_full)
+            if len(json_str):
+                json_description = json.loads(json_str)
+                self.current_struct_json = json_description
+                if self.check_is_modbus_regs_description_structure(json_description):
+                    struct_type = self.find_struct_type(path_to_file, line_number)
+                    regs_global_name = find_global_register(path_to_file, struct_type)
+                    if len(struct_type) and len(regs_global_name):
+                        json_description["struct_type"] = struct_type
+                        json_description["regs_global_name"] = regs_global_name
+                        json_description["source_file"] = os.path.basename(path_to_file)
+                        self.modbus_structures_description.append(json_description)
+                        self.structure_number += 1
+                        struct_started = 1
+                        self.byte_number = 0
+                        self.ind = 0
+                        self.saved_address = 0
+                        print("find user task struct " + struct_type)
+                        continue
+                    else:
+                        self.print_error("error struct type {} or reg_global_name {}"
+                                         "".format(struct_type, regs_global_name))
+            if '//' in line_full:
+                start = line_full.find('//')
+                line = line_full[:start]
+            else:
+                line = line_full
+            if struct_started and '}' in line:
+                struct_started = 0
+            if struct_started:
+                self.check(line_full)
+                if type(self.size_array) == str:
+                    regs_file_temp = open(path_to_file, 'r', errors='ignore')
+                    self.size_array = self.find_define(self.size_array, regs_file_temp)
+                    regs_file_temp.close()
+                if self.size_array:
+                    if self.reg_opt_is_struct:
+                        struct_num = self.size_array
+                        description = self.description
+                        for i in range(struct_num):
+                            self.description = description + str(i)
+                            self.additional_name = self.internal_name + str(i)
+                            self.size_array = self.size_value
+                            self.add_variable_to_user_task_description(None, i)
+                            self.guid += self.size_value * REGS_SIZE[self.type]
+                            self.byte_number += self.size_value * REGS_SIZE[self.type]
+                            if self.flag & SAVE_TYPE_FLAG:
+                                self.saved_address += self.size_value * REGS_SIZE[self.type]
+                    else:
+                        self.add_variable_to_user_task_description(None, 0)
+                        self.guid += self.size_array * REGS_SIZE[self.type]
+                        self.byte_number += self.size_array * REGS_SIZE[self.type]
+                        if self.flag & SAVE_TYPE_FLAG:
+                            self.saved_address += self.size_array * REGS_SIZE[self.type]
+        regs_file.close()
+
     def regs_file_handling(self, path_to_file, regs_description, regs_description_client):
         regs_file = open(path_to_file, 'r', errors='ignore')
         struct_started = 0
@@ -338,6 +403,7 @@ class RegsHand(base_object.Base):
         modbus_function = MODBUS_FUNCTIONS[
             self.modbus_structures_description[self.structure_number - 1]["modbus_function"]]
         modbus_type = self.modbus_structures_description[self.structure_number - 1]["modbus_type"]
+        address_space = self.modbus_structures_description[self.structure_number - 1]["address_space"]
         register_start_address = (mdb_base + self.byte_number // 2) + (modbus_function << 16)
         if self.flag & SAVE_TYPE_FLAG:
             saved_address = self.saved_address
@@ -351,24 +417,23 @@ class RegsHand(base_object.Base):
             p_value = f"(u8*)&regs_main.{mdb_regs_global_name}.vars.{self.internal_name}[{number}]"
         else:
             p_value = "(u8*)&regs_main.{}.vars.{}".format(mdb_regs_global_name, self.internal_name)
+        guid = self.compute_guid(address_space, modbus_function, self.ind)
         if modbus_type == "client":
             clien_space_number = int(self.modbus_structures_description[self.structure_number - 1]["modbus_address"])
             clien_space_number |= ((self.structure_number - 1)<<8)&0xff00
-            regs_description_client.writelines('{{ {}, {}, {}, {}, {},\"{}\",\"{}\", {}, {}, {}, {}, {}, {}, {} }},'
+            regs_description_client.writelines('{{ {}, {}, {}, {}, {},\"{}\",\"{}\", {}, {}, {}, {}, {}, {} }},'
                                                '{}'.format(self.p_default, self.p_min_value, self.p_max_value,
-                                                           p_value, str(saved_address), self.description
-                                                           , name, self.type, str(self.ind),
-                                                           str(int(self.guid)), str(hex(register_start_address)),
-                                                           str(self.size_array), str(self.flag),
-                                                           hex(clien_space_number),self.temp_description))
+                                                           p_value, str(saved_address), self.description,
+                                                           name, str(hex(guid)), str(hex(register_start_address)),
+                                                           self.type, str(self.size_array), str(self.flag),
+                                                           hex(clien_space_number), self.temp_description))
             self.regs_client_num += 1
         else:
-            regs_description_write_file.writelines('{{ {}, {}, {}, {}, {},\"{}\",\"{}\", {}, {}, {}, {}, {}, {}, {} }},'
+            regs_description_write_file.writelines('{{ {}, {}, {}, {}, {},\"{}\",\"{}\", {}, {}, {}, {}, {}, {} }},'
                                                '{}'.format(self.p_default, self.p_min_value, self.p_max_value,
-                                                           p_value, str(saved_address), self.description
-                                                           , name, self.type, str(self.ind),
-                                                           str(int(self.guid)), str(hex(register_start_address)),
-                                                           str(self.size_array), str(self.flag),
+                                                           p_value, str(saved_address), self.description,
+                                                           name, str(hex(guid)), str(hex(register_start_address)),
+                                                           self.type, str(self.size_array), str(self.flag),
                                                            (self.structure_number - 1), self.temp_description))
             self.regs_self_num += 1
         temp_description = {"regs_self_num": self.regs_self_num,"regs_client_num" : self.regs_client_num,
@@ -384,6 +449,55 @@ class RegsHand(base_object.Base):
         self.check_reg_name(temp_description)
         self.update_modbus_area(temp_description, int(mdb_base), modbus_function)
         self.dict.append(temp_description)
+        self.ind += 1
+
+    @staticmethod
+    def compute_guid(address_space, modbus_function, ind):
+        GUID_OS_HEAD        = 0x00000000
+        GUID_USER_HEAD      = 0x10000000
+        GUID_USER_IS_01_MD  = 0x01000000
+        GUID_USER_IS_02_MD  = 0x02000000
+        GUID_USER_IS_03_MD  = 0x04000000
+        GUID_USER_IS_04_MD  = 0x08000000
+        function_bits = {1: GUID_USER_IS_01_MD, 2: GUID_USER_IS_02_MD,
+                         3: GUID_USER_IS_03_MD, 4: GUID_USER_IS_04_MD}
+        if address_space == 0:
+            return GUID_OS_HEAD | (modbus_function << 20) | ind
+        return GUID_USER_HEAD | function_bits.get(modbus_function, 0) | (address_space << 13) | ind
+
+    def add_variable_to_user_task_description(self, regs_description_write_file, number):
+        mdb_regs_global_name = self.modbus_structures_description[self.structure_number - 1]["regs_global_name"]
+        mdb_base = self.modbus_structures_description[self.structure_number - 1]["register_start_address"]
+        modbus_function = MODBUS_FUNCTIONS[
+            self.modbus_structures_description[self.structure_number - 1]["modbus_function"]]
+        address_space = self.modbus_structures_description[self.structure_number - 1]["address_space"]
+        register_start_address = (mdb_base + self.byte_number // 2) + (modbus_function << 16)
+        if self.flag & SAVE_TYPE_FLAG:
+            saved_address = self.saved_address
+        else:
+            saved_address = 0
+        if self.reg_opt_is_struct:
+            name = self.additional_name
+        else:
+            name = self.internal_name
+        if self.size_array > 1 and self.is_reduced == 0:
+            p_value = f"(u8*)&{mdb_regs_global_name}->vars.{self.internal_name}[{number}]"
+        else:
+            p_value = f"(u8*)&{mdb_regs_global_name}->vars.{self.internal_name}"
+        guid = self.compute_guid(address_space, modbus_function, self.ind)
+        entry = ('{{ {}, {}, {}, {}, {},\"{}\",\"{}\", {}, {}, {}, {}, {}, {} }}'
+                 '{}'.format(self.p_default, self.p_min_value, self.p_max_value,
+                             p_value, str(saved_address), self.description,
+                             name, str(hex(guid)), str(hex(register_start_address)),
+                             self.type, str(self.size_array), str(self.flag),
+                             address_space, self.temp_description))
+        if self.structure_number not in self.user_task_entries:
+            self.user_task_entries[self.structure_number] = []
+            self.user_task_saved_sizes[self.structure_number] = 0
+        self.user_task_entries[self.structure_number].append(entry)
+        if self.flag & SAVE_TYPE_FLAG:
+            self.user_task_saved_sizes[self.structure_number] += self.size_array * REGS_SIZE[self.type]
+        self.regs_self_num += 1
         self.ind += 1
 
     def check_reg_name(self, reg_description):
@@ -516,5 +630,3 @@ def find_global_register(path_to_file, struct_type):
                 break
     regs_file_temp.close()
     return global_register
-
-

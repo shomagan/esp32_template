@@ -342,6 +342,9 @@ typedef struct{
 
 extern client_request_t client_requests[];
 extern area_node_t area_nodes[];
+extern regs_description_t const regs_description_client[];
+/* alias kept for legacy code */
+#define regs_description_user regs_description_client
 /* Execute a Query/Response suspended transaction between client and server */
 /* returns: <0    -> ERROR: error codes
  *          >2    -> SUCCESS: frame length

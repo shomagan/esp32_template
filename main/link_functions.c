@@ -29,66 +29,42 @@
  */
 #ifndef LINK_FUNCTIONS_C
 #define LINK_FUNCTIONS_C 1
-#include "cmsis_os.h"
-#include "main.h"
 #include "link_functions.h"
+#include "regs_description.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "freertos/queue.h"
+#include <stdio.h>
+
 #define OS_VERSION {0,0,0,1}
-const link_functions_t link_functions SOFI_LINK_CODE = {
-  .os_kernel_sys_tick = osKernelSysTick,
-  .os_thread_create =  osThreadCreate,
-  .os_thread_get_id =  osThreadGetId,
-  .os_thread_get_id_by_name = os_thread_get_id_by_name,
-  .os_thread_terminate =  osThreadTerminate,
-  .os_thread_yield =  osThreadYield,
-  .os_thread_set_priority =  osThreadSetPriority,
-  .os_thread_get_priority =  osThreadGetPriority,
-  .os_delay =  osDelay,
-  .os_delay_until =  osDelayUntil,
-  .os_signal_set =  osSignalSet,
-  .os_signal_clear =  osSignalClear,
-  .os_signal_wait =  osSignalWait,
-  .os_mutex_create =  osMutexCreate,
-  .os_mutex_wait =  osMutexWait,
-  .os_mutex_release =  osMutexRelease,
-  .os_mutex_delete =  osMutexDelete,
-  .os_semaphore_create =  osSemaphoreCreate,
-  .os_semaphore_wait =  osSemaphoreWait,
-  .os_semaphore_release =  osSemaphoreRelease,
-  .os_semaphore_delete =  osSemaphoreDelete,
-  .os_pool_create =  osPoolCreate,
-  .os_pool_alloc =  osPoolAlloc,
-  .os_pool_c_alloc =  osPoolCAlloc,
-  .os_pool_free =  osPoolFree,
-  .os_pool_get_by_index = os_pool_get_by_index,
-  .os_message_create =  osMessageCreate,
-  .os_message_put =  osMessagePut,
-  .os_message_get =  osMessageGet,
-  .os_mail_create =  osMailCreate,
-  .os_mail_alloc =  osMailAlloc,
-  .os_mail_c_alloc =  osMailCAlloc,
-  .os_mail_put =  osMailPut,
-  .os_mail_get =  osMailGet,
-  .os_mail_free =  osMailFree,
-  .os_thread_get_state =  osThreadGetState,
-  .os_thread_is_suspended =  osThreadIsSuspended,
-  .os_thread_suspend =  osThreadSuspend,
-  .os_thread_resume =  osThreadResume,
-  .os_thread_suspend_all =  osThreadSuspendAll,
-  .os_thread_resume_all =  osThreadResumeAll,
-  .os_abort_delay =  osAbortDelay,
-  .os_thread_list =  osThreadList,
-  .os_message_peek =  osMessagePeek,
-  .os_message_waiting =  osMessageWaiting,
-  .os_message_available_space =  osMessageAvailableSpace,
-  .os_message_delete =  osMessageDelete,
-  .os_recursive_mutex_create =  osRecursiveMutexCreate,
-  .os_recursive_mutex_release =  osRecursiveMutexRelease,
-  .os_recursive_mutex_wait =  osRecursiveMutexWait,
-  .os_semaphore_get_count =  osSemaphoreGetCount,
-  .task_enter_critical =  task_enter_critical,
-  .task_exit_critical =  task_exit_critical,
-  .refresh_watchdog =  refresh_watchdog,
-  .printf = debug_printf,
-  .version = OS_VERSION,
+
+static portMUX_TYPE s_critical_mux = portMUX_INITIALIZER_UNLOCKED;
+
+static void _task_delay_ms(u32 ms) { vTaskDelay(pdMS_TO_TICKS(ms)); }
+static u32 _task_get_tick_count(void) { return (u32)xTaskGetTickCount(); }
+static void _task_enter_critical(void) { taskENTER_CRITICAL(&s_critical_mux); }
+static void _task_exit_critical(void) { taskEXIT_CRITICAL(&s_critical_mux); }
+static SemaphoreHandle_t _semaphore_create_mutex(void) { return xSemaphoreCreateMutex(); }
+static BaseType_t _semaphore_take(SemaphoreHandle_t m, TickType_t t) { return xSemaphoreTake(m, t); }
+static BaseType_t _semaphore_release(SemaphoreHandle_t m) { return xSemaphoreGive(m); }
+static QueueHandle_t _queue_create(u32 len, u32 sz) { return xQueueCreate(len, sz); }
+static BaseType_t _queue_send(QueueHandle_t q, const void *i, TickType_t t) { return xQueueSend(q, i, t); }
+static BaseType_t _queue_receive(QueueHandle_t q, void *i, TickType_t t) { return xQueueReceive(q, i, t); }
+
+const link_functions_t link_functions = {
+    .task_delay_ms = _task_delay_ms,
+    .task_get_tick_count = _task_get_tick_count,
+    .task_enter_critical = _task_enter_critical,
+    .task_exit_critical = _task_exit_critical,
+    .semaphore_create_mutex = _semaphore_create_mutex,
+    .semaphore_take = _semaphore_take,
+    .semaphore_release = _semaphore_release,
+    .queue_create = _queue_create,
+    .queue_send = _queue_send,
+    .queue_receive = _queue_receive,
+    .regs_description_list_add_new = regs_description_list_add_new,
+    .printf = printf,
+    .version = OS_VERSION,
 };
 #endif //LINK_FUNCTIONS_C

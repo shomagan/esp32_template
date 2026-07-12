@@ -49,5 +49,6 @@ void battery_state_task(void *arg){
       task_counter++;
    }
 }
+
 #endif //BATTERY_STATE
 #endif /*BATTERY_STATE_C*/

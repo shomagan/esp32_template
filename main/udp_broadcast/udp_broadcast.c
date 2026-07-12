@@ -127,15 +127,15 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
         }
         if (position>=0){
 #if MODBUS_MASTER_ENABLE
-            u8 modbus_id = (u8)atoi(&receive_buff[position + MODBUS_FIELD_SIZE  +3]);            
+            u8 modbus_id = (u8)atoi(&receive_buff[position + MODBUS_FIELD_SIZE  +3]);
             if(add_ip_to_slave_table((uc8*)addr,modbus_id)){
                 main_printf(TAG, "new modbus device found\n");
             }
-#endif            
+#endif
         }
 #if MORSE
         u8 message_valid = 1;
-        u8 last_symbol_position = receive_len - 2; 
+        u8 last_symbol_position = receive_len - 2;
 #if SOC_HMAC_SUPPORTED
         if(receive_len > 32){
             uint8_t hmac[32];
@@ -245,8 +245,7 @@ static int get_di_info(char * temp_buff){
     if(temp_buff == NULL){
         return 0;
     }else{
-        u32 pin_states = 0;
-        pin_states = di_control->vars.pin_state;
+        u32 pin_states = 0; /* di_control not available in main, default to 0 */
         for (u8 i =0;i<DI_COUNT;i++){
             len += sprintf(&temp_buff[len],"\"di_state_%u\": ",i);
             if (pin_states & (1<<i)){

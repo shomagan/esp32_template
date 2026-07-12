@@ -61,26 +61,49 @@
 /*task config start */
 #define ENABLE_DEEP_SLEEP 0
 #define SLIP_ENABLE 0 /*enable slip handling over wifi or uart*/
-#define PWM_CONTROL_ENABLE 1
-#define TOUCH_HANDLE_ENABLE 0
 #define UDP_BROADCAST_ENABLE 1
 #define UDP_BROADCAST_UDP_REQUEST_ENABLE 1
 #define UDP_BROADCAST_INFORMATION_ENABLE 1
 #define UDP_ADVERTISMENT_PERIOD 1000u
 #define MODBUS_MASTER_ENABLE 0
-#define DI_HANDLING_ENABLE 0
 #define SR04_MODULE 0
 #define DISPLAY 0
 #define TIME_SYNC_MEASUREMENT_ENABLE 0
-#define STEP_MOTOR 0
-#define FEEDER 0
-#define POLISHER 0
-#define TEST_INT 0
-#define MORSE 0
 #define BATTERY_STATE 0
 #define TELEGRAM 1
+
+/* User-task feature flags. These can be overridden by CMake compile definitions
+ * (set in user_tasks/CMakeLists.txt) so that only selected files are compiled. */
+#ifndef PWM_CONTROL_ENABLE
+#define PWM_CONTROL_ENABLE 0
+#endif
+#ifndef TOUCH_HANDLE_ENABLE
+#define TOUCH_HANDLE_ENABLE 0
+#endif
+#ifndef DI_HANDLING_ENABLE
+#define DI_HANDLING_ENABLE 0
+#endif
+#ifndef STEP_MOTOR
+#define STEP_MOTOR 0
+#endif
+#ifndef FEEDER
+#define FEEDER 0
+#endif
+#ifndef POLISHER
+#define POLISHER 0
+#endif
+#ifndef TEST_INT
+#define TEST_INT 0
+#endif
+#ifndef MORSE
+#define MORSE 0
+#endif
+#ifndef SCD41_ENABLE
 #define SCD41_ENABLE 0
+#endif
+#ifndef EPAPER
 #define EPAPER 0
+#endif
 #if TIME_SYNC_MEASUREMENT_ENABLE
 #define TIME_SYNC_DEVIATION_THRESHOLD 10
 #define TIME_SYNC_BUFFER_SIZE 100u
@@ -113,6 +136,8 @@
 #define DEVICE_NAME "scd41"
 #elif PWM_CONTROL_ENABLE
 #define DEVICE_NAME "pwmcontrol"
+#else
+#define DEVICE_NAME "sofi_plc"
 #endif
 
 /*task config end */

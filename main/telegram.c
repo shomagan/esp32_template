@@ -7,7 +7,7 @@
  * @version 0.1
  * @brief  TODO!!! write brief in
  */
-#include "regs_description.c"
+#include "regs_description.h"
 #ifndef TELEGRAM_C
 #define TELEGRAM_C 1
 

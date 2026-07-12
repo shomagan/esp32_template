@@ -37,80 +37,32 @@
 #ifndef LINK_FUNCTIONS_H
 #define LINK_FUNCTIONS_H 1
 
-/*add includes below */
 #include "type_def.h"
-#include "main_debug.h"
-#include "main_config.h"
-#include "cmsis_os.h"
-#include "task_control.h"
-#include "internal_flash.h"
+#include "os_type.h"
+#include "regs_description.h"
 #define OS_VERSION_SIZE 4
-/*add includes before */
+
 #ifdef __cplusplus
    extern "C" {
 #endif
 
 typedef struct MCU_PACK {
-    uint32_t (*os_kernel_sys_tick) (void);
-    osThreadId (*os_thread_create) (const osThreadDef_t *thread_def, void *argument);
-    osThreadId (*os_thread_get_id) (void);
-    osThreadId (*os_thread_get_id_by_name) (const char *name);
-    osStatus (*os_thread_terminate) (osThreadId thread_id);
-    osStatus (*os_thread_yield) (void);
-    osStatus (*os_thread_set_priority) (osThreadId thread_id, osPriority priority);
-    osPriority (*os_thread_get_priority) (osThreadId thread_id);
-    osStatus (*os_delay) (uint32_t millisec);
-    osStatus (*os_delay_until) (uint32_t *PreviousWakeTime, uint32_t millisec);
-    int32_t (*os_signal_set) (osThreadId thread_id, int32_t signals);
-    int32_t (*os_signal_clear) (osThreadId thread_id, int32_t signals);
-    osEvent (*os_signal_wait) (int32_t signals, uint32_t millisec);
-    osMutexId (*os_mutex_create) (const osMutexDef_t *mutex_def);
-    osStatus (*os_mutex_wait) (osMutexId mutex_id, uint32_t millisec);
-    osStatus (*os_mutex_release) (osMutexId mutex_id);
-    osStatus (*os_mutex_delete) (osMutexId mutex_id);
-    osSemaphoreId (*os_semaphore_create) (const osSemaphoreDef_t *semaphore_def, int32_t count);
-    int32_t (*os_semaphore_wait) (osSemaphoreId semaphore_id, uint32_t millisec);
-    osStatus (*os_semaphore_release) (osSemaphoreId semaphore_id);
-    osStatus (*os_semaphore_delete) (osSemaphoreId semaphore_id);
-    osPoolId (*os_pool_create) (const osPoolDef_t *pool_def);
-    void * (*os_pool_alloc) (osPoolId pool_id);
-    void * (*os_pool_c_alloc) (osPoolId pool_id);
-    osStatus (*os_pool_free) (osPoolId pool_id, void *block);
-    void * (*os_pool_get_by_index)(osPoolId pool_id,u32 index);
-    osMessageQId (*os_message_create) (const osMessageQDef_t *queue_def, osThreadId thread_id);
-    osStatus (*os_message_put) (osMessageQId queue_id, uint32_t info, uint32_t millisec);
-    osEvent (*os_message_get) (osMessageQId queue_id, uint32_t millisec);
-    osMailQId (*os_mail_create) (osMailQDef_t *queue_def, osThreadId thread_id);
-    void * (*os_mail_alloc) (osMailQId queue_id, uint32_t millisec);
-    void * (*os_mail_c_alloc) (osMailQId queue_id, uint32_t millisec);
-    osStatus (*os_mail_put) (osMailQId queue_id, void *mail);
-    osEvent (*os_mail_get) (osMailQId queue_id, uint32_t millisec);
-    osStatus (*os_mail_free) (osMailQId queue_id, void *mail);
-    osThreadState (*os_thread_get_state)(osThreadId thread_id);
-    osStatus (*os_thread_is_suspended)(osThreadId thread_id);
-    osStatus (*os_thread_suspend) (osThreadId thread_id);
-    osStatus (*os_thread_resume) (osThreadId thread_id);
-    osStatus (*os_thread_suspend_all) (void);
-    osStatus (*os_thread_resume_all) (void);
-    osStatus (*os_abort_delay) (osThreadId thread_id);
-    osStatus (*os_thread_list) (uint8_t *buffer);
-    osEvent (*os_message_peek) (osMessageQId queue_id, uint32_t millisec);
-    uint32_t (*os_message_waiting) (osMessageQId queue_id);
-    uint32_t (*os_message_available_space)(osMessageQId queue_id);
-    osStatus (*os_message_delete) (osMessageQId queue_id);
-    osMutexId (*os_recursive_mutex_create) (const osMutexDef_t *mutex_def);
-    osStatus (*os_recursive_mutex_release) (osMutexId mutex_id);
-    osStatus (*os_recursive_mutex_wait) (osMutexId mutex_id, uint32_t millisec);
-    uint32_t (*os_semaphore_get_count) (osSemaphoreId semaphore_id);
+    void (*task_delay_ms)(u32 ms);
+    u32  (*task_get_tick_count)(void);
     void (*task_enter_critical)(void);
     void (*task_exit_critical)(void);
-    void (*refresh_watchdog)(void);
-    int (*printf)(const char * format, ...);
+    SemaphoreHandle_t (*semaphore_create_mutex)(void);
+    BaseType_t (*semaphore_take)(SemaphoreHandle_t mutex, TickType_t timeout);
+    BaseType_t (*semaphore_release)(SemaphoreHandle_t mutex);
+    QueueHandle_t (*queue_create)(u32 len, u32 item_size);
+    BaseType_t (*queue_send)(QueueHandle_t q, const void *item, TickType_t timeout);
+    BaseType_t (*queue_receive)(QueueHandle_t q, void *item, TickType_t timeout);
+    int (*regs_description_list_add_new)(regs_description_list_t regs_table);
+    int (*printf)(const char *format, ...);
     u8 version[OS_VERSION_SIZE];
 } link_functions_t;
-extern  const link_functions_t link_functions;
+extern const link_functions_t link_functions;
 
-/*add functions and variable declarations before */
 #ifdef __cplusplus
 }
 #endif

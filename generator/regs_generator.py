@@ -1,6 +1,7 @@
 ﻿import sys
 import os
 import re
+import glob
 import fileinput
 import regs_handl
 import argparse
@@ -27,7 +28,7 @@ __description__ = 'generate regs description file'
 REGS_H_PATH = "../main/regs.h"
 
 
-def generate(type_module):
+def generate(type_module, skip_user_tasks=False):
     regs_h_file_path = '../main/regs.h'
     regs_c_file_path = '../main/regs.c'
     user_describe_rst = open('address_space_' + type_module + '.rst', 'w', encoding='UTF-8')
@@ -52,14 +53,109 @@ def generate(type_module):
     print("find " + str(regs_hand.regs_self_num) + " own network variable")
     print("find " + str(regs_hand.regs_client_num) + " client network variable")
     print("last bkram address " + str(regs_hand.saved_address))
-    # rewrite exist file with new network variable settings
     write_exist_file()
     fill_up_regs_h_main_structure(regs_h_file_path, regs_hand.modbus_structures_description)
     fill_up_regs_c_main_pointers(regs_c_file_path, regs_hand.modbus_structures_description)
+    # user_tasks/regs_description_user.c is generated separately via
+    # user_tasks/CMakeLists.txt using --user-tasks-only. Only generate here
+    # when running the full generator manually (skip_user_tasks=False).
+    if not skip_user_tasks and os.path.exists('../user_tasks/'):
+        generate_user_tasks()  # manual full-run convenience
 
     fs_save_file = open('../main/http/fs.c', 'a')
     fs_save_file.write(' ')
     fs_save_file.close()
+
+
+def generate_user_tasks(header_basenames=None):
+    """Generate regs_description_user.c for user tasks.
+
+    Parameters
+    ----------
+    header_basenames : list[str] | None
+        If given, only process these header filenames (basenames, e.g. ['scd41.h']).
+        If None, process all *.h files in ../user_tasks/.
+    """
+    user_tasks_dir = '../user_tasks/'
+    if header_basenames:
+        user_task_headers = sorted(
+            os.path.join(user_tasks_dir, h) for h in header_basenames
+        )
+    else:
+        user_task_headers = sorted(glob.glob(user_tasks_dir + '*.h'))
+
+    regs_hand = regs_handl.RegsHand(os_type=platform.system())
+    for header_path in user_task_headers:
+        if os.path.exists(header_path):
+            regs_hand.regs_file_handling_user_task(header_path)
+        else:
+            print(f"WARNING: user task header not found: {header_path}")
+
+    print("find {} user task variables in {} files".format(
+        regs_hand.regs_self_num, len(regs_hand.modbus_structures_description)))
+
+    write_user_task_file(regs_hand)
+
+
+def write_user_task_file(regs_hand):
+    output_path = '../user_tasks/regs_description_user.c'
+    task_descriptions = regs_hand.modbus_structures_description
+
+    with open(output_path, 'w', encoding='UTF-8') as f:
+        f.write('#ifndef REGS_DESCRIPTION_USER_C\n')
+        f.write('#define REGS_DESCRIPTION_USER_C 1\n\n')
+        f.write('#include "regs_description.h"\n')
+        f.write('#include "link_functions.h"\n')
+        seen_headers = []
+        for desc in task_descriptions:
+            src = desc.get("source_file", "")
+            if src and src not in seen_headers:
+                f.write(f'#include "{src}"\n')
+                seen_headers.append(src)
+        f.write('\n')
+
+        for i, desc in enumerate(task_descriptions, start=1):
+            struct_type = desc["struct_type"]
+            global_name = desc["regs_global_name"]
+            f.write(f'static {struct_type} {global_name}_storage = {{{{0}}}};\n')
+            f.write(f'{struct_type} * const {global_name} = &{global_name}_storage;\n')
+        f.write('\n')
+
+        for i, desc in enumerate(task_descriptions, start=1):
+            global_name = desc["regs_global_name"]
+            space_name = desc["space_name"]
+            entries = regs_hand.user_task_entries.get(i, [])
+            saved_size = regs_hand.user_task_saved_sizes.get(i, 0)
+            num_vars = len(entries)
+            saved_size = max(saved_size, 4)
+
+            f.write(f'#define NUM_OF_{global_name.upper()}_VARS {num_vars}\n')
+            f.write(f'static u8 {global_name}_saved_buf[{saved_size}];\n')
+            f.write(f'static const u32 {global_name}_table_version = 0x0001;\n')
+            f.write(f'static const char {global_name}_space_name[] = "{space_name}";\n')
+            f.write(f'static regs_description_t const regs_description_{global_name}[NUM_OF_{global_name.upper()}_VARS] = {{\n')
+            for entry in entries:
+                f.write(f'    {entry},\n')
+            f.write('};\n')
+            f.write(f'const regs_description_list_t regs_table_{global_name} = {{\n')
+            f.write(f'    .description = regs_description_{global_name},\n')
+            f.write(f'    .num_of_regs = NUM_OF_{global_name.upper()}_VARS,\n')
+            f.write(f'    .table_version = &{global_name}_table_version,\n')
+            f.write(f'    .space_name = {global_name}_space_name,\n')
+            f.write(f'    .saved_regs_buffer = {global_name}_saved_buf,\n')
+            f.write(f'    .saved_regs_buffer_size = sizeof({global_name}_saved_buf),\n')
+            f.write('};\n\n')
+
+        # Registration function – calls link_functions.regs_description_list_add_new
+        # for every user-task table so the main OS can access them via the unified API.
+        f.write('void user_tasks_register_regs(void) {\n')
+        for i, desc in enumerate(task_descriptions, start=1):
+            global_name = desc["regs_global_name"]
+            f.write(f'    link_functions.regs_description_list_add_new(regs_table_{global_name});\n')
+        f.write('}\n\n')
+
+        f.write('#endif\n')
+    print(f"written user task descriptions to {output_path}")
 
 
 def main():
@@ -67,7 +163,24 @@ def main():
     parser.add_argument('-t', '--type', type=str, default="isimfw400",
                         help=('type of device'
                               '(default: %(default)s)'))
+    parser.add_argument('--user-tasks-only', action='store_true',
+                        help='Only generate regs_description_user.c for user tasks, skip main generation')
+    parser.add_argument('--no-user-tasks', action='store_true',
+                        help='Skip generating regs_description_user.c (used when CMake handles it separately)')
+    parser.add_argument('--user-task-header', action='append', dest='user_task_headers',
+                        metavar='HEADER', default=[],
+                        help='User task header basename to include (can be repeated, e.g. scd41.h). '
+                             'If omitted all *.h in user_tasks/ are scanned.')
     args = parser.parse_args()
+
+    # ---- User-tasks-only mode: generate regs_description_user.c and exit ----
+    if args.user_tasks_only:
+        print("user-tasks-only mode: generating regs_description_user.c")
+        headers = args.user_task_headers if args.user_task_headers else None
+        generate_user_tasks(header_basenames=headers)
+        return
+
+    # ---- Full generation mode ----
     print("module type - {}".format(args.type))
     regs_h_had_changed = 1
     with open(REGS_H_PATH, "rb") as f:
@@ -113,7 +226,7 @@ def main():
             version_file.close()
     if regs_h_had_changed:
         print("regs.h file was changed")
-        generate(args.type)
+        generate(args.type, skip_user_tasks=args.no_user_tasks)
     else:
         fs_save_file = open('../main/http/fs.c', 'a')
         fs_save_file.write(' ')
@@ -223,7 +336,7 @@ def write_exist_file():
     number = 0
     file_path = '../main/regs_description.c'
     for line in fileinput.input(file_path, inplace=1):
-        if re.search(r"\s*regs_description_t\s+const\s+regs_description\[\s*NUM_OF_SELF_VARS\s*\]\s*\=\s*\{",line):
+        if re.search(r"\s*regs_description_t\s+const\s+regs_description_global\[\s*NUM_OF_SELF_VARS\s*\]\s*\=\s*\{",line):
             replace = 1
             print(line, end='')
         elif replace:

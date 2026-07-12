@@ -22,8 +22,8 @@
 #define  MAX_DESCRIPTION_SIZE 30
 #define  MAX_ARRAY_SIZE 256
 #define  MAX_DESCRIPTIONS_REGS  2048
-#define NUM_OF_SELF_VARS 132
-#define NUM_OF_CLIENT_VARS 21
+#define NUM_OF_SELF_VARS 61
+#define NUM_OF_CLIENT_VARS 0
 extern const u32 def_table_version;
 
 enum property{
@@ -87,11 +87,11 @@ typedef struct MCU_PACK {
  */
 typedef struct{
    const regs_description_t * description;   /*pointer to array of regs_description_t*/
-   const u32 num_of_regs;                    /*number of registers*/
-   const u32 * table_version;                  /*version of description table to check in saved memory*/
+   u32 num_of_regs;                          /*number of registers*/
+   const u32 * table_version;                /*version of description table to check in saved memory*/
    const char * space_name;                  /*should start with SOFI_ always, space name for user vars, and for own client*/
-   u8 * saved_regs_buffer;                 /*pointer to buffer for save vars, size should be calculated by generator, 32 bit aligned*/
-   const u32 saved_regs_buffer_size;         /*size of buffer for save vars, should be calculated by generator, 32 bit aligned*/
+   u8 * saved_regs_buffer;                   /*pointer to buffer for save vars, size should be calculated by generator, 32 bit aligned*/
+   u32 saved_regs_buffer_size;               /*size of buffer for save vars, should be calculated by generator, 32 bit aligned*/
 } regs_description_list_t;
 
 typedef enum{
@@ -107,12 +107,12 @@ typedef enum{
 }regs_description_guid;
 
 extern regs_description_t const regs_description_global[];
-extern regs_description_t const regs_description_user[];
-extern regs_description_t const regs_description_client[];
 extern const u16 def_table_id;
 int regs_description_list_add_new(regs_description_list_t regs_table);
-u8 * regs_description_list_get_buffer(u8 ind);
-int regs_description_list_get_saved_buffer_size(u8 ind);
+u8 * regs_description_list_get_buffer(u16 ind);
+size_t regs_description_list_get_saved_buffer_size(u16 ind);
+const char * regs_description_list_get_space_name(u16 table_ind);
+u32 regs_description_list_get_num_of_regs(u16 table_ind);
 int regs_description_get_index_by_name(regs_template_t *regs_template);
 int regs_description_get_by_index(regs_template_t * regs_template, u32 index);
 int regs_description_get_by_index_in_table(regs_template_t * regs_template, u32 ind);
@@ -124,12 +124,13 @@ u8 regs_description_is_writable (regs_template_t *regs_template);
 u8 regs_description_is_credential(regs_template_t *regs_template);
 u8 regs_description_flag_check (regs_template_t *regs_template, u8 flag);
 void * regs_description_get_pointer_by_modbus(u16 modbus_address, u8 modbus_function);
-int regs_fill_temp_buffer(regs_template_t *regs_template, regs_access_t reg, temp_data_buffering_t * temp_data_buffering);
+int regs_fill_temp_buffer(regs_template_t *regs_template, regs_access_t reg, temp_data_buffering_t * temp_data_buffering, void *access_address);
 int regs_check_temp_buffer(temp_data_buffering_t * temp_data_buffering, regs_template_t * regs_template);
 int set_regs_def_values (u16 table_ind);
 int regs_clear_temp_buffer(temp_data_buffering_t * temp_data_buffering);
 u32 regs_description_get_regs_string_value(regs_template_t *regs_template, u8 reg_num, char *buffer, u32 buffer_size);
 int regs_description_write_value_by_address(const void * address, const u8 * value);
+int regs_description_get_index_by_address(const void * address);
 /*add functions and variable declarations before */
 #ifdef __cplusplus
 }

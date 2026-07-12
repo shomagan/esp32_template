@@ -28,32 +28,18 @@
 #include "memory_handle.h"
 #include "modbus.h"
 #include "httpd.h"
-#include "pwm_test.h"
 #include "modbus_tcp/modbus_tcp.h"
 #include <driver/spi_master.h>
 #include "udp_broadcast.h"
-#include "touch_handle.h"
-#include "di_handle.h"
 #include "sr04.h"
-#include "step_motor.h"
 #include "sleep_control.h"
 #include "wireless_control.h"
-#include "feeder.h"
-#include "polisher.h"
-#include "test_int.h"
-#include "morse.h"
-#if SCD41_ENABLE
-#include "scd41.h"
-#endif
+#include "battery_state.h"
+#include "u8g2_esp32_hal.h"
 #if TELEGRAM
 #include "telegram.h"
 #endif
-#include "battery_state.h"
-#include "u8g2_esp32_hal.h"
-
-#if EPAPER
-#include "epaper.h"
-#endif
+extern void user_tasks_start(void *wakeup_cause);
 /*end include*/
 
 /* The examples use WiFi configuration that you can set via project configuration menu.
@@ -80,11 +66,7 @@ static esp_sleep_wakeup_cause_t esp_sleep_wakeup_causes;
  */
 void app_main(void){
     //Initialize NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND){
-      ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
-    }
+    esp_err_t ret = mirror_storage_init();
     ESP_ERROR_CHECK(ret);
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -111,7 +93,7 @@ void app_main(void){
     ESP_ERROR_CHECK(esp_slip_init(&wifi_slip_config));
 #endif
     common_init_gpio();
-    esp_sleep_wakeup_cause = esp_sleep_get_wakeup_causes();
+    esp_sleep_wakeup_causes = esp_sleep_get_wakeup_causes();
 #if DISPLAY
     init_display();
 #endif
@@ -120,7 +102,7 @@ void app_main(void){
 #endif
     modbus_tcp_init();
     udp_broadcast_init();
-    main_init_tasks(&esp_sleep_wakeup_cause);/*init all necessary tasks */
+    main_init_tasks(&esp_sleep_wakeup_causes);/*init all necessary tasks */
 }
 
 /**
@@ -147,88 +129,15 @@ int main_init_tasks(esp_sleep_wakeup_cause_t * esp_sleep_wakeup_cause){
         ESP_LOGE(TAG, "create slip_modem_uart_rx_task failed");
     }
 #endif /*SLIP_ENABLE*/
-#if PWM_CONTROL_ENABLE
-    res = task_create(pwm_control_task, "pwm_control_task", 2048, NULL, (tskIDLE_PRIORITY + 2), &pwm_task_handle);
-    if (res != pdTRUE) {
-        ESP_LOGE(TAG, "create pwm_control_task failed");
-    }
-#endif
-#if TOUCH_HANDLE_ENABLE
-    res = task_create(touch_task, "touch_task", 4096, NULL, (tskIDLE_PRIORITY + 2), &touch_task_handle);
-    if (res != pdTRUE) {
-        ESP_LOGE(TAG, "create touch_handle_task failed");
-    }
-#endif
+
 #if MODBUS_MASTER_ENABLE
     res = task_create(modbus_tcp_client_common_task, "modbus_tcp_client_common_task", 4096, NULL, (tskIDLE_PRIORITY + 2), &modbus_master_id);
     if(res != pdTRUE){
         main_printf(TAG,"modbus tcp task inited success\n");
     }
 #endif
-#if DI_HANDLING_ENABLE
-    res = task_create(di_handle_task, "di_handle_task", 2048, NULL, (tskIDLE_PRIORITY + 2), &di_handle_id);
-    if(res != pdTRUE){
-        main_printf(TAG,"di_handle_task inited success\n");
-    }
-#endif
-#if SR04_MODULE
-    res = task_create(sr04_task, "sr04_task", 2464, NULL, (tskIDLE_PRIORITY + 3), &sr04_handle_id);
-    if(res != pdTRUE){
-        main_printf(TAG,"sr04_task inited success\n");
-    }
-#endif
-#if STEP_MOTOR
-    res = task_create(step_motor_task, "step_motor_task", 2464, NULL, (tskIDLE_PRIORITY + 2), &step_motor_handle_id);
-    if(res != pdTRUE){
-        main_printf(TAG,"step_motor_task inited success\n");
-    }
-#endif
-#if ENABLE_DEEP_SLEEP
-    res = task_create(sleep_control_task, "sleep_control_task", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &sleep_control_handle_id);
-    if(res != pdTRUE){
-        main_printf(TAG,"sleep_control_task inited success\n");
-    }
-#endif
-#if FEEDER
-    res = task_create(feeder_task, "feeder_task", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &feeder_handle_id);
-    if(res != pdTRUE){
-        main_printf(TAG,"feeder_task inited success\n");
-    }
-#endif
-
-#if POLISHER
-    res = task_create(polisher_task, "polisher_task", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &polisher_handle_id);
-    if(res != pdTRUE){
-        main_printf(TAG,"polisher_task inited success\n");
-    }
-#endif
-
-#if TEST_INT
-    res = task_create(test_int_task, "test_int_task", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &test_int_handle_id);
-    if(res != pdTRUE){
-        main_printf(TAG,"test_int_task inited success\n");
-    }
-#endif
-
-#if MORSE
-    res = task_create(morse_task, "morse_task", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &morse_handle_id);
-    if(res != pdTRUE){
-        main_printf(TAG,"morse_task inited success\n");
-    }
-#endif
-
-#if BATTERY_STATE
-    res = task_create(battery_state_task, "battery_state_task", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &battery_state_handle_id);
-    if(res != pdTRUE){
-        main_printf(TAG,"battery_state_task inited success\n");
-    }
-#endif
-#if SCD41_ENABLE
-    res = task_create(scd41_task, "scd41_task", 2464, (void *)esp_sleep_wakeup_cause, (tskIDLE_PRIORITY + 2), &scd41_task_handle);
-    if(res != pdTRUE){
-        main_printf(TAG,"scd41_task inited success\n");
-    }
-#endif
+    /* Start all user tasks */
+    user_tasks_start((void *)esp_sleep_wakeup_cause);
 #if LWIP_HTTPD_USE_SOCKS
     res = task_create(http_sock_task, "http_sock_task", 2464, NULL, (tskIDLE_PRIORITY + 2), &http_sock_handle_id);
     if (res != pdTRUE) {

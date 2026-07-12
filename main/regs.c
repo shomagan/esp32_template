@@ -5,6 +5,7 @@
  * @ingroup regs
  * @version 0.1
  */
+#include "os_type.h"
 #ifndef REGS_C
 #define REGS_C 1
 /**
@@ -20,10 +21,8 @@
 #include <time.h>
 #include <string.h>
 #include "common.h"
-#include "pwm_test.h"
 #include "sleep_control.h"
 #include "wireless_control.h"
-#include "feeder.h"
 #ifndef DEBUG
 #define DEBUG           0   /** @warning DEBUG must be defined in CMake */
 #endif
@@ -34,22 +33,6 @@ regs_main_t regs_main;
 usef in main regs_description structure */
 /*#generator_use_description {"regs_pointers":"start_struct"}*/
 main_vars_t * const regs_global = &regs_main.regs_global; //!< "main_vars_t"
-touch_regs_t * const touch_regs = &regs_main.touch_regs; //!< "touch_regs_t"
-servo_control_part_t * const servo_control_part = &regs_main.servo_control_part; //!< "servo_control_part_t"
-di_control_t * const di_control = &regs_main.di_control; //!< "di_control_t"
-sync_time_regs_t * const sync_time_regs = &regs_main.sync_time_regs; //!< "sync_time_regs_t"
-sr04_reg_t * const sr04_reg = &regs_main.sr04_reg; //!< "sr04_reg_t"
-feeder_reg_t * const feeder_reg = &regs_main.feeder_reg; //!< "feeder_reg_t"
-polisher_reg_t * const polisher_reg = &regs_main.polisher_reg; //!< "polisher_reg_t"
-test_int_reg_t * const test_int_reg = &regs_main.test_int_reg; //!< "test_int_reg_t"
-morse_reg_t * const morse_reg = &regs_main.morse_reg; //!< "morse_reg_t"
-battery_state_reg_t * const battery_state_reg = &regs_main.battery_state_reg; //!< "battery_state_reg_t"
-scd41_reg_t * const scd41_reg = &regs_main.scd41_reg; //!< "scd41_reg_t"
-client_part_0_t * const client_part_0 = &regs_main.client_part_0; //!< "client_part_0_t"
-sync_time_client_t * const sync_time_client = &regs_main.sync_time_client; //!< "sync_time_client_t"
-client_part_1_t * const client_part_1 = &regs_main.client_part_1; //!< "client_part_1_t"
-sync_data_client_t * const sync_time_regs_from_client = &regs_main.sync_time_regs_from_client; //!< "sync_data_client_t"
-sr04_reg_client_t * const sr04_reg_client = &regs_main.sr04_reg_client; //!< "sr04_reg_client_t"
 /*#generator_use_description {"regs_pointers":"end_struct"}*/
 /**
  * @brief mutex for access to global regs
@@ -74,6 +57,7 @@ static temp_data_buffering_t temp_data_buffering = {.data = {{0}},.byte_writed_f
 static int regs_hadle_sets(regs_access_t reg, regs_template_t * regs_template);
 static void execute_main_command(u16 command);
 const char * const global_space_name = "GLOBAL_SPACE";
+u8 global_vars_mirror[INTERNAL_FLASH_MIRROR_ITEM_SIZE];
 
 const regs_description_list_t regs_table_global = {
     .description = regs_description_global,
@@ -85,8 +69,30 @@ const regs_description_list_t regs_table_global = {
 };
 
 int regs_init() {
+   int index;
    semaphore_create_binary(regs_access_mutex);
-   return regs_description_list_add_new(regs_table_global);
+   index = regs_description_list_add_new(regs_table_global);
+   if(index >= 0){
+      regs_template_t regs_template = { 0 };
+      preinit_table_vars(index);//!< preinit global vars for new description
+      regs_global->vars.reset_num++;
+      if ((is_ascii_symbol_or_digital((u8 *)&regs_global->vars.wifi_name, WIFI_NAME_LEN) <= 0) ||
+         (is_ascii_symbol_or_digital((u8 *)&regs_global->vars.wifi_password, WIFI_PASSWORD_LEN) <= 0) ||
+         (strlen((char *)&regs_global->vars.wifi_router_name) == 0) ||
+         (strlen((char *)&regs_global->vars.wifi_router_password) == 0) || (regs_global->vars.table_version != def_table_version)) {
+         main_printf(TAG, "regs init by default, wifi_name or wifi_password is not valid");
+         set_regs_def_values(index);
+         mirror_access_init_buffer(index);
+      }
+      regs_template.p_value = (u8 *)&regs_global->vars.reset_num;
+      if (regs_description_get_by_address(&regs_template) == 0) {
+         mirror_access_write(&regs_template);
+      }
+      return 0;
+   }else{
+      main_error_message(TAG, "regs_init: failed to add global regs description");
+      return -1;
+   }
 }
 
 int regs_set(void *reg_address, regs_access_t reg) {
@@ -96,18 +102,16 @@ int regs_set(void *reg_address, regs_access_t reg) {
    regs_template.p_value = reg_address;
    result = regs_write_access(&regs_template); /*regs template filled */
    if (result > 0) {
-      if (regs_fill_temp_buffer(&regs_template, reg, &temp_data_buffering) < 0) {
+      if (regs_fill_temp_buffer(&regs_template, reg, &temp_data_buffering, reg_address) < 0) {
          result = -ILLEGAL_DATA_VALUE;
       }
       if (regs_check_temp_buffer(&temp_data_buffering, &regs_template) > 0) {
          main_printf(TAG, "regs_set: regs_check_temp_buffer OK");
          if (regs_write_value_check(&temp_data_buffering, &regs_template) > 0) {
-            semaphore_take(regs_access_mutex, portMAX_DELAY);
-            {
-               memcpy(temp_data_buffering.reg_address, temp_data_buffering.data.bytes,
+            semaphore_take(regs_access_mutex, portMAX_DELAY);{
+            memcpy(temp_data_buffering.reg_address, temp_data_buffering.data.bytes,
                       regs_size_in_byte(temp_data_buffering.type));
-            }
-            semaphore_release(regs_access_mutex);
+            }semaphore_release(regs_access_mutex);
          } else {
             result = -ILLEGAL_DATA_VALUE;
          }
@@ -123,11 +127,9 @@ int regs_set(void *reg_address, regs_access_t reg) {
 
 int regs_write_internal(void *reg_address, regs_access_t reg) {
    int result = 0;
-   semaphore_take(regs_access_mutex, portMAX_DELAY);
-   {
-      memcpy(reg_address, &reg.value.op_u64, regs_size_in_byte(reg.flag));
-   }
-   semaphore_release(regs_access_mutex);
+   semaphore_take(regs_access_mutex, portMAX_DELAY); {
+   memcpy(reg_address, &reg.value.op_u64, regs_size_in_byte(reg.flag));
+   }semaphore_release(regs_access_mutex);
    return result;
 }
 
@@ -340,11 +342,9 @@ static int regs_write_value_check(temp_data_buffering_t * temp_data_buffering, r
 }
 
 void regs_copy_safe(void *reg_to, void *reg_from, u32 size) {
-   semaphore_take(regs_access_mutex, portMAX_DELAY);
-   {
+   semaphore_take(regs_access_mutex, portMAX_DELAY);{
       memcpy(reg_to, reg_from, size);
-   }
-   semaphore_release(regs_access_mutex);
+   }semaphore_release(regs_access_mutex);
 }
 
 int regs_get(void *reg_address, regs_access_t *reg) {
@@ -435,14 +435,13 @@ int regs_set_buffer(void * reg_address,u8* buffer_from,u16 byte_numm){
 static int regs_hadle_sets(regs_access_t reg, regs_template_t * regs_template){
    int result;
    result = 0;
-   if(regs_template != NULL || regs_template->p_value != NULL){
+   if(regs_template != NULL && regs_template->p_value != NULL){
       void * end_addr = (void*)((u32)regs_template->p_value + regs_size_in_byte(reg.flag));
       if (regs_description_flag_check(regs_template, SAVING)){/*regs saved in mirror*/
-         main_printf(TAG,"\n register is saved %u reg_index", reg_index);
-         main_printf(TAG, "\n regs_template.saved_address %lu", regs_template.saved_address);
-         mirror_access_write(&regs_template);
+         main_printf(TAG,"\n register is saved, saved_address %lu", regs_template->saved_address);
+         mirror_access_write(regs_template);
       }else{
-         main_printf(TAG,"\n register is not saved %u reg_index", reg_index);
+         main_printf(TAG,"\n register is not saved");
       }
       /*special - hmmm*/
       if ((end_addr == end_of_reg_addr(&regs_global->vars.ip))||
@@ -451,12 +450,9 @@ static int regs_hadle_sets(regs_access_t reg, regs_template_t * regs_template){
          ESP_LOGI(TAG, "ip has changed");
       } else if (end_addr == end_of_reg_addr(&regs_global->vars.command)){
          execute_main_command(regs_global->vars.command);
-      }else if(end_addr == end_of_reg_addr(&touch_regs->vars.test_pwm_value)){
-         pwm_test_set(touch_regs->vars.test_pwm_value);
       }
-      return result;
-
    }
+   return result;
 }
 
 int write_reg_to_mirror(void *p_to_value) {
@@ -479,7 +475,7 @@ int read_reg_from_bkram(void *p_to_value) {
    result = regs_description_get_by_address(&regs_template);
    if (result >= 0) {
       if (regs_template.property & SAVING) {
-         mirror_access_read((u16)regs_template.saved_address, regs_template.p_value, (u8)regs_template.size_in_bytes);
+         mirror_access_read(&regs_template);
       }
    } else {
       main_printf(TAG, "\nFailed %s:%d", __FILE__, __LINE__);
@@ -563,9 +559,6 @@ static void execute_main_command(u16 command){
         break;
     case RESET_WIFI_FOR_120_SEC_COMM:
         task_notify_send(wireless_control_handle_id,WIRELESS_TASK_RESET_WIFI_FOR_120_SEC,&prev_value);
-        break;
-    case FEEDER_TASK_ONE_FEED_COMM:
-        task_notify_send(feeder_handle_id,FEEDER_TASK_ONE_FEED_COMM,&prev_value);
         break;
     default:
         break;

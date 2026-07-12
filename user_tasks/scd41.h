@@ -11,6 +11,8 @@
 #include "regs.h"
 #include "common.h"
 
+#define SCD41_ARRAY_SIZE 48
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -40,6 +42,11 @@ typedef union {
     u32 bytes[32]; // for full bksram copy
 } scd41_reg_t; // #generator_use_description {"message":"end_struct"}
 extern scd41_reg_t * const scd41_reg;
+
+/* Default/min/max values for scd41_measur_interval (&def &min &max) */
+extern const u16 def_scd41_measur_interval;
+extern const u16 def_min_scd41_measur_interval;
+extern const u16 def_max_scd41_measur_interval;
 
 enum scd41_task_event {
     SCD41_TASK_STOP = (1 << 0), /*!< Stop the SCD41 task */

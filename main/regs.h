@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file    regs.h
  * @author  Shoma Gane <shomagan@gmail.com>
  * @author  Ayrat Girfanov <girfanov.ayrat@yandex.ru>
@@ -187,7 +187,7 @@ typedef struct {
 #define FW_VERSION_SIZE 4
 #define FW_VERSION {0,10,0,0}
 #define FW_VERSION_STR "0.10.0-beta.0"
-#define FW_FIRMWARE_HASH "73-7c1a933632c5b22515c535ea58d3c9"
+#define FW_FIRMWARE_HASH "80-6ec544409c3fee797faf8324d27592"
 #define FW_HASH 0x00000000
 #define REGS_MAX_NAME_SIZE 32
 #define DEVICE_NAME_SIZE 40
@@ -198,7 +198,6 @@ typedef struct {
 #define WIFI_PASSWORD_LEN 9
 #define WIFI_ROUTER_NAME_LEN 32
 #define WIFI_ROUTER_PASSWORD_LEN 32
-#define SCD41_ARRAY_SIZE 48
 
 #define BOARD_VERSION 0
 #define USE_REGS_GLOBAL 1
@@ -295,22 +294,6 @@ extern main_vars_t * const regs_global;
 /** #generator_use_description {"regs_main":"start_struct"} */
 typedef struct{
     main_vars_t regs_global; //!< "main_vars_t"
-    touch_regs_t touch_regs; //!< "touch_regs_t"
-    servo_control_part_t servo_control_part; //!< "servo_control_part_t"
-    di_control_t di_control; //!< "di_control_t"
-    sync_time_regs_t sync_time_regs; //!< "sync_time_regs_t"
-    sr04_reg_t sr04_reg; //!< "sr04_reg_t"
-    feeder_reg_t feeder_reg; //!< "feeder_reg_t"
-    polisher_reg_t polisher_reg; //!< "polisher_reg_t"
-    test_int_reg_t test_int_reg; //!< "test_int_reg_t"
-    morse_reg_t morse_reg; //!< "morse_reg_t"
-    battery_state_reg_t battery_state_reg; //!< "battery_state_reg_t"
-    scd41_reg_t scd41_reg; //!< "scd41_reg_t"
-    client_part_0_t client_part_0; //!< "client_part_0_t"
-    sync_time_client_t sync_time_client; //!< "sync_time_client_t"
-    client_part_1_t client_part_1; //!< "client_part_1_t"
-    sync_data_client_t sync_time_regs_from_client; //!< "sync_data_client_t"
-    sr04_reg_client_t sr04_reg_client; //!< "sr04_reg_client_t"
 }regs_main_t;// #generator_use_description {"message":"end_struct"}
 
 extern regs_main_t regs_main;
