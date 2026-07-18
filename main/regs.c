@@ -61,7 +61,7 @@ u8 global_vars_mirror[INTERNAL_FLASH_MIRROR_ITEM_SIZE];
 
 const regs_description_list_t regs_table_global = {
     .description = regs_description_global,
-    .num_of_regs = NUM_OF_SELF_VARS,
+    .num_of_regs = NUM_OF_MAIN_VARS,
     .table_version = &def_table_version,
     .space_name = global_space_name,
     .saved_regs_buffer = global_vars_mirror,

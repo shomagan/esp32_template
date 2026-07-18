@@ -187,7 +187,7 @@ typedef struct {
 #define FW_VERSION_SIZE 4
 #define FW_VERSION {0,10,0,0}
 #define FW_VERSION_STR "0.10.0-beta.0"
-#define FW_FIRMWARE_HASH "80-6ec544409c3fee797faf8324d27592"
+#define FW_FIRMWARE_HASH "81-1914dfd7058f8eab79720ea57b0d03"
 #define FW_HASH 0x00000000
 #define REGS_MAX_NAME_SIZE 32
 #define DEVICE_NAME_SIZE 40
@@ -246,7 +246,7 @@ typedef union{
         u32 min_free_heap;      //!<"in bytes",&ro
         u8 debug_info[8];       //!<"reserved use for debug"&ro
         u16 num_of_vars;        //!<"number of vars self + config(user) &ro &def
-        u16 client_num_of_vars;        //!<"number of client vars self" &ro &def
+        u16 user_task_num_of_vars;        //!<"number of client vars self" &ro
         float temperature_mcu;  //!<"temperature mcu Celsius" &ro
         u8 fw_version[FW_VERSION_SIZE];      //!<"version like 0.1.1.0",&ro,&def
         u16 board_ver;              //!< "board version", &ro, &def

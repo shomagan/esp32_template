@@ -3,6 +3,7 @@
  * @brief Implementation of SCD41 sensor task and driver.
  */
 
+#include "os_type.h"
 #ifndef SCD41_C
 #define SCD41_C 1
 
@@ -61,7 +62,7 @@ void scd41_task(void *arg){
    scd41_task_init();
    u8 co2_level_captured = 0u;
    u32 prev_signal = 0;
-   task_notify_send(wireless_control_handle_id, WIRELESS_TASK_STOP_WIFI, &prev_signal);
+   //task_notify_send(wireless_control_handle_id, WIRELESS_TASK_STOP_WIFI, &prev_signal);
    while (1)   {
       struct timeval tv;
       task_delay_ms(2500);
@@ -127,6 +128,7 @@ static int handle_scd_data(uint16_t co2_level, float humidity, float temperature
    scd41_reg->vars.scd41_co2_level = co2_level;
    scd41_reg->vars.scd41_humidity = humidity;
    scd41_reg->vars.scd41_temperature = temperature;
+   main_printf(TAG, "CO2 Level: %u ppm, Humidity: %.2f%%, Temperature: %.2f°C", co2_level, humidity, temperature);
    if (*co2_level_captured == 0u) {
       store_array_of_co2_levels(co2_level);
       if((co2_level > 1000)||(humidity < 30.0f)||(temperature < 17.0f)) {

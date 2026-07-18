@@ -8,7 +8,7 @@
 
 #ifndef JSON_H
 #define JSON_H 1
- 
+
 /*add includes below */
 #include "type_def.h"
 #include "lwip/apps/fs.h"
@@ -34,7 +34,7 @@
   */
 
 /*add includes before */
-#ifdef __cplusplus 
+#ifdef __cplusplus
    extern "C" {
 #endif
 /*add functions and variable declarations below */
@@ -103,7 +103,7 @@ typedef enum{
    ARC_GET_REQUEST,
    LOG_GET_REQUEST,
    SET_STRING,
-   CLIENT_REGS_NUM_REQUEST,
+   USER_TASK_REGS_NUM_REQUEST,
 }request_t;
 
 /**

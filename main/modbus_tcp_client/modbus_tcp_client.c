@@ -11,6 +11,7 @@
 #define MODBUS_TCP_CLIENT_C 1
 
 #include "regs.h"
+#include "regs_description_client.h"
 #include "lwip/ip_addr.h"
 #include "lwip/sockets.h"
 #include "lwip/opt.h"

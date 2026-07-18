@@ -4,66 +4,14 @@
 #include "regs_description.h"
 #include "link_functions.h"
 #include "scd41.h"
-#include "mirror_storage.h"
+
 static scd41_reg_t scd41_reg_storage = {{0}};
 scd41_reg_t * const scd41_reg = &scd41_reg_storage;
 
 #define NUM_OF_SCD41_REG_VARS 7
-static u8 scd41_reg_saved_buf[110];
+static u8 scd41_reg_saved_buf[102];
 static const u32 scd41_reg_table_version = 0x0001;
 static const char scd41_reg_space_name[] = "scd41_reg_t";
-/*
-static const float def_test_pwm_value = 0.0f;
-static const float def_min_test_pwm_value = 0.0f;
-static const float def_max_test_pwm_value = 100.0f;
-static const float def_servo_0 = 10.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
-static const float def_min_servo_0 = 0.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
-static const float def_max_servo_0 = 100.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
-static const float def_servo_1 = 10.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
-static const float def_min_servo_1 = 0.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
-static const float def_max_servo_1 = 100.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
-static const float def_servo_2 = 10.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
-static const float def_min_servo_2 = 0.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
-static const float def_max_servo_2 = 100.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
-static const float def_servo_3 = 10.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
-static const float def_min_servo_3 = 0.0f;                   //!<"servo pwm value [0;100]" &def &save &min &max
-static const float def_max_servo_3 = 100.0f;                  //!<"servo pwm value [0;100]" &def &save &min &max
-static const float def_impulse_cost = 0.0005f;
-static const u32 def_touch_1_count = 20000;                      //!< "ms or water counter long" &save &def
-static const u32 def_touch_2_count = 100000;                      //!< "ms or water counter long" &save &def
-static const u32 def_touch_3_count = 200000;                      //!< "ms or water counter long" &save &def
-static const float def_touch_1_liters = 0.125f;                      //!< "ms " &save &def
-static const float def_touch_2_liters = 1.75f;                      //!< "ms " &save &def
-static const float def_touch_3_liters = 5.0f;                      //!< "ms " &save &def
-static const u32 def_by_time = 0;                              //!< "by time or counter" &save &def
-static const float def_touch_0_trshld = 0.85f;                      //!< "in percents" &save &def
-static const float def_touch_1_trshld = 0.85f;                      //!< "in percents" &save &def
-static const float def_touch_2_trshld = 0.85f;                      //!< "in percents" &save &def
-static const float def_touch_3_trshld = 0.85f;                      //!< "in percents" &save &def
-static const u32 def_touch_handle_period = 300;                    //!< "in ms period of handle touchs" &save &def
-
-static const u16 def_feeder_interval = 721u;
-static const u16 def_min_feeder_interval = 1u;
-static const float def_feeder_time_sec = 0.5f;
-static const float def_min_feeder_time_sec = 0.1f;
-static const float def_max_feeder_time_sec = 60.0f;
-static const u16 def_polisher_speed = 0;
-static const u16 def_max_polisher_speed = 100;
-static const u16 def_polisher_direction = 0;
-static const u16 def_max_polisher_direction = 2;
-static const u16 def_morse_unit_time_ms = 100;
-static const u16 def_min_morse_unit_time_ms = 10;
-static const u16 def_max_morse_unit_time_ms = 1000;
-static const u16 def_morse_message_len = 17;
-static const u16 def_min_morse_message_len = 1;
-static const u16 def_max_morse_message_len = 32;
-static const u16 def_morse_settings = 0;         //!<"morse settings bit0 - server"
-
-static const u16 def_battery_min_level = 10;
-static const u16 def_min_battery_min_level = 1;
-static const u16 def_max_battery_min_level = 50;
-*/
-
 static regs_description_t const regs_description_scd41_reg[NUM_OF_SCD41_REG_VARS] = {
     { NULL, NULL, NULL, (u8*)&scd41_reg->vars.scd41_co2_level, 0,"CO2 level in ppm","scd41_co2_level", 0x14016000, 0x312c0, U16_REGS_FLAG, 1, 3, 11 }//!< "CO2 level in ppm" &ro
 ,
@@ -90,10 +38,7 @@ const regs_description_list_t regs_table_scd41_reg = {
 };
 
 void user_tasks_register_regs(void) {
-    int index = link_functions.regs_description_list_add_new(regs_table_scd41_reg);
-    if(index >= 0){
-        preinit_table_vars(index);//!< preinit global vars for new description
-    }
+    link_functions.regs_description_list_add_new(regs_table_scd41_reg);
 }
 
 #endif

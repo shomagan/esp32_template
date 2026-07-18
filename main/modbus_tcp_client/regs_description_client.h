@@ -1,0 +1,1 @@
+#define NUM_OF_CLIENT_VARS 22

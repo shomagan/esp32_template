@@ -280,8 +280,8 @@ def get_git_version(git_base_path):
 
 
 def change_regs_num(regs_description_header_path, regs_self_num, regs_client_num):
-    str_before = r'\#define\s+NUM_OF_SELF_VARS\s+[\d]+'
-    str_to = '#define NUM_OF_SELF_VARS ' + str(regs_self_num)
+    str_before = r'\#define\s+NUM_OF_MAIN_VARS\s+[\d]+'
+    str_to = '#define NUM_OF_MAIN_VARS ' + str(regs_self_num)
     substitute_reg_exp(regs_description_header_path, str_before, str_to)
     str_before = r'\#define\s+NUM_OF_CLIENT_VARS\s+[\d]+'
     str_to = '#define NUM_OF_CLIENT_VARS ' + str(regs_client_num)
@@ -336,7 +336,7 @@ def write_exist_file():
     number = 0
     file_path = '../main/regs_description.c'
     for line in fileinput.input(file_path, inplace=1):
-        if re.search(r"\s*regs_description_t\s+const\s+regs_description_global\[\s*NUM_OF_SELF_VARS\s*\]\s*\=\s*\{",line):
+        if re.search(r"\s*regs_description_t\s+const\s+regs_description_global\[\s*NUM_OF_MAIN_VARS\s*\]\s*\=\s*\{",line):
             replace = 1
             print(line, end='')
         elif replace:

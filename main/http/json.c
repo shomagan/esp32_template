@@ -218,8 +218,8 @@ const char *get_json_handle(char *json_pack) {
                   request = TASK_PARAM_REQUEST;
                } else if (strcmp(json_pairs.value[i], "regs_num") == 0) {
                   request = REGS_NUM_REQUEST;
-               } else if (strcmp(json_pairs.value[i], "client_regs_num") == 0) {
-                  request = CLIENT_REGS_NUM_REQUEST;
+               } else if (strcmp(json_pairs.value[i], "user_task_regs_num") == 0) {
+                  request = USER_TASK_REGS_NUM_REQUEST;
                } else if (strcmp(json_pairs.value[i], "regs_set") == 0) {
                   request = REGS_SET_REQUEST;
                } else if (strcmp(json_pairs.value[i], "regs") == 0) {
@@ -511,9 +511,9 @@ const char *get_json_handle(char *json_pack) {
             *(p_databuf + dynamic_json_file.file.len) = ',';
             dynamic_json_file.file.len++;
             break;
-         case CLIENT_REGS_NUM_REQUEST:
-            dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "\"client_regs_num\":");
-            itoa((int)regs_global->vars.client_num_of_vars, temp, 10);
+         case USER_TASK_REGS_NUM_REQUEST:
+            dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "\"user_task_regs_num\":");
+            itoa((int)regs_global->vars.user_task_num_of_vars, temp, 10);
             strcpy(p_databuf + dynamic_json_file.file.len, temp);
             dynamic_json_file.file.len += strlen(temp);
             *(p_databuf + dynamic_json_file.file.len) = ',';

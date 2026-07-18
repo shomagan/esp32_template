@@ -40,8 +40,7 @@ static const u8 def_slip_netmask[4] = {255,255,255,0};
 static const u8 def_slip_gate[4] = {172,16,1,232};
 static const u16 def_uart_debug_sets = 0xC853;/*what!?*/
 static const u8 def_fw_version[FW_VERSION_SIZE] = FW_VERSION;
-static const u16 def_num_of_vars = NUM_OF_SELF_VARS;
-static const u16 def_client_num_of_vars = NUM_OF_CLIENT_VARS;
+static const u16 def_num_of_vars = NUM_OF_MAIN_VARS;
 static const u8 def_board_ver = (u8)BOARD_VERSION;
 static const u16 def_permission = ENABLE_HTTP_FLAG;
 static const u8 def_wifi_name[WIFI_NAME_LEN] = "sofi_plc_air";               //!<"must be strong full filled", &save &def
@@ -56,7 +55,7 @@ static const u16 def_max_slave_modbus_address = 247;
 static const u16 def_sleep_time = 25u;
 static const u16 def_min_sleep_time = 1u;
 
-regs_description_t const regs_description_global[NUM_OF_SELF_VARS]={
+regs_description_t const regs_description_global[NUM_OF_MAIN_VARS]={
 { &def_mdb_addr, NULL, NULL, (u8*)&regs_main.regs_global.vars.mdb_addr, 16,"modbus address","mdb_addr", 0x300000, 0x30000, U16_REGS_FLAG, 1, 5, 0 },//!<"modbus address" &save &def
 { &def_ip, NULL, NULL, (u8*)&regs_main.regs_global.vars.ip[0], 18,"device ip address, warning!!! changes can lead to lost connection","ip", 0x300001, 0x30001, U8_REGS_FLAG, 4, 5, 0 },//!<"device ip address, warning!!! changes can lead to lost connection" &save &def &crtcl
 { &def_netmask, NULL, NULL, (u8*)&regs_main.regs_global.vars.netmask[0], 22,"netmask address for main wifi net","netmask", 0x300002, 0x30003, U8_REGS_FLAG, 4, 5, 0 },//!<"netmask address for main wifi net", &save , &def , &crtcl
@@ -82,7 +81,7 @@ regs_description_t const regs_description_global[NUM_OF_SELF_VARS]={
 { NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.min_free_heap, 0,"in bytes","min_free_heap", 0x300016, 0x3004b, U32_REGS_FLAG, 1, 3, 0 },//!<"in bytes",&ro
 { NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.debug_info[0], 0,"reserved use for debug","debug_info", 0x300017, 0x3004d, U8_REGS_FLAG, 8, 3, 0 },//!<"reserved use for debug"&ro
 { &def_num_of_vars, NULL, NULL, (u8*)&regs_main.regs_global.vars.num_of_vars, 0,"num_of_vars","num_of_vars", 0x300018, 0x30051, U16_REGS_FLAG, 1, 3, 0 },//!<"number of vars self + config(user) &ro &def
-{ &def_client_num_of_vars, NULL, NULL, (u8*)&regs_main.regs_global.vars.client_num_of_vars, 0,"number of client vars self","client_num_of_vars", 0x300019, 0x30052, U16_REGS_FLAG, 1, 3, 0 },//!<"number of client vars self" &ro &def
+{ NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.user_task_num_of_vars, 0,"number of client vars self","user_task_num_of_vars", 0x300019, 0x30052, U16_REGS_FLAG, 1, 3, 0 },//!<"number of client vars self" &ro
 { NULL, NULL, NULL, (u8*)&regs_main.regs_global.vars.temperature_mcu, 0,"temperature mcu Celsius","temperature_mcu", 0x30001a, 0x30053, FLOAT_REGS_FLAG, 1, 3, 0 },//!<"temperature mcu Celsius" &ro
 { &def_fw_version, NULL, NULL, (u8*)&regs_main.regs_global.vars.fw_version[0], 0,"version like 0.1.1.0","fw_version", 0x30001b, 0x30055, U8_REGS_FLAG, 4, 3, 0 },//!<"version like 0.1.1.0",&ro,&def
 { &def_board_ver, NULL, NULL, (u8*)&regs_main.regs_global.vars.board_ver, 0,"board version","board_ver", 0x30001c, 0x30057, U16_REGS_FLAG, 1, 3, 0 },//!< "board version", &ro, &def
@@ -122,11 +121,16 @@ regs_description_t const regs_description_global[NUM_OF_SELF_VARS]={
 
 
 static u32 num_of_list_descriptions = 0;
+static u16 num_user_tasks_vars = 0;
 
 int regs_description_list_add_new(regs_description_list_t regs_table){
    int index = 0;
    if ((regs_table.description != NULL) && (regs_table.num_of_regs > 0) && (num_of_list_descriptions < LIST_DESCRIPTIONS_SIZE)){
       regs_description_list[num_of_list_descriptions] = regs_table; /*add new description to list*/
+      if(num_of_list_descriptions){
+         num_user_tasks_vars += regs_description_list[num_of_list_descriptions].num_of_regs;
+         regs_copy_safe(&regs_main.regs_global.vars.user_task_num_of_vars, &num_user_tasks_vars, sizeof(num_user_tasks_vars));
+      }
       index = num_of_list_descriptions;
       num_of_list_descriptions++;
    }else{
