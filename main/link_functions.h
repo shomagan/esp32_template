@@ -40,6 +40,7 @@
 #include "type_def.h"
 #include "os_type.h"
 #include "regs_description.h"
+#include "memory_handle.h"
 #define OS_VERSION_SIZE 4
 
 #ifdef __cplusplus
@@ -47,18 +48,54 @@
 #endif
 
 typedef struct MCU_PACK {
-    void (*task_delay_ms)(u32 ms);
-    u32  (*task_get_tick_count)(void);
+    u32  (*os_kernel_sys_tick)(void);
+    BaseType_t (*os_thread_create)(TaskFunction_t function, const char *name, uint32_t stack_size,
+            void *param, UBaseType_t prio, TaskHandle_t *handler);
+    TaskHandle_t (*os_thread_get_id)(void);
+    TaskHandle_t (*os_thread_get_id_by_name)(const char *name);
+    void (*os_thread_terminate)(TaskHandle_t handler);
+    void (*os_thread_yield)(void);
+    void (*os_thread_set_priority)(TaskHandle_t task, UBaseType_t prio);
+    UBaseType_t (*os_thread_get_priority)(TaskHandle_t task);
+    void (*os_thread_delay)(u32 ms);
+    void (*os_thread_delay_until)(TickType_t *timer, u32 ms);
+    BaseType_t (*os_thread_signal_set)(TaskHandle_t thread_id, uint32_t signal, uint32_t *prev_value);
+    BaseType_t (*os_thread_signal_clear)(TaskHandle_t thread_id);
+    BaseType_t (*os_thread_signal_wait)(uint32_t flags, uint32_t *signal, u32 ms);
+    SemaphoreHandle_t (*os_mutex_create)(void);
+    SemaphoreHandle_t (*os_semaphore_create)(UBaseType_t max_count, UBaseType_t initial_count);
+    SemaphoreHandle_t (*os_semaphore_bin_create)(void);
+    BaseType_t (*os_semaphore_wait)(SemaphoreHandle_t mutex, TickType_t time_ms);
+    BaseType_t (*os_semaphore_release)(SemaphoreHandle_t mutex);
+    void (*os_semaphore_delete)(SemaphoreHandle_t mutex);
+    os_pool_cb_t *(*os_pool_create)(const os_pool_def_t *pool_def);
+    void *(*os_pool_alloc)(os_pool_cb_t *pool_id);
+    void *(*os_pool_c_alloc)(os_pool_cb_t *pool_id);
+    int (*os_pool_free)(os_pool_cb_t *pool_id, void *block);
+    void *(*os_pool_get_by_index)(os_pool_cb_t *pool_id, u32 index);
+    queue_handle_t (*os_message_create)(u32 queue_sz);
+    BaseType_t (*os_message_put)(queue_handle_t queue, void *info, u32 ms);
+    BaseType_t (*os_message_get)(queue_handle_t queue, void *info, u32 ms);
+    eTaskState (*os_thread_get_state)(TaskHandle_t task);
+    bool (*os_thread_is_suspended)(TaskHandle_t task);
+    void (*os_thread_suspend)(TaskHandle_t task);
+    void (*os_thread_resume)(TaskHandle_t task);
+    void (*os_thread_suspend_all)(void);
+    BaseType_t (*os_thread_resume_all)(void);
+    BaseType_t (*os_abort_delay)(TaskHandle_t task);
+    BaseType_t (*os_message_peek)(queue_handle_t queue, void *info, u32 ms);
+    UBaseType_t (*os_message_waiting)(queue_handle_t queue);
+    UBaseType_t (*os_message_available_space)(queue_handle_t queue);
+    void (*os_message_delete)(queue_handle_t queue);
+    SemaphoreHandle_t (*os_recursive_mutex_create)(void);
+    BaseType_t (*os_recursive_mutex_release)(SemaphoreHandle_t mutex);
+    BaseType_t (*os_recursive_mutex_wait)(SemaphoreHandle_t mutex, TickType_t time_ms);
+    UBaseType_t (*os_semaphore_get_count)(SemaphoreHandle_t sem);
     void (*task_enter_critical)(void);
     void (*task_exit_critical)(void);
-    SemaphoreHandle_t (*semaphore_create_mutex)(void);
-    BaseType_t (*semaphore_take)(SemaphoreHandle_t mutex, TickType_t timeout);
-    BaseType_t (*semaphore_release)(SemaphoreHandle_t mutex);
-    QueueHandle_t (*queue_create)(u32 len, u32 item_size);
-    BaseType_t (*queue_send)(QueueHandle_t q, const void *item, TickType_t timeout);
-    BaseType_t (*queue_receive)(QueueHandle_t q, void *item, TickType_t timeout);
-    int (*regs_description_list_add_new)(regs_description_list_t regs_table);
+    void (*refresh_watchdog)(void);
     int (*printf)(const char *format, ...);
+    int (*regs_description_list_add_new)(regs_description_list_t regs_table);
     u8 version[OS_VERSION_SIZE];
 } link_functions_t;
 extern const link_functions_t link_functions;

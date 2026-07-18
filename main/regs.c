@@ -70,7 +70,7 @@ const regs_description_list_t regs_table_global = {
 
 int regs_init() {
    int index;
-   semaphore_create_binary(regs_access_mutex);
+   regs_access_mutex = semaphore_create_binary();
    index = regs_description_list_add_new(regs_table_global);
    if(index >= 0){
       regs_template_t regs_template = { 0 };

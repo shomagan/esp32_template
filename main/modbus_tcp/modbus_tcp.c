@@ -3,7 +3,7 @@
  * @defgroup modbus_tcp_server
  * @ingroup apps
  * @version 0.1
- * @brief  modbus tcp protocol on 502 port 
+ * @brief  modbus tcp protocol on 502 port
  */
 
 #ifndef MODBUS_TCP_C
@@ -473,7 +473,7 @@ err_t modbus_tcp_init(void){
 #if MODBUS_TCP_USE_MEM_POOL
     LWIP_MEMPOOL_INIT(MODBUS_TCP_STATE);
 #endif
-    semaphore_create_binary(modbus_tcp_mutex)
+    modbus_tcp_mutex = semaphore_create_binary();
     pcb = altcp_tcp_new_ip_type(IPADDR_TYPE_ANY);
     LWIP_ASSERT("modbus_tcp_init: tcp_new failed", pcb != NULL);
     modbus_tcp_init_pcb(pcb, MODBUS_TCP_PORT);

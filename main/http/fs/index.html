@@ -17,12 +17,12 @@
 			function print(message){
 				console.log(message);
 			}
-         function get_all_client_regs(){
-                by_id("get_client_vars").style = "display: none";
-                by_id("table_client").style = "display: inline";
+         function get_all_user_task_regs(){
+                by_id("get_user_task_vars").style = "display: none";
+                by_id("table_user_task").style = "display: inline";
 				max_regs_num = get_regs_num();
-				let max_regs_num_client = get_client_regs_num();
-				print("will be request "+ max_regs_num_client + " registers");
+				let max_regs_num_user_task = get_user_task_regs_num();
+				print("will be request "+ max_regs_num_user_task + " registers");
 				let i = max_regs_num;
                 let pack = {
 					"request":"regs",
@@ -33,7 +33,7 @@
                 let response;
 				print("pack preview:");
 				print(pack);
-				for (i = max_regs_num; i < max_regs_num + max_regs_num_client; i++){
+				for (i = max_regs_num; i < max_regs_num + max_regs_num_user_task; i++){
 					pack.index = String(i);
 					response = send_json(pack);
 					if(response.name === "pass_key"){
@@ -41,7 +41,7 @@
 						device_pass_key_ind = response.index;
 						print("device_pass: " + device_pass_key);
 					}
-					add_data_to_table(response, "table_client");
+					add_data_to_table(response, "table_user_task");
 				}
 
          }
@@ -51,7 +51,7 @@
 				max_regs_num = get_regs_num();
 				print("will be request "+max_regs_num+" registers");
 				let i = 0;
-            let pack = {
+                let pack = {
 					"request":"regs",
 					"reg_num":"1",
 					"get_type":"full",
@@ -197,14 +197,14 @@
 					return 0;
 				}
 			}
-			function get_client_regs_num(){
+			function get_user_task_regs_num(){
 				let pack = {
-					"request":"client_regs_num",
+					"request":"user_task_regs_num",
 				}
-				print("client regs_num request");
+				print("user task regs_num request");
                 let json_response = send_json(pack);
 				if(json_response !== "Request_error"){
-					return json_response.client_regs_num;
+					return json_response.user_task_regs_num;
 				}else{
 					print("Server is not responding");
 					alert("Server is not responding");
@@ -414,8 +414,8 @@
   			<tbody>
   			</tbody>
   		</table>
-  		<input style="display: inline; width: 100%; height: 200px" 	id="get_client_vars"		type="button" value="Click here to get clients variables" onclick="get_all_client_regs()">
-  		<table id="table_client" style="width: 100%; display:none">
+  		<input style="display: inline; width: 100%; height: 200px" 	id="get_user_task_vars"		type="button" value="Click here to get user_tasks variables" onclick="get_all_user_task_regs()">
+  		<table id="table_user_task" style="width: 100%; display:none">
   			<thead>
   				<tr style="background-color: GhostWhite">
   					<th style="width: 50px">Index</th>

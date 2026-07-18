@@ -75,7 +75,7 @@ static u16 number_separate_client_spaces = 0;
 static int modbus_master_init(void){
     int res =0;
     u16 space_number_prev = 0;
-    semaphore_create_binary(modbus_tcp_client_access_mutex);
+    modbus_tcp_client_access_mutex = semaphore_create_binary();
     number_separate_client_spaces = 0;
     char name[20] = "mdb_client_000";
     for (int i =0;(i < NUM_OF_CLIENT_VARS) && (number_separate_client_spaces < MAX_NUMBER_OF_SLAVES_CONNECTIONS);i++){

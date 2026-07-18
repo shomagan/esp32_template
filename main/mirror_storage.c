@@ -57,7 +57,7 @@ semaphore_handle_t global_vars_mirror_mutex = NULL;
 int mirror_recalc_crc(u8 *data, u32 size);
 esp_err_t mirror_storage_init(void) {
    if (global_vars_mirror_mutex == NULL) {
-      semaphore_create_binary(global_vars_mirror_mutex);
+      global_vars_mirror_mutex = semaphore_create_binary();
    }
    esp_err_t ret = nvs_flash_init();
    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {

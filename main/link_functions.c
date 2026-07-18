@@ -31,6 +31,7 @@
 #define LINK_FUNCTIONS_C 1
 #include "link_functions.h"
 #include "regs_description.h"
+#include "memory_handle.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -39,32 +40,66 @@
 
 #define OS_VERSION {0,0,0,1}
 
-static portMUX_TYPE s_critical_mux = portMUX_INITIALIZER_UNLOCKED;
-
-static void _task_delay_ms(u32 ms) { vTaskDelay(pdMS_TO_TICKS(ms)); }
-static u32 _task_get_tick_count(void) { return (u32)xTaskGetTickCount(); }
-static void _task_enter_critical(void) { taskENTER_CRITICAL(&s_critical_mux); }
-static void _task_exit_critical(void) { taskEXIT_CRITICAL(&s_critical_mux); }
-static SemaphoreHandle_t _semaphore_create_mutex(void) { return xSemaphoreCreateMutex(); }
-static BaseType_t _semaphore_take(SemaphoreHandle_t m, TickType_t t) { return xSemaphoreTake(m, t); }
-static BaseType_t _semaphore_release(SemaphoreHandle_t m) { return xSemaphoreGive(m); }
-static QueueHandle_t _queue_create(u32 len, u32 sz) { return xQueueCreate(len, sz); }
-static BaseType_t _queue_send(QueueHandle_t q, const void *i, TickType_t t) { return xQueueSend(q, i, t); }
-static BaseType_t _queue_receive(QueueHandle_t q, void *i, TickType_t t) { return xQueueReceive(q, i, t); }
+/* task_enter_critical/task_exit_critical must share one spinlock across the whole
+ * app, so unlike the rest of link_functions they can't be static inline in os_type.h
+ * (each translation unit would get its own copy of the lock). Defined here instead,
+ * next to their only user. */
+static portMUX_TYPE link_functions_critical_mux = portMUX_INITIALIZER_UNLOCKED;
+static void task_enter_critical(void) {
+    portENTER_CRITICAL(&link_functions_critical_mux);
+}
+static void task_exit_critical(void) {
+    portEXIT_CRITICAL(&link_functions_critical_mux);
+}
 
 const link_functions_t link_functions = {
-    .task_delay_ms = _task_delay_ms,
-    .task_get_tick_count = _task_get_tick_count,
-    .task_enter_critical = _task_enter_critical,
-    .task_exit_critical = _task_exit_critical,
-    .semaphore_create_mutex = _semaphore_create_mutex,
-    .semaphore_take = _semaphore_take,
-    .semaphore_release = _semaphore_release,
-    .queue_create = _queue_create,
-    .queue_send = _queue_send,
-    .queue_receive = _queue_receive,
-    .regs_description_list_add_new = regs_description_list_add_new,
-    .printf = printf,
-    .version = OS_VERSION,
+  .os_kernel_sys_tick = task_get_tick_count,
+  .os_thread_create =  task_create,
+  .os_thread_get_id =  task_get_id,
+  .os_thread_get_id_by_name = task_get_handle,
+  .os_thread_terminate =  task_delete,
+  .os_thread_yield =  os_yield,
+  .os_thread_set_priority =  task_set_priority,
+  .os_thread_get_priority =  task_get_priority,
+  .os_thread_delay =  task_delay_ms,
+  .os_thread_delay_until =  task_delay_until_ms,
+  .os_thread_signal_set =  task_notify_send,
+  .os_thread_signal_clear =  task_notify_state_clear,
+  .os_thread_signal_wait =  task_notify_wait,
+  .os_mutex_create =  mutex_create,
+  .os_semaphore_create =  semaphore_create,
+  .os_semaphore_bin_create =  semaphore_create_binary,
+  .os_semaphore_wait =  semaphore_take,
+  .os_semaphore_release =  semaphore_release,
+  .os_semaphore_delete =  semaphore_delete,
+  .os_pool_create =  os_pool_create,
+  .os_pool_alloc =  os_pool_alloc,
+  .os_pool_c_alloc =  os_pool_calloc,
+  .os_pool_free =  os_pool_free,
+  .os_pool_get_by_index = os_pool_get_by_index,
+  .os_message_create =  os_message_create,
+  .os_message_put =  os_message_put,
+  .os_message_get =  os_message_get,
+  .os_thread_get_state =  os_thread_get_state,
+  .os_thread_is_suspended =  os_thread_is_suspended,
+  .os_thread_suspend =  os_thread_suspend,
+  .os_thread_resume =  os_thread_resume,
+  .os_thread_suspend_all =  os_thread_suspend_all,
+  .os_thread_resume_all =  os_thread_resume_all,
+  .os_abort_delay =  os_abort_delay,
+  .os_message_peek =  os_message_peek,
+  .os_message_waiting =  os_message_waiting,
+  .os_message_available_space =  os_message_available_space,
+  .os_message_delete =  os_message_delete,
+  .os_recursive_mutex_create =  os_recursive_mutex_create,
+  .os_recursive_mutex_release =  os_recursive_mutex_release,
+  .os_recursive_mutex_wait =  os_recursive_mutex_wait,
+  .os_semaphore_get_count =  os_semaphore_get_count,
+  .task_enter_critical =  task_enter_critical,
+  .task_exit_critical =  task_exit_critical,
+  .refresh_watchdog =  refresh_watchdog,
+  .printf = os_printf,
+  .regs_description_list_add_new = regs_description_list_add_new,
+  .version = OS_VERSION
 };
 #endif //LINK_FUNCTIONS_C
