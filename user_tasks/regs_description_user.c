@@ -9,7 +9,7 @@ static scd41_reg_t scd41_reg_storage = {{0}};
 scd41_reg_t * const scd41_reg = &scd41_reg_storage;
 
 #define NUM_OF_SCD41_REG_VARS 7
-static u8 scd41_reg_saved_buf[102];
+static u8 scd41_reg_saved_buf[106];
 static const u32 scd41_reg_table_version = 0x0001;
 static const char scd41_reg_space_name[] = "scd41_reg_t";
 static regs_description_t const regs_description_scd41_reg[NUM_OF_SCD41_REG_VARS] = {
@@ -34,11 +34,13 @@ const regs_description_list_t regs_table_scd41_reg = {
     .table_version = &scd41_reg_table_version,
     .space_name = scd41_reg_space_name,
     .saved_regs_buffer = scd41_reg_saved_buf,
-    .saved_regs_buffer_size = sizeof(scd41_reg_saved_buf),
+    .saved_regs_buffer_size = sizeof(scd41_reg_saved_buf)+4,
 };
 
 void user_tasks_register_regs(void) {
-    link_functions.regs_description_list_add_new(regs_table_scd41_reg);
+   int table_ind;
+   table_ind = link_functions.regs_description_list_add_new(regs_table_scd41_reg);
+   link_functions.preinit_table_vars(table_ind);
 }
 
 #endif

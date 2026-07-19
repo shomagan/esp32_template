@@ -179,6 +179,7 @@ void common_duty_task(void *pvParameters) {
             internal_flash_save_mirror_to_flash(table_ind);
             table_to_save = table_to_save & (table_to_save - 1);/*like a hamming weight calculation */
          }
+         regs_copy_safe(&regs_global->vars.table_to_save, &table_to_save, sizeof(table_to_save));
       }
       if (prepare_time) {
          if ((task_get_time_ms() - prepare_time) > TIME_FOR_PREPARE_RESET_MS) {

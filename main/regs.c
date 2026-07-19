@@ -76,19 +76,24 @@ int regs_init() {
    regs_access_mutex = semaphore_create_binary();
    semaphore_release(regs_access_mutex);
    index = regs_description_list_add_new(regs_table_global);
-   if(index >= 0){
+   if(index == 0){
       regs_template_t regs_template = { 0 };
       preinit_table_vars(index);//!< preinit global vars for new description
-      regs_global->vars.reset_num++;
-      if ((is_ascii_symbol_or_digital((u8 *)&regs_global->vars.wifi_name, WIFI_NAME_LEN) <= 0) ||
-         (is_ascii_symbol_or_digital((u8 *)&regs_global->vars.wifi_password, WIFI_PASSWORD_LEN) <= 0) ||
+      u32 reset_num_before_defaults = regs_global->vars.reset_num;
+      int wifi_name_len = strlen((char *)&regs_global->vars.wifi_name);
+      int wifi_password_len = strlen((char *)&regs_global->vars.wifi_password);
+      if ((is_ascii_symbol_or_digital((u8 *)&regs_global->vars.wifi_name, wifi_name_len) <= 0) ||
+         (is_ascii_symbol_or_digital((u8 *)&regs_global->vars.wifi_password, wifi_password_len) <= 0) ||
          (strlen((char *)&regs_global->vars.wifi_router_name) == 0) ||
          (strlen((char *)&regs_global->vars.wifi_router_password) == 0) || (regs_global->vars.table_version != def_table_version)) {
          main_printf(TAG, "regs init by default, wifi_name or wifi_password is not valid");
          set_regs_def_values(index);
          mirror_access_init_buffer(index);
+         regs_global->vars.reset_num = reset_num_before_defaults;
       }
+      regs_global->vars.reset_num++;
       regs_template.p_value = (u8 *)&regs_global->vars.reset_num;
+      regs_template.table_ind = 0;
       if (regs_description_get_by_address(&regs_template) == 0) {
          mirror_access_write(&regs_template);
       }
@@ -97,6 +102,7 @@ int regs_init() {
       main_error_message(TAG, "regs_init: failed to add global regs description");
       return -1;
    }
+
 }
 
 int regs_set(void *reg_address, regs_access_t reg) {

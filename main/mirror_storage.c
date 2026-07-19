@@ -106,7 +106,8 @@ int mirror_access_write(regs_template_t *regs_template)
             main_printf(TAG, "mirror_access_write: mirror_space_is_changing %i", regs_template->guid );
             memcpy(&data[regs_template->saved_address], regs_template->p_value, regs_template->size_in_bytes);
             mirror_recalc_crc(data, size);
-            u32 table_to_save = regs_global->vars.table_to_save;
+            u32 table_to_save;
+            regs_copy_safe(&table_to_save, &regs_global->vars.table_to_save, sizeof(table_to_save));
             table_to_save |= BIT(regs_template->table_ind);
             regs_copy_safe(&regs_global->vars.table_to_save, &table_to_save, sizeof(table_to_save));
             main_printf(TAG, "set ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH");
