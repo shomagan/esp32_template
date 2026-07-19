@@ -24,6 +24,7 @@
 #include "sleep_control.h"
 #include "regs_description.h"
 #include "mirror_storage.h"
+#include "link_functions.h"
 
 
 #define POLISHER_TASK_PERIOD (1000u)
@@ -105,11 +106,11 @@ void polisher_task(void *arg){
    u16 polisher_speed;        //!< "speed"
    u16 polisher_direction;    //!< "reserved"
    while(1){
-      if(task_notify_wait(STOP_CHILD_PROCCES, &signal_value, POLISHER_TASK_PERIOD)==pdTRUE){
+      if(link_functions.os_thread_signal_wait(STOP_CHILD_PROCCES, &signal_value, POLISHER_TASK_PERIOD)==pdTRUE){
          /*by signal*/
          if (signal_value & STOP_CHILD_PROCCES){
             polisher_deinit(&rmt_step_motor);
-            task_delete(task_get_id());
+            link_functions.os_thread_terminate(link_functions.os_thread_get_id());
          }
       }
       regs_copy_safe(&polisher_speed,&polisher_reg->vars.polisher_speed,sizeof(polisher_speed));
@@ -123,7 +124,7 @@ void polisher_task(void *arg){
          }
          gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 0);    /*active*/
          gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 1); /*active*/
-         task_delay_ms(1);
+         link_functions.os_thread_delay(1);
          step_result = rmt_step_motor_step(&rmt_step_motor, UINT32_MAX, polisher_speed);
          polisher_reg->vars.polisher_sec += 1;
          polisher_reg->vars.polisher_last_sec += 1;
@@ -133,7 +134,7 @@ void polisher_task(void *arg){
          step_result = rmt_step_motor_step(&rmt_step_motor, 0, polisher_speed);
       }
       if (step_result != ESP_OK){
-         main_error_message(TAG,"rmt_step_motor_step problem");
+         link_functions.os_log_error(TAG,"rmt_step_motor_step problem");
       }
       task_counter++;
    }
@@ -232,7 +233,7 @@ static esp_err_t helper_fill_rmt_items(rmt_symbol_word_t *items, uint32_t speed)
    items->level0 = 0;
    uint32_t delay_period = helper_speed_to_duration(speed);
    if (delay_period <= 100) {
-      main_printf(TAG, "maximum rate reached, driver will generate another possible highest rate instead");
+      link_functions.os_log_info(TAG, "maximum rate reached, driver will generate another possible highest rate instead");
       items->duration0 = 100;
    }   else   {
       items->duration0 = delay_period;

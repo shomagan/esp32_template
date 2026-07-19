@@ -16,6 +16,7 @@
 #include "esp_check.h"
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
+#include "link_functions.h"
 
 
 task_handle_t epaper_handle_id = NULL;
@@ -42,11 +43,11 @@ void epaper_task(void *arg){
    epaper_init();
    u64 task_counter = 0u;
    while(1){
-      if(task_notify_wait(STOP_CHILD_PROCCES, &signal_value, EPAPER_TASK_PERIOD)==pdTRUE){
+      if(link_functions.os_thread_signal_wait(STOP_CHILD_PROCCES, &signal_value, EPAPER_TASK_PERIOD)==pdTRUE){
          /*by signal*/
          if (signal_value & STOP_CHILD_PROCCES){
             epaper_deinit();
-            task_delete(task_get_id());
+            link_functions.os_thread_terminate(link_functions.os_thread_get_id());
          }
       }
       task_counter++;

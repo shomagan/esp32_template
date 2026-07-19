@@ -21,6 +21,7 @@
 #include "math.h"
 #include "pin_map.h"
 #include "interrupt.h"
+#include "link_functions.h"
 static const char *TAG = "touch_handle";
 #define TOUCH_THRESH_NO_USE (0)
 #define TOUCHPAD_FILTER_TOUCH_PERIOD (10)
@@ -101,7 +102,7 @@ void touch_task(void *arg) {
    touch_handle_init();
    u32 enable_period = 0;
    float enable_period_float = touch_regs->vars.liters;
-   u32 driver_enabled_tick_os = task_get_tick_count();
+   u32 driver_enabled_tick_os = link_functions.os_kernel_sys_tick();
    float driver_enabled_liters = touch_regs->vars.liters;
    u8 drive_enable = 0;
    u64 ticks = 0;
@@ -137,11 +138,11 @@ void touch_task(void *arg) {
          touch_pad_filter_stop();
       }
 #endif //CONFIG_IDF_TARGET_ESP32
-      if (task_notify_wait(STOP_CHILD_PROCCES | PACKET_RECEIVED, &signal_value, 10) == pdTRUE) {
+      if (link_functions.os_thread_signal_wait(STOP_CHILD_PROCCES | PACKET_RECEIVED, &signal_value, 10) == pdTRUE) {
          /*by signal*/
          if (signal_value & STOP_CHILD_PROCCES) {
             touch_handle_deinit();
-            task_delete(task_get_id());
+            link_functions.os_thread_terminate(link_functions.os_thread_get_id());
          } else if (signal_value & PACKET_RECEIVED) {
          }
       }
@@ -209,18 +210,18 @@ void touch_task(void *arg) {
          int result = regs_description_get_by_address(&regs_template);
          if (result >= 0) {
             if (mirror_access_write(&regs_template) >= 0) {
-               main_printf(TAG, "succes wrote liters to mirror");
+               link_functions.os_log_info(TAG, "succes wrote liters to mirror");
             } else {
-               main_printf(TAG, "unsucces writing liters to mirror");
+               link_functions.os_log_info(TAG, "unsucces writing liters to mirror");
             }
          }
          regs_template.p_value = &touch_regs->vars.water_counter;
          int result = regs_description_get_by_address(&regs_template);
          if (result >= 0) {
             if (mirror_access_write(&regs_template) >= 0) {
-               main_printf(TAG, "succes wrote water_counter to mirror");
+               link_functions.os_log_info(TAG, "succes wrote water_counter to mirror");
             } else {
-               main_printf(TAG, "unsucces writing water_counter to mirror");
+               link_functions.os_log_info(TAG, "unsucces writing water_counter to mirror");
             }
          }
       }
@@ -231,7 +232,7 @@ void touch_task(void *arg) {
       } else {
          enable_period_float = touch_regs->vars.touch_1_liters;
       }
-      driver_enabled_tick_os = task_get_tick_count();
+      driver_enabled_tick_os = link_functions.os_kernel_sys_tick();
       drive_enable = 1;
    }
    if ((touch_states & TOUCH_2_STATE) && (drive_enable == 0)) {
@@ -241,7 +242,7 @@ void touch_task(void *arg) {
          enable_period_float = touch_regs->vars.touch_2_liters;
       }
       driver_enabled_liters = touch_regs->vars.liters;
-      driver_enabled_tick_os = task_get_tick_count();
+      driver_enabled_tick_os = link_functions.os_kernel_sys_tick();
       drive_enable = 1;
    }
    if ((touch_states & TOUCH_3_STATE) && (drive_enable == 0)) {
@@ -251,7 +252,7 @@ void touch_task(void *arg) {
          enable_period_float = touch_regs->vars.touch_3_liters;
       }
       driver_enabled_liters = touch_regs->vars.liters;
-      driver_enabled_tick_os = task_get_tick_count();
+      driver_enabled_tick_os = link_functions.os_kernel_sys_tick();
       drive_enable = 1;
    }
    if ((touch_states & TOUCH_0_STATE) && (drive_enable == 1)) {
@@ -259,14 +260,14 @@ void touch_task(void *arg) {
          enable_period = 0;
       }
       driver_enabled_liters = touch_regs->vars.liters;
-      driver_enabled_tick_os = task_get_tick_count();
+      driver_enabled_tick_os = link_functions.os_kernel_sys_tick();
       drive_enable = 0;
    }
 
    if (drive_enable) {
       gpio_set_level(DRIVE_PIN, 1);
       if (touch_regs->vars.by_time) {
-         if (task_get_tick_count() - driver_enabled_tick_os > enable_period) {
+         if (link_functions.os_kernel_sys_tick() - driver_enabled_tick_os > enable_period) {
             drive_enable = 0;
          }
       } else {
@@ -275,7 +276,7 @@ void touch_task(void *arg) {
          }
       }
 
-      if (task_get_tick_count() - driver_enabled_tick_os > MAX_ENABLED_PERIOD_MS) {
+      if (link_functions.os_kernel_sys_tick() - driver_enabled_tick_os > MAX_ENABLED_PERIOD_MS) {
          drive_enable = 0;
       }
    } else {

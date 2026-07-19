@@ -13,6 +13,7 @@
 // limitations under the License.
 #ifndef SLIP_HANDLE_C
 #define SLIP_HANDLE_C
+#include "os_type.h"
 #include "string.h"
 #include "slip_handle.h"
 #include "esp_netif.h"
@@ -92,6 +93,7 @@ esp_err_t esp_slip_init(slip_handle_config_t *slip_modem){
     // Start slip RX task
     slip_modem->running = true;
     flow_control_slip_mutex = semaphore_create_binary();
+    semaphore_release(flow_control_slip_mutex);
     slip_flow_control_queue = queue_create(SLIP_FLOW_CONTROL_QUEUE_LENGTH, sizeof(flow_control_msg_t));
     if (!slip_flow_control_queue) {
         ESP_LOGE(TAG, "create wifi to slip flow control queue failed");

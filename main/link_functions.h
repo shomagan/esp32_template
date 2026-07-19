@@ -49,6 +49,7 @@
 
 typedef struct MCU_PACK {
     u32  (*os_kernel_sys_tick)(void);
+    u32  (*os_kernel_get_time_ms)(void);
     BaseType_t (*os_thread_create)(TaskFunction_t function, const char *name, uint32_t stack_size,
             void *param, UBaseType_t prio, TaskHandle_t *handler);
     TaskHandle_t (*os_thread_get_id)(void);
@@ -68,6 +69,7 @@ typedef struct MCU_PACK {
     BaseType_t (*os_semaphore_wait)(SemaphoreHandle_t mutex, TickType_t time_ms);
     BaseType_t (*os_semaphore_release)(SemaphoreHandle_t mutex);
     void (*os_semaphore_delete)(SemaphoreHandle_t mutex);
+    UBaseType_t (*os_semaphore_get_count)(SemaphoreHandle_t sem);
     os_pool_cb_t *(*os_pool_create)(const os_pool_def_t *pool_def);
     void *(*os_pool_alloc)(os_pool_cb_t *pool_id);
     void *(*os_pool_c_alloc)(os_pool_cb_t *pool_id);
@@ -90,11 +92,13 @@ typedef struct MCU_PACK {
     SemaphoreHandle_t (*os_recursive_mutex_create)(void);
     BaseType_t (*os_recursive_mutex_release)(SemaphoreHandle_t mutex);
     BaseType_t (*os_recursive_mutex_wait)(SemaphoreHandle_t mutex, TickType_t time_ms);
-    UBaseType_t (*os_semaphore_get_count)(SemaphoreHandle_t sem);
     void (*task_enter_critical)(void);
     void (*task_exit_critical)(void);
     void (*refresh_watchdog)(void);
     int (*printf)(const char *format, ...);
+    int (*os_log_debug)(const char *tag, const char *format, ...);
+    int (*os_log_info)(const char *tag, const char *format, ...);
+    int (*os_log_error)(const char *tag, const char *format, ...);
     int (*regs_description_list_add_new)(regs_description_list_t regs_table);
     u8 version[OS_VERSION_SIZE];
 } link_functions_t;

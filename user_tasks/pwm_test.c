@@ -51,6 +51,7 @@
 #include "pin_map.h"
 #include "esp_log.h"
 #include "esp_check.h"
+#include "link_functions.h"
 
 #if CONFIG_IDF_TARGET_ESP32
 #define PWM_TEST_MCPWM_RESOLUTION_HZ (10000000u)
@@ -228,7 +229,7 @@ void pwm_control_task(void *arg){
     servo3 = servo_control_part->vars.servo_3;
 #endif
     while(1){
-        if(task_notify_wait(STOP_CHILD_PROCCES|PACKET_RECEIVED, &signal_value, 100)==pdTRUE){
+        if(link_functions.os_thread_signal_wait(STOP_CHILD_PROCCES|PACKET_RECEIVED, &signal_value, 100)==pdTRUE){
             /*by signal*/
             if (signal_value & STOP_CHILD_PROCCES){
             }else if(signal_value & PACKET_RECEIVED){
@@ -253,7 +254,7 @@ void pwm_control_task(void *arg){
 #if (PWM_CONTROL_ENABLE && CONFIG_IDF_TARGET_ESP32C3)
          uint16_t pwm_value = (uint16_t)touch_regs->vars.test_pwm_value;
          if(counter % 10 == 0) {
-               main_printf(TAG, "PWM Test value: %d", pwm_value);
+               link_functions.os_log_info(TAG, "PWM Test value: %d", pwm_value);
          }
          if (pwm_value != pwm_value_last) {
             pwm_value_last = pwm_value;

@@ -15,6 +15,7 @@
 #include "esp_log.h"
 #include "esp_check.h"
 #include "regs_description.h"
+#include "link_functions.h"
 
 task_handle_t test_int_handle_id = NULL;
 static const char *TAG = "test_int";
@@ -40,11 +41,11 @@ void test_int_task(void *arg){
    test_int_init();
    u64 task_counter = 0u;
    while(1){
-      if(task_notify_wait(STOP_CHILD_PROCCES, &signal_value, TEST_INT_TASK_PERIOD)==pdTRUE){
+      if(link_functions.os_thread_signal_wait(STOP_CHILD_PROCCES, &signal_value, TEST_INT_TASK_PERIOD)==pdTRUE){
          /*by signal*/
          if (signal_value & STOP_CHILD_PROCCES){
             test_int_deinit();
-            task_delete(task_get_id());
+            link_functions.os_thread_terminate(link_functions.os_thread_get_id());
          }
       }
       test_int_regs_description();

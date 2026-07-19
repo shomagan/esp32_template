@@ -23,6 +23,7 @@
 #include "sleep_control.h"
 #include "regs_description.h"
 #include "mirror_storage.h"
+#include "link_functions.h"
 
 #define FEEDER_TASK_PERIOD (1000u)
 #define RMT_RESOLUTION_HZ (1000000u)
@@ -109,14 +110,14 @@ void feeder_task(void *arg){
    u64 task_counter = 0u;
    rmt_step_motor_t rmt_step_motor = {0};
    feeder_init(&rmt_step_motor);
-   task_delay_ms(1000);
+   link_functions.os_thread_delay(1000);
    int feeded_minute = -1;
    while(1){
-      if(task_notify_wait(FEEDER_TASK_STOP_CHILD_PROCCES, &signal_value, FEEDER_TASK_PERIOD)==pdTRUE){
+      if(link_functions.os_thread_signal_wait(FEEDER_TASK_STOP_CHILD_PROCCES, &signal_value, FEEDER_TASK_PERIOD)==pdTRUE){
          /*by signal*/
          if (signal_value & FEEDER_TASK_STOP_CHILD_PROCCES){
             feeder_deinit(&rmt_step_motor);
-            task_delete(task_get_id());
+            link_functions.os_thread_terminate(link_functions.os_thread_get_id());
          }
          if (signal_value & FEEDER_TASK_ONE_FEED_COMM){
             run_feeder(&rmt_step_motor);
@@ -124,12 +125,12 @@ void feeder_task(void *arg){
       }
       struct timeval tv;
       if (gettimeofday(&tv, NULL)!= 0) {
-         main_error_message(TAG,"Failed to obtain time");
+         link_functions.os_log_error(TAG,"Failed to obtain time");
       }else{
          u32 minutes_of_the_day = tv.tv_sec/60;
          handle_feeding(minutes_of_the_day, &feeded_minute,&rmt_step_motor);
          handle_sleeping(minutes_of_the_day);
-         main_debug(TAG,"sec of the day %u",tv.tv_sec);
+         link_functions.os_log_debug(TAG,"sec of the day %u",tv.tv_sec);
       }
       task_counter++;
    }
@@ -147,7 +148,7 @@ static int handle_sleeping(u32 minutes_of_the_day){
             u32 sleep_time_sec = sleep_time_minutes * 60;
             u32 prev_value = 0;
             u32 signal = (u32)SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC | ((sleep_time_sec << 16u)&0xffff0000);
-            task_notify_send(sleep_control_handle_id, signal, &prev_value);
+            link_functions.os_thread_signal_set(sleep_control_handle_id, signal, &prev_value);
          }
 #endif
       }//do nothing,dont sleep
@@ -167,9 +168,9 @@ static int handle_feeding(u32 minutes_of_the_day, int * feeded_minute, rmt_step_
             result = regs_description_get_by_address(&regs_template);
             if (result >= 0){
                if (mirror_access_write(&regs_template)>=0){
-                  main_debug(TAG, "succes wrote feeder_counter to mirror");
+                  link_functions.os_log_debug(TAG, "succes wrote feeder_counter to mirror");
                }else{
-                  main_debug(TAG, "unsucces writing feeder_counter to mirror");
+                  link_functions.os_log_debug(TAG, "unsucces writing feeder_counter to mirror");
                }
             }
          }
@@ -182,10 +183,10 @@ static int run_feeder(rmt_step_motor_t * rmt_step_motor){
    int result = 0;
    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 0);    /*active*/
    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 1); /*active*/
-   task_delay_ms(1);
+   link_functions.os_thread_delay(1);
    u32 steps = (u32)(feeder_reg->vars.feeder_time_sec * AVERAGE_STEPS_PER_SECOND);
    esp_err_t rmt_result = rmt_step_motor_smoothstep(rmt_step_motor, steps, MIN_STEPS_PER_SECOND, MAX_STEPS_PER_SECOND);
-   task_delay_ms((uint32_t)(feeder_reg->vars.feeder_time_sec*1000));
+   link_functions.os_thread_delay((uint32_t)(feeder_reg->vars.feeder_time_sec*1000));
    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1);    /*not active*/
    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 0); /*not active*/
    if (rmt_result == ESP_OK){
@@ -231,7 +232,7 @@ static esp_err_t helper_fill_rmt_items(rmt_symbol_word_t *items, uint32_t speed)
    items->level0 = 0;
    uint32_t delay_period = helper_speed_to_duration(speed);
    if (delay_period <= 100) {
-      main_printf(TAG, "maximum rate reached, driver will generate another possible highest rate instead");
+      link_functions.os_log_info(TAG, "maximum rate reached, driver will generate another possible highest rate instead");
       items->duration0 = 100;
    }   else   {
       items->duration0 = delay_period;

@@ -13,7 +13,7 @@
 #include "step_motor.h"
 #include "driver/gpio.h"
 #include "pin_map.h"
-#include "os_type.h"
+#include "link_functions.h"
 
 task_handle_t step_motor_handle_id = NULL;
 static int step_motor_init(void);
@@ -64,11 +64,11 @@ void step_motor_task(void *arg){
     gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_DIR0, 1u);
     gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_DIR1, 0u);
     while(1){
-        if(task_notify_wait(STOP_CHILD_PROCCES, &signal_value, 2u)==pdTRUE){
+        if(link_functions.os_thread_signal_wait(STOP_CHILD_PROCCES, &signal_value, 2u)==pdTRUE){
             /*by signal*/
             if (signal_value & STOP_CHILD_PROCCES){
                 step_motor_deinit();
-                task_delete(task_get_id());
+                link_functions.os_thread_terminate(link_functions.os_thread_get_id());
             }
         }
         task_counter++;

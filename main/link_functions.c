@@ -54,6 +54,7 @@ static void task_exit_critical(void) {
 
 const link_functions_t link_functions = {
   .os_kernel_sys_tick = task_get_tick_count,
+  .os_kernel_get_time_ms = task_get_time_ms,
   .os_thread_create =  task_create,
   .os_thread_get_id =  task_get_id,
   .os_thread_get_id_by_name = task_get_handle,
@@ -72,6 +73,7 @@ const link_functions_t link_functions = {
   .os_semaphore_wait =  semaphore_take,
   .os_semaphore_release =  semaphore_release,
   .os_semaphore_delete =  semaphore_delete,
+  .os_semaphore_get_count =  os_semaphore_get_count,
   .os_pool_create =  os_pool_create,
   .os_pool_alloc =  os_pool_alloc,
   .os_pool_c_alloc =  os_pool_calloc,
@@ -94,11 +96,13 @@ const link_functions_t link_functions = {
   .os_recursive_mutex_create =  os_recursive_mutex_create,
   .os_recursive_mutex_release =  os_recursive_mutex_release,
   .os_recursive_mutex_wait =  os_recursive_mutex_wait,
-  .os_semaphore_get_count =  os_semaphore_get_count,
   .task_enter_critical =  task_enter_critical,
   .task_exit_critical =  task_exit_critical,
   .refresh_watchdog =  refresh_watchdog,
   .printf = os_printf,
+  .os_log_debug = os_log_debug,
+  .os_log_info = os_log_info,
+  .os_log_error = os_log_error,
   .regs_description_list_add_new = regs_description_list_add_new,
   .version = OS_VERSION
 };

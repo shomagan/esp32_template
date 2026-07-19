@@ -111,18 +111,19 @@ void telegram_task(void *arg){
                if(tls != NULL){
                   if(esp_tls_conn_http_new_sync(web_url, &cfg, tls)==1){
                      regs_template_t regs_template = {0};
-                     regs_template.table_ind = 0;
                      task_delay_ms(25);
                      main_printf(TAG, "Connection established to %s", web_url);
                      conn_count++;
                      content_len += sprintf(&content[content_len],"chat_id=%s&text=", tel_home_id);
                      for(u32 i=0;i<reg_num;i++){
-                        regs_description_get_by_index_in_table(&regs_template, reg_id+i);
-                        if(content_len >= MAX_CONTENT_SIZE){
-                           main_error_message(TAG, "critical!!! Content size exceeded, truncating message");
-                           break;
+                        int res = regs_description_get_by_index(&regs_template, reg_id+i);
+                        if(res == 0){
+                           if(content_len >= MAX_CONTENT_SIZE){
+                              main_error_message(TAG, "critical!!! Content size exceeded, truncating message");
+                              break;
+                           }
+                           content_len += regs_description_get_regs_string_value(&regs_template, reg_num, &content[content_len], sizeof(content) - content_len);
                         }
-                        content_len += regs_description_get_regs_string_value(&regs_template, reg_num, &content[content_len], sizeof(content) - content_len);
                      }
                      len = header_len;
                      if(content_len < MAX_HTTP_REQUEST_SIZE - header_len){

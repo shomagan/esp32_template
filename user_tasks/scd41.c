@@ -3,7 +3,6 @@
  * @brief Implementation of SCD41 sensor task and driver.
  */
 
-#include "os_type.h"
 #ifndef SCD41_C
 #define SCD41_C 1
 
@@ -19,6 +18,7 @@
 #include "scd41.h"
 #include "telegram.h"
 #include "wireless_control.h"
+#include "link_functions.h"
 
 #define SCD41_TASK_PERIOD_MS 20000u
 #define SCD41_I2C_ADDRESS 0x62
@@ -62,32 +62,32 @@ void scd41_task(void *arg){
    scd41_task_init();
    u8 co2_level_captured = 0u;
    u32 prev_signal = 0;
-   //task_notify_send(wireless_control_handle_id, WIRELESS_TASK_STOP_WIFI, &prev_signal);
+   //link_functions.os_thread_signal_set(wireless_control_handle_id, WIRELESS_TASK_STOP_WIFI, &prev_signal);
    while (1)   {
       struct timeval tv;
-      task_delay_ms(2500);
-      main_printf(TAG, "Starting SCD41 measurement cycle");
+      link_functions.os_thread_delay(2500);
+      link_functions.os_log_info(TAG, "Starting SCD41 measurement cycle");
       if (gettimeofday(&tv, NULL) != 0)      {
-         main_error_message(TAG, "Failed to obtain time");
+         link_functions.os_log_error(TAG, "Failed to obtain time");
       } else {
          u32 minutes_of_the_day = tv.tv_sec / 60;
          uint16_t co2_level = 0;
          float humidity = 0.0f;
          float temperature = 0.0f;
          scd41_start_measurement();
-         task_delay_ms(5000); /*measurement to be stable*/
+         link_functions.os_thread_delay(5000); /*measurement to be stable*/
          if (scd41_read_measurement(&co2_level, &humidity, &temperature) == ESP_OK)         {
             handle_scd_data(co2_level, humidity, temperature, &co2_level_captured);
          } else {
-            main_error_message(TAG, "Failed to read CO2 level");
+            link_functions.os_log_error(TAG, "Failed to read CO2 level");
          }
          handle_sleeping(minutes_of_the_day);
-         main_debug(TAG, "sec of the day %u", tv.tv_sec);
+         link_functions.os_log_debug(TAG, "sec of the day %u", tv.tv_sec);
       }
-      if (task_notify_wait(SLEEP_TASK_STOP_CHILD_PROCCES, &signal_value, SCD41_TASK_PERIOD_MS) == pdTRUE)      {
+      if (link_functions.os_thread_signal_wait(SLEEP_TASK_STOP_CHILD_PROCCES, &signal_value, SCD41_TASK_PERIOD_MS) == pdTRUE)      {
          if (signal_value & SLEEP_TASK_STOP_CHILD_PROCCES)         {
             scd41_task_deinit();
-            task_delete(task_get_id());
+            link_functions.os_thread_terminate(link_functions.os_thread_get_id());
          }
       }
 #if !SLEEP_IS_ACTIVE
@@ -100,7 +100,7 @@ static int store_array_of_co2_levels(uint16_t co2_level){
    int result = 0;
    u16 index = scd41_reg->vars.scd41_index_in_array;
    u16 temp_co2_level[SCD41_ARRAY_SIZE];
-   main_debug(TAG, "Storing CO2 level %u at index %u", co2_level, index);
+   link_functions.os_log_debug(TAG, "Storing CO2 level %u at index %u", co2_level, index);
    regs_copy_safe(&temp_co2_level, &scd41_reg->vars.scd41_co2_array, sizeof(temp_co2_level));
    temp_co2_level[index] = co2_level;
    index++;
@@ -108,15 +108,15 @@ static int store_array_of_co2_levels(uint16_t co2_level){
       index = 0u;
       u32 prev_value = 0;
       for(u8 i = 0u; i < SCD41_ARRAY_SIZE; i++)      {
-         main_printf(TAG, "CO2 Level[%u]: %u ppm", i, temp_co2_level[i]);
+         link_functions.os_log_info(TAG, "CO2 Level[%u]: %u ppm", i, temp_co2_level[i]);
       }
-      task_notify_send(wireless_control_handle_id, WIRELESS_TASK_START_WIFI,&prev_value);
-      task_delay_ms(35000); /*wait for wifi to start */
+      link_functions.os_thread_signal_set(wireless_control_handle_id, WIRELESS_TASK_START_WIFI,&prev_value);
+      link_functions.os_thread_delay(35000); /*wait for wifi to start */
       u16 reg_ind = (u16)regs_description_get_index_by_address(&scd41_reg->vars.scd41_co2_array);
       u8 reg_num = 1u; // Number of registers to send
       u32 signal = (u32)TELEGRAM_SEND_REG_BY_ID | ((reg_ind << 16u) & 0xffff0000) | ((reg_num << 8u) & 0xff00);
       prev_value = 0;
-      task_notify_send(telegram_handle_id, signal, &prev_value);
+      link_functions.os_thread_signal_set(telegram_handle_id, signal, &prev_value);
    }
    regs_description_write_value_by_address(&scd41_reg->vars.scd41_index_in_array, (const u8 *)&index);
    regs_description_write_value_by_address(&scd41_reg->vars.scd41_co2_array, (const u8 *)&temp_co2_level);
@@ -124,22 +124,22 @@ static int store_array_of_co2_levels(uint16_t co2_level){
 }
 static int handle_scd_data(uint16_t co2_level, float humidity, float temperature, u8 *co2_level_captured){
    int result = 0;
-   main_debug(TAG, "CO2 Level: %u ppm, Humidity: %.2f%%, Temperature: %.2f°C", co2_level, humidity, temperature);
+   link_functions.os_log_debug(TAG, "CO2 Level: %u ppm, Humidity: %.2f%%, Temperature: %.2f°C", co2_level, humidity, temperature);
    scd41_reg->vars.scd41_co2_level = co2_level;
    scd41_reg->vars.scd41_humidity = humidity;
    scd41_reg->vars.scd41_temperature = temperature;
-   main_printf(TAG, "CO2 Level: %u ppm, Humidity: %.2f%%, Temperature: %.2f°C", co2_level, humidity, temperature);
+   link_functions.os_log_info(TAG, "CO2 Level: %u ppm, Humidity: %.2f%%, Temperature: %.2f°C", co2_level, humidity, temperature);
    if (*co2_level_captured == 0u) {
       store_array_of_co2_levels(co2_level);
       if((co2_level > 1000)||(humidity < 30.0f)||(temperature < 17.0f)) {
          u32 prev_value = 0;
-         task_notify_send(wireless_control_handle_id, WIRELESS_TASK_START_WIFI,&prev_value);
-         task_delay_ms(35000); /*wait for wifi to start */
+         link_functions.os_thread_signal_set(wireless_control_handle_id, WIRELESS_TASK_START_WIFI,&prev_value);
+         link_functions.os_thread_delay(35000); /*wait for wifi to start */
          u16 reg_ind = (u16)regs_description_get_index_by_address(&scd41_reg->vars.scd41_co2_level);
          u8 reg_num = 3u; // Number of registers to send
          u32 signal = (u32)TELEGRAM_SEND_REG_BY_ID | ((reg_ind << 16u) & 0xffff0000) | ((reg_num << 8u) & 0xff00);
          prev_value = 0;
-         task_notify_send(telegram_handle_id, signal, &prev_value);
+         link_functions.os_thread_signal_set(telegram_handle_id, signal, &prev_value);
       }
       *co2_level_captured = 1u; // Set flag to indicate message has been sent
    }
@@ -157,7 +157,7 @@ static int handle_sleeping(u32 minutes_of_the_day){
             u32 sleep_time_sec = sleep_time_minutes * 60;
             u32 prev_value = 0;
             u32 signal = (u32)SLEEP_TASK_DEEP_SLEEP_FOR_N_SEC | ((sleep_time_sec << 16u) & 0xffff0000);
-            task_notify_send(sleep_control_handle_id, signal, &prev_value);
+            link_functions.os_thread_signal_set(sleep_control_handle_id, signal, &prev_value);
          }
 #endif
       } // do nothing,dont sleep
@@ -217,13 +217,13 @@ static esp_err_t scd41_read_measurement(uint16_t *co2_ppm, float *humidity, floa
    ret = i2c_master_cmd_begin(I2C_NUM_0, handle, pdMS_TO_TICKS(1000));
    i2c_cmd_link_delete(handle);
    if (ret != ESP_OK)   {
-      main_error_message(TAG, "Failed to read measurement data");
+      link_functions.os_log_error(TAG, "Failed to read measurement data");
       return ret;
    }
 
    // Parse CO2 value (first two bytes)
    *co2_ppm = (data[0] << 8) | data[1];
-   main_debug(TAG, "CO2 Level: %u ppm", *co2_ppm);
+   link_functions.os_log_debug(TAG, "CO2 Level: %u ppm", *co2_ppm);
 
    uint16_t raw_humidity = (data[6] << 8) | data[7];
    *humidity = ((float)raw_humidity * 100) / 65535.0;

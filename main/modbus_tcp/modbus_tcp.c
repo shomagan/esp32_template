@@ -6,6 +6,7 @@
  * @brief  modbus tcp protocol on 502 port
  */
 
+#include "os_type.h"
 #ifndef MODBUS_TCP_C
 #define MODBUS_TCP_C 1
 #include "modbus_tcp.h"
@@ -474,6 +475,7 @@ err_t modbus_tcp_init(void){
     LWIP_MEMPOOL_INIT(MODBUS_TCP_STATE);
 #endif
     modbus_tcp_mutex = semaphore_create_binary();
+    semaphore_release(modbus_tcp_mutex);
     pcb = altcp_tcp_new_ip_type(IPADDR_TYPE_ANY);
     LWIP_ASSERT("modbus_tcp_init: tcp_new failed", pcb != NULL);
     modbus_tcp_init_pcb(pcb, MODBUS_TCP_PORT);

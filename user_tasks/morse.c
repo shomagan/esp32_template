@@ -18,6 +18,7 @@
 #include "driver/gpio.h"
 #include <string.h>
 #include "sleep_control.h"
+#include "link_functions.h"
 
 task_handle_t morse_handle_id = NULL;
 static const char *TAG = "morse";
@@ -154,14 +155,14 @@ static int morse_deinit(){
 }
 
 static u32 time_state(u32 pin_state_base){
-   u32 start_time = task_get_time_ms();
+   u32 start_time = link_functions.os_kernel_get_time_ms();
    while(1){
       u32 pin_state = gpio_get_level(EXT_WAKEUP_PIN);
-      u32 diff = task_get_time_ms() - start_time;
+      u32 diff = link_functions.os_kernel_get_time_ms() - start_time;
       if((pin_state != pin_state_base) || ((diff>SPACE_WORDS) && !pin_state)){
          return diff;
       }
-      task_delay_ms(5);
+      link_functions.os_thread_delay(5);
    }
 }
 
@@ -170,21 +171,21 @@ void morse_task(void *arg){
    uint32_t signal_value;
    morse_init();
    u64 task_counter = 0u;
-   main_printf(TAG,"morse task ready to start");
-   u32 last_button_press = task_get_tick_count();
+   link_functions.os_log_info(TAG,"morse task ready to start");
+   u32 last_button_press = link_functions.os_kernel_sys_tick();
    while(1){
       morse_unit_time = morse_reg->vars.morse_unit_time_ms;
-      if(task_notify_wait(STOP_CHILD_PROCCES, &signal_value, MORSE_TASK_PERIOD)==pdTRUE){
+      if(link_functions.os_thread_signal_wait(STOP_CHILD_PROCCES, &signal_value, MORSE_TASK_PERIOD)==pdTRUE){
          /*by signal*/
          if (signal_value & STOP_CHILD_PROCCES){
             morse_deinit();
-            task_delete(task_get_id());
+            link_functions.os_thread_terminate(link_functions.os_thread_get_id());
          }
       }
       u32 pin_state = gpio_get_level(EXT_WAKEUP_PIN);
       if(pin_state){
          const struct morse_node * node = &root_letter;
-         last_button_press = task_get_tick_count();
+         last_button_press = link_functions.os_kernel_sys_tick();
          while(node){
             u64 diff = time_state(pin_state);
             if(diff > DASH_LENGTH){
@@ -201,10 +202,10 @@ void morse_task(void *arg){
          }
          handle_next_letter(node);
       }
-      if((task_get_tick_count() - last_button_press) > (TIME_BEFORE_SLEEP_MS/portTICK_PERIOD_MS)){
+      if((link_functions.os_kernel_sys_tick() - last_button_press) > (TIME_BEFORE_SLEEP_MS/portTICK_PERIOD_MS)){
          u32 prev_value = 0;
          u32 signal = (u32)SLEEP_TASK_DEEP_SLEEP;
-         task_notify_send(sleep_control_handle_id, signal, &prev_value);
+         link_functions.os_thread_signal_set(sleep_control_handle_id, signal, &prev_value);
       }
       task_counter++;
    }
@@ -221,7 +222,7 @@ static void handle_next_letter(const struct morse_node * node){
       }else if(node->type == MORSE_COMMAND_SLEEP){
          u32 prev_value = 0;
          u32 signal = (u32)SLEEP_TASK_DEEP_SLEEP;
-         task_notify_send(sleep_control_handle_id, signal, &prev_value);
+         link_functions.os_thread_signal_set(sleep_control_handle_id, signal, &prev_value);
       }else if(node->type == MORSE_COMMAND_REMOVE_LAST){
          if(log_pointer>0){
             log_pointer--;
@@ -231,9 +232,9 @@ static void handle_next_letter(const struct morse_node * node){
          log_pointer = 0;
          regs_copy_safe(&morse_reg->vars.morse_send[0], &morse_reg->vars.morse_message[0], max_log_size);
          memset(&morse_reg->vars.morse_message[0], 0, max_log_size);
-         semaphore_take(regs_access_mutex, portMAX_DELAY);{
+         link_functions.os_semaphore_wait(regs_access_mutex, portMAX_DELAY);{
             morse_reg->vars.morse_counter++;
-         }semaphore_release(regs_access_mutex);
+         }link_functions.os_semaphore_release(regs_access_mutex);
       } else {
          log_pointer = fill_morse_log_buffer(&morse_reg->vars.morse_message[0], node->letter, log_pointer, max_log_size);
       }
@@ -260,7 +261,7 @@ u8 * get_pointer_to_line(u8 line){
 }
 u8 message_is_new(u8 * message,u8 len){
    u8 result = 1;
-   semaphore_take(regs_access_mutex, portMAX_DELAY);{
+   link_functions.os_semaphore_wait(regs_access_mutex, portMAX_DELAY);{
    if(message != NULL){
       for(u8 i = 0; i < DISPLAY_LINES_NUM ; i++){
          if(strncmp((char *)message,(char *)morse_reseived.message[i],len)==0){
@@ -271,7 +272,7 @@ u8 message_is_new(u8 * message,u8 len){
    }else{
       result = 0;
    }
-   }semaphore_release(regs_access_mutex);
+   }link_functions.os_semaphore_release(regs_access_mutex);
    return result;
 }
 #endif //MORSE

@@ -14,6 +14,7 @@
 #include "regs.h"
 #include "pin_map.h"
 #include "driver/gpio.h"
+#include "link_functions.h"
 #define PIN_STATE_DEBUG 0
 task_handle_t di_handle_id = NULL;
 #if DI_HANDLING_ENABLE
@@ -90,11 +91,11 @@ void di_handle_task(void *arg){
     u32 pin_states = 0;
     u64 task_counter = 0;
     while(1){
-        if(task_notify_wait(STOP_CHILD_PROCCES|PACKET_RECEIVED, &signal_value, 100)==pdTRUE){
+        if(link_functions.os_thread_signal_wait(STOP_CHILD_PROCCES|PACKET_RECEIVED, &signal_value, 100)==pdTRUE){
             /*by signal*/
             if (signal_value & STOP_CHILD_PROCCES){
                 di_handle_deinit();
-                task_delete(task_get_id());
+                link_functions.os_thread_terminate(link_functions.os_thread_get_id());
             }else if(signal_value & PACKET_RECEIVED){
 
             }
@@ -111,7 +112,7 @@ void di_handle_task(void *arg){
                 (gpio_get_level(DI_HANDLER_PIN4_INPUT_RESERV)<<9u)|
                 (gpio_get_level(DI_HANDLER_PIN5_INPUT_RESERV)<<10u);
         pin_states = (~pin_states) & 0xFFF;
-        semaphore_take(regs_access_mutex, portMAX_DELAY);{
+        link_functions.os_semaphore_wait(regs_access_mutex, portMAX_DELAY);{
 #if PIN_STATE_DEBUG
         static u32 pin_states_debug = 0xfffu;
         if (task_counter % 100 == 0u){
@@ -126,7 +127,7 @@ void di_handle_task(void *arg){
 #else
         di_control->vars.pin_state = pin_states;
 #endif
-        }semaphore_release(regs_access_mutex);
+        }link_functions.os_semaphore_release(regs_access_mutex);
         task_counter++;
     }
 }

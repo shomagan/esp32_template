@@ -3454,6 +3454,7 @@ static int http_sock_init(){
    http_set_cgi_handlers(&cgi_table[0], handlers_num);
 #endif
    http_tasks_mutex = semaphore_create_binary();
+   semaphore_release(http_tasks_mutex);
    return 0;
 }
 static int http_sock_deinit(){

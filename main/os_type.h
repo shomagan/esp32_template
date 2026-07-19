@@ -69,7 +69,10 @@ static inline void task_delay_ms(u32 ms) {
 static inline TickType_t task_get_tick_count(void) {
     return xTaskGetTickCount();
 }
-#define task_get_time_ms() pdTICKS_TO_MS(task_get_tick_count())
+static inline u32 task_get_time_ms(void) {
+    return pdTICKS_TO_MS(task_get_tick_count());
+}
+
 #define mutex_handle_t SemaphoreHandle_t
 static inline SemaphoreHandle_t mutex_create(void) {
     return xSemaphoreCreateMutex();
@@ -130,7 +133,7 @@ static inline UBaseType_t os_message_available_space(queue_handle_t queue) {
     return uxQueueSpacesAvailable(queue);
 }
 static inline void os_message_delete(queue_handle_t queue) {
-    vQueueDelete(queue);
+    vQueueDelete  (queue);
 }
 static inline BaseType_t task_create(TaskFunction_t function, const char *name, uint32_t stack_size,
         void *param, UBaseType_t prio, TaskHandle_t *handler) {
@@ -209,6 +212,30 @@ static inline int os_printf(const char *format, ...) {
 }
 static inline void refresh_watchdog(void) {
     esp_task_wdt_reset();
+}
+/* tagged logging, backed by esp_log_writev (no color/timestamp decoration, but
+ * respects per-tag level filtering) so user_tasks can log without depending on
+ * the ESP_LOG* macros directly */
+static inline int os_log_debug(const char *tag, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    esp_log_writev(ESP_LOG_DEBUG, tag, format, args);
+    va_end(args);
+    return 0;
+}
+static inline int os_log_info(const char *tag, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    esp_log_writev(ESP_LOG_INFO, tag, format, args);
+    va_end(args);
+    return 0;
+}
+static inline int os_log_error(const char *tag, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    esp_log_writev(ESP_LOG_ERROR, tag, format, args);
+    va_end(args);
+    return 0;
 }
 /*add functions and variable declarations before */
 #ifdef __cplusplus
