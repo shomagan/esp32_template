@@ -1,0 +1,6 @@
+# Shares the main project's partition table (factory + updater app slots) so
+# this app's own "updater" partition and its OTA target ("factory") stay in
+# sync with esp32_template/partitions.csv without duplicating it.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="../partitions.csv"
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y

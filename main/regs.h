@@ -185,9 +185,9 @@ typedef struct {
 } regs_access_t;
 
 #define FW_VERSION_SIZE 4
-#define FW_VERSION {0,10,0,0}
-#define FW_VERSION_STR "0.10.0-beta.0"
-#define FW_FIRMWARE_HASH "83-6ead75e548cfb598e2d7c66ca7f0ca"
+#define FW_VERSION {0,11,0,0}
+#define FW_VERSION_STR "0.11.0-beta.0"
+#define FW_FIRMWARE_HASH "84-9eab75feb6e889d66ca70e4ef05f8b"
 #define FW_HASH 0x00000000
 #define REGS_MAX_NAME_SIZE 32
 #define DEVICE_NAME_SIZE 40
@@ -368,6 +368,7 @@ typedef enum {
     RESET_WIFI_FOR_120_SEC_COMM = 0x550E,            /*!< 0x550e disables wifi*/
     DEEP_SLEEP_FOR_N_SEC_COMM = 0x550f,            /*!< 0x550d go to deep sleep for sleep_time seconds*/
     DEEP_SLEEP_COMM = 0x5510,            /*!< 0x550d go to deep sleep until external wake*/
+    ENTER_UPDATER_COMM = 0x5511,        /*!< 0x5511 switch boot partition to the updater app and reset into it*/
     IIRLS_HANDSHAKE = 0x7000,   /*!< 28672 Issues a command for slave to perform "handshake" procedure.*/
     IIRLS_HANDSHAKE_CONFIRMATION = 0x7001,   /*!< 28673 Issues a command for slave to confirm successful "handshake".*/
     FEEDER_TASK_ONE_FEED_COMM = 0x8000, /*!< 32768 start feeder , only one cycle.*/

@@ -33,7 +33,7 @@ idf_component_register(
     INCLUDE_DIRS "udp_broadcast/."
     INCLUDE_DIRS "modbus_tcp_client/."
     EMBED_TXTFILES ${project_dir}/certs/telegram.pem
-    REQUIRES esp_netif nvs_flash u8g2 bt esp-tls esp_driver_gptimer esp_driver_uart esp_driver_gpio esp_driver_spi esp_driver_rmt driver esp_driver_mcpwm esp_wifi efuse esp_event esp_adc esp_system esp_pm lwip
+    REQUIRES esp_netif nvs_flash u8g2 bt esp-tls esp_driver_gptimer esp_driver_uart esp_driver_gpio esp_driver_spi esp_driver_rmt driver esp_driver_mcpwm esp_wifi efuse esp_event esp_adc esp_system esp_pm lwip app_update esp_partition bootloader_support
 )
 
 # Run generator to regenerate regs_description files when regs.h or regs.c change.

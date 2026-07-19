@@ -23,6 +23,9 @@
 #include "common.h"
 #include "sleep_control.h"
 #include "wireless_control.h"
+#include "esp_ota_ops.h"
+#include "esp_partition.h"
+#include "esp_image_format.h"
 #ifndef DEBUG
 #define DEBUG           0   /** @warning DEBUG must be defined in CMake */
 #endif
@@ -561,6 +564,31 @@ static void execute_main_command(u16 command){
     case RESET_WIFI_FOR_120_SEC_COMM:
         task_notify_send(wireless_control_handle_id,WIRELESS_TASK_RESET_WIFI_FOR_120_SEC,&prev_value);
         break;
+    case ENTER_UPDATER_COMM: {
+        const esp_partition_t *updater_partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0, "updater");
+        if (updater_partition == NULL) {
+            ESP_LOGE(TAG, "ENTER_UPDATER_COMM: updater partition not found");
+            break;
+        }
+        esp_partition_pos_t updater_partition_pos = {
+            .offset = updater_partition->address,
+            .size = updater_partition->size,
+        };
+        esp_image_metadata_t updater_image_metadata = {0};
+        res = esp_image_verify(ESP_IMAGE_VERIFY_SILENT, &updater_partition_pos, &updater_image_metadata);
+        if (res != ESP_OK) {
+            ESP_LOGE(TAG, "ENTER_UPDATER_COMM: updater image invalid or missing (%s), refusing to switch", esp_err_to_name(res));
+            break;
+        }
+        res = esp_ota_set_boot_partition(updater_partition);
+        if (res != ESP_OK) {
+            ESP_LOGE(TAG, "ENTER_UPDATER_COMM: esp_ota_set_boot_partition failed: %s", esp_err_to_name(res));
+            break;
+        }
+        ESP_LOGI(TAG, "ENTER_UPDATER_COMM: boot partition set to updater, resetting");
+        task_notify_send(common_duty_task_handle,PREPARE_TO_RESET,&prev_value);
+        break;
+    }
     default:
         break;
     }
