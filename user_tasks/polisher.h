@@ -40,6 +40,7 @@ typedef union{
         u32 polisher_last_sec;         //!<"how many time in seconds it was active last session" &ro
         u16 polisher_speed;        //!< "polisher_speed" &save &def &max
         u16 polisher_direction;         //!< "polisher_direction" &save &def &max
+        u32 table_version;         //!< "table version, resets regs to defaults on mismatch" &ro &save &def
     }vars;
     u32 bytes[4]; //for full bksram copy
 }polisher_reg_t;// #generator_use_description {"message":"end_struct"}

@@ -86,6 +86,7 @@ typedef union{
         u32 filter_use;                             //!< "use inside filter fot touch sensors or not " &save
         u32 touch_handle_period;                    //!< "in ms period of handle touchs" &save &def
         u32 by_time;                              //!< "by time or counter" &save &def
+        u32 table_version;         //!< "table version, resets regs to defaults on mismatch" &ro &save &def
     }vars;
     u8 bytes[32]; //for full bksram copy
 }touch_regs_t;// #generator_use_description {"message":"end_struct"}

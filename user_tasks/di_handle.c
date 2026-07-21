@@ -17,10 +17,35 @@
 #include "link_functions.h"
 #define PIN_STATE_DEBUG 0
 task_handle_t di_handle_id = NULL;
+
+/*#generator_use_description {"user_task_regs":"start_struct"}*/
+static di_control_t di_control_storage = {{0}};
+di_control_t * const di_control = &di_control_storage;
+#define NUM_OF_DI_CONTROL_VARS 2
+static u8 di_control_saved_buf[8];
+static const char di_control_space_name[] = "di_control_t";
+static regs_description_t const regs_description_di_control[NUM_OF_DI_CONTROL_VARS] = {
+    { NULL, NULL, NULL, (u8*)&di_control->vars.pin_state, 0,"current states of digital inputs","pin_state", 0x14006000, 0x30bb8, U32_REGS_FLAG, 1, 1, 3 }//!<"current states of digital inputs"
+,
+    { &def_table_version, NULL, NULL, (u8*)&di_control->vars.table_version, 0,"table version, resets regs to defaults on mismatch","table_version", 0x14006001, 0x30bba, U32_REGS_FLAG, 1, 7, 3 }//!< "table version, resets regs to defaults on mismatch" &ro &save &def
+,
+};
+const regs_description_list_t regs_table_di_control = {
+    .description = regs_description_di_control,
+    .num_of_regs = NUM_OF_DI_CONTROL_VARS,
+    .table_version = &def_table_version,
+    .space_name = di_control_space_name,
+    .saved_regs_buffer = di_control_saved_buf,
+    .saved_regs_buffer_size = sizeof(di_control_saved_buf),
+};
+/*#generator_use_description {"user_task_regs":"end_struct"}*/
+
 #if DI_HANDLING_ENABLE
 /*GPIO init*/
 int di_handle_init(){
     int result = 0;
+    int table_ind = link_functions.regs_description_list_add_new(regs_table_di_control);
+    link_functions.preinit_table_vars((u16)table_ind);
     gpio_config_t io_conf;
     io_conf.intr_type = GPIO_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_INPUT;

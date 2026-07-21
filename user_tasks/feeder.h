@@ -55,6 +55,7 @@ typedef union{
         u16 feeder_interval;        //!< "minutes between a feeds" &save &def &min
         u16 feeder_reserv0;         //!< "reserved"
         float feeder_time_sec;       //!< "turn time is seconds" &save &def &min &max
+        u32 table_version;         //!< "table version, resets regs to defaults on mismatch" &ro &save &def
     }vars;
     u32 bytes[4]; //for full bksram copy
 }feeder_reg_t;// #generator_use_description {"message":"end_struct"}

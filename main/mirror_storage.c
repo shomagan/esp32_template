@@ -242,6 +242,7 @@ void preinit_table_vars(u16 table_ind) {
    if (internal_flash_restore_mirror_from_flash(table_ind) == 0) {
       main_printf(TAG, "regs inited from saved space");
       u32 num_of_regs = regs_description_list_get_num_of_regs(table_ind);
+      u8 * table_version_addr = NULL;
       for (u32 i = 0; i < num_of_regs; i++) {
          if (regs_description_get_by_index_in_table(&regs_template, i) == 0) {
             if (regs_template.property & SAVING) {
@@ -255,6 +256,23 @@ void preinit_table_vars(u16 table_ind) {
                          regs_size_in_byte(regs_template.type) * regs_template.size);
                }
             }
+            /* if this table has a "table_version" register, remember where it landed so it
+             * can be compared once the whole table has been restored */
+            if (strcmp(regs_template.name, "table_version") == 0) {
+               table_version_addr = regs_template.p_value;
+            }
+         }
+      }
+      if (table_version_addr != NULL) {
+         u32 restored_version = 0;
+         u32 current_version = regs_description_list_get_table_version(table_ind);
+         memcpy(&restored_version, table_version_addr, sizeof(restored_version));
+         if (restored_version != current_version) {
+            main_printf(TAG, "table_version mismatch, restoring defaults");
+            set_regs_def_values(table_ind);
+            mirror_access_init_buffer(table_ind);
+            memcpy(table_version_addr, &current_version, sizeof(current_version));
+            mirror_access_init_buffer(table_ind);
          }
       }
    } else {

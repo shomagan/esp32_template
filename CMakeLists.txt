@@ -4,8 +4,8 @@ cmake_minimum_required(VERSION 3.5)
 
 # ---- User task options ----
 # Enable/disable tasks here to control both compilation and code generation.
-option(USER_TASK_SCD41      "Enable SCD41 sensor task"       ON)
-option(USER_TASK_PWM        "Enable PWM control task"        OFF)
+option(USER_TASK_SCD41      "Enable SCD41 sensor task"       OFF)
+option(USER_TASK_PWM        "Enable PWM control task"        ON)
 option(USER_TASK_DI         "Enable DI handling task"        OFF)
 option(USER_TASK_FEEDER     "Enable Feeder task"             OFF)
 option(USER_TASK_MORSE      "Enable Morse-code task"         OFF)

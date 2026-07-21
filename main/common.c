@@ -150,7 +150,6 @@ void common_duty_task(void *pvParameters) {
          led_blink_on(250u);
          display_update(task_tick, udp_bradcast_msg_received);
          udp_bradcast_msg_received = 0;
-         main_printf(TAG, "tick %u", task_tick);
          struct timeval tv;
          if (gettimeofday(&tv, NULL) != 0) {
             main_error_message(TAG, "Failed to obtain time");

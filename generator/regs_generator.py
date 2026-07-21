@@ -94,68 +94,98 @@ def generate_user_tasks(header_basenames=None):
     print("find {} user task variables in {} files".format(
         regs_hand.regs_self_num, len(regs_hand.modbus_structures_description)))
 
-    write_user_task_file(regs_hand)
+    inject_user_task_regs_files(regs_hand)
 
 
-def write_user_task_file(regs_hand):
-    output_path = '../user_tasks/regs_description_user.c'
+def inject_user_task_regs_files(regs_hand):
+    """Inject each task's regs_description_t table into its own user_tasks/<task>.c,
+    between the {"user_task_regs":"start_struct"}/"end_struct"} markers."""
+    user_tasks_dir = '../user_tasks/'
     task_descriptions = regs_hand.modbus_structures_description
 
-    with open(output_path, 'w', encoding='UTF-8') as f:
-        f.write('#ifndef REGS_DESCRIPTION_USER_C\n')
-        f.write('#define REGS_DESCRIPTION_USER_C 1\n\n')
-        f.write('#include "regs_description.h"\n')
-        f.write('#include "link_functions.h"\n')
-        seen_headers = []
-        for desc in task_descriptions:
-            src = desc.get("source_file", "")
-            if src and src not in seen_headers:
-                f.write(f'#include "{src}"\n')
-                seen_headers.append(src)
-        f.write('\n')
+    groups = {}
+    for i, desc in enumerate(task_descriptions, start=1):
+        source_file = desc.get("source_file", "")
+        groups.setdefault(source_file, []).append(i)
 
-        for i, desc in enumerate(task_descriptions, start=1):
-            struct_type = desc["struct_type"]
-            global_name = desc["regs_global_name"]
-            f.write(f'static {struct_type} {global_name}_storage = {{{{0}}}};\n')
-            f.write(f'{struct_type} * const {global_name} = &{global_name}_storage;\n')
-        f.write('\n')
+    for source_file, structure_numbers in groups.items():
+        c_file_name = os.path.splitext(source_file)[0] + '.c'
+        c_path = os.path.join(user_tasks_dir, c_file_name)
+        block_lines = build_user_task_regs_block(regs_hand, task_descriptions, structure_numbers)
+        inject_user_task_regs_block(c_path, block_lines)
 
-        for i, desc in enumerate(task_descriptions, start=1):
-            global_name = desc["regs_global_name"]
-            space_name = desc["space_name"]
-            entries = regs_hand.user_task_entries.get(i, [])
-            saved_size = regs_hand.user_task_saved_sizes.get(i, 0)
-            num_vars = len(entries)
-            saved_size = max(saved_size, 4)
 
-            f.write(f'#define NUM_OF_{global_name.upper()}_VARS {num_vars}\n')
-            f.write(f'static u8 {global_name}_saved_buf[{saved_size}];\n')
-            f.write(f'static const u32 {global_name}_table_version = 0x0001;\n')
-            f.write(f'static const char {global_name}_space_name[] = "{space_name}";\n')
-            f.write(f'static regs_description_t const regs_description_{global_name}[NUM_OF_{global_name.upper()}_VARS] = {{\n')
-            for entry in entries:
-                f.write(f'    {entry},\n')
-            f.write('};\n')
-            f.write(f'const regs_description_list_t regs_table_{global_name} = {{\n')
-            f.write(f'    .description = regs_description_{global_name},\n')
-            f.write(f'    .num_of_regs = NUM_OF_{global_name.upper()}_VARS,\n')
-            f.write(f'    .table_version = &{global_name}_table_version,\n')
-            f.write(f'    .space_name = {global_name}_space_name,\n')
-            f.write(f'    .saved_regs_buffer = {global_name}_saved_buf,\n')
-            f.write(f'    .saved_regs_buffer_size = sizeof({global_name}_saved_buf),\n')
-            f.write('};\n\n')
+def build_user_task_regs_block(regs_hand, task_descriptions, structure_numbers):
+    lines = []
+    for i in structure_numbers:
+        desc = task_descriptions[i - 1]
+        struct_type = desc["struct_type"]
+        global_name = desc["regs_global_name"]
+        lines.append(f'static {struct_type} {global_name}_storage = {{{{0}}}};')
+        lines.append(f'{struct_type} * const {global_name} = &{global_name}_storage;')
 
-        # Registration function – calls link_functions.regs_description_list_add_new
-        # for every user-task table so the main OS can access them via the unified API.
-        f.write('void user_tasks_register_regs(void) {\n')
-        for i, desc in enumerate(task_descriptions, start=1):
-            global_name = desc["regs_global_name"]
-            f.write(f'    link_functions.regs_description_list_add_new(regs_table_{global_name});\n')
-        f.write('}\n\n')
+    for i in structure_numbers:
+        desc = task_descriptions[i - 1]
+        global_name = desc["regs_global_name"]
+        space_name = desc["space_name"][:15]  # NVS namespace names are capped at 15 chars
+        entries = regs_hand.user_task_entries.get(i, [])
+        saved_size = regs_hand.user_task_saved_sizes.get(i, 0) + 4  # plus crc
+        num_vars = len(entries)
+        saved_size = max(saved_size, 4)
 
-        f.write('#endif\n')
-    print(f"written user task descriptions to {output_path}")
+        lines.append(f'#define NUM_OF_{global_name.upper()}_VARS {num_vars}')
+        lines.append(f'static u8 {global_name}_saved_buf[{saved_size}];')
+        lines.append(f'static const char {global_name}_space_name[] = "{space_name}";')
+        lines.append(f'static regs_description_t const regs_description_{global_name}[NUM_OF_{global_name.upper()}_VARS] = {{')
+        for entry in entries:
+            lines.append(f'    {entry},')
+        lines.append('};')
+        lines.append(f'const regs_description_list_t regs_table_{global_name} = {{')
+        lines.append(f'    .description = regs_description_{global_name},')
+        lines.append(f'    .num_of_regs = NUM_OF_{global_name.upper()}_VARS,')
+        lines.append('    .table_version = &def_table_version,')
+        lines.append(f'    .space_name = {global_name}_space_name,')
+        lines.append(f'    .saved_regs_buffer = {global_name}_saved_buf,')
+        lines.append(f'    .saved_regs_buffer_size = sizeof({global_name}_saved_buf),')
+        lines.append('};')
+    return lines
+
+
+def inject_user_task_regs_block(c_path, block_lines):
+    if not os.path.exists(c_path):
+        print(f"WARNING: user task source not found: {c_path}")
+        return
+    replace = 0
+    found_start = 0
+    found_end = 0
+    for line in fileinput.input(c_path, inplace=1):
+        json_str = regs_handl.RegsHand.check_generator_descriptions(line)
+        is_start = False
+        is_end = False
+        if len(json_str):
+            json_description = json.loads(json_str)
+            if json_description.get("user_task_regs") == "start_struct":
+                is_start = True
+            elif json_description.get("user_task_regs") == "end_struct":
+                is_end = True
+        if is_start:
+            found_start = 1
+            replace = 1
+            print(line, end='')
+        elif is_end:
+            if replace:
+                for block_line in block_lines:
+                    print(block_line)
+            replace = 0
+            found_end = 1
+            print(line, end='')
+        elif not replace:
+            print(line, end='')
+    fileinput.close()
+    if found_start and found_end:
+        print(f"injected user task regs table into {c_path}")
+    else:
+        print(f"WARNING: user_task_regs markers not found in {c_path}, regs table not injected")
 
 
 def main():
@@ -356,30 +386,6 @@ def write_exist_file():
     else:
         print("warning!!! did't find regs_description struct in file" + file_path)
 
-    template_file = open('regs_description_client.pat', 'r', encoding='UTF-8')
-    replace = 0
-    number = 0
-    file_path = '../main/regs_description.c'
-    for line in fileinput.input(file_path, inplace=1):
-        if re.search(r"\s*regs_description_t\s+const\s+regs_description_user\[\s*NUM_OF_CLIENT_VARS\s*\]\s*\=\s*\{",line):
-            replace = 1
-            print(line, end='')
-        elif replace:
-            cancel = re.compile(r'^\s*\}\;', re.ASCII)
-            if cancel.match(line):
-                replace = 0
-                for own_line in template_file:
-                    print(own_line, end='')
-                    number += 1
-                print(line, end='')
-        else:
-            print(line, end='')
-    fileinput.close()
-    template_file.close()
-    if number:
-        print('replace ' + str(number) + ' string in description file' + file_path)
-    else:
-        print("warning!!! did't find regs_description_user struct in file" + file_path)
 
 def fill_up_regs_h_main_structure(file_path, struct_descriptions):
     '''fill up regs_main_t in regs.h file, uses {"regs_main":"start_struct"}'''

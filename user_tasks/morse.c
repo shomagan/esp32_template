@@ -22,6 +22,51 @@
 
 task_handle_t morse_handle_id = NULL;
 static const char *TAG = "morse";
+
+/*#generator_use_description {"user_task_regs":"start_struct"}*/
+static morse_reg_t morse_reg_storage = {{0}};
+morse_reg_t * const morse_reg = &morse_reg_storage;
+#define NUM_OF_MORSE_REG_VARS 13
+static u8 morse_reg_saved_buf[14];
+static const char morse_reg_space_name[] = "morse_reg_t";
+static regs_description_t const regs_description_morse_reg[NUM_OF_MORSE_REG_VARS] = {
+    { &def_morse_unit_time_ms, &def_min_morse_unit_time_ms, &def_max_morse_unit_time_ms, (u8*)&morse_reg->vars.morse_unit_time_ms, 0,"morse time ms","morse_unit_time_ms", 0x14012000, 0x31194, U16_REGS_FLAG, 1, 197, 9 }//!<"morse time ms" &save &def &min &max
+,
+    { &def_morse_message_len, &def_min_morse_message_len, &def_max_morse_message_len, (u8*)&morse_reg->vars.morse_message_len, 2,"max morse message len","morse_message_len", 0x14012001, 0x31195, U16_REGS_FLAG, 1, 197, 9 }//!<"max morse message len" &save &def &min &max
+,
+    { &def_morse_settings, NULL, NULL, (u8*)&morse_reg->vars.morse_settings, 4,"morse settings bit0 - server","morse_settings", 0x14012002, 0x31196, U16_REGS_FLAG, 1, 5, 9 }//!<"morse settings bit0 - server" &save &def
+,
+    { NULL, NULL, NULL, (u8*)&morse_reg->vars.morse_message_position, 0,"morse message position","morse_message_position", 0x14012003, 0x31197, U16_REGS_FLAG, 1, 3, 9 }//!<"morse message position" &ro
+,
+    { NULL, NULL, NULL, (u8*)&morse_reg->vars.morse_message[0], 0,"morse message to broadcast","morse_message", 0x14012004, 0x31198, U8_REGS_FLAG, 32, 3, 9 }//!<"morse message to broadcast" &ro
+,
+    { NULL, NULL, NULL, (u8*)&morse_reg->vars.morse_send[0], 0,"morse message to broadcast","morse_send", 0x14012005, 0x311a8, U8_REGS_FLAG, 32, 3, 9 }//!<"morse message to broadcast" &ro
+,
+    { NULL, NULL, NULL, (u8*)&morse_reg->vars.morse_line_1[0], 0,"morse messages received ","morse_line_1", 0x14012006, 0x311b8, U8_REGS_FLAG, 32, 3, 9 }//!<"morse messages received " &ro
+,
+    { NULL, NULL, NULL, (u8*)&morse_reg->vars.morse_line_2[0], 0,"morse messages received ","morse_line_2", 0x14012007, 0x311c8, U8_REGS_FLAG, 32, 3, 9 }//!<"morse messages received " &ro
+,
+    { NULL, NULL, NULL, (u8*)&morse_reg->vars.morse_line_3[0], 0,"morse messages received ","morse_line_3", 0x14012008, 0x311d8, U8_REGS_FLAG, 32, 3, 9 }//!<"morse messages received " &ro
+,
+    { NULL, NULL, NULL, (u8*)&morse_reg->vars.morse_line_4[0], 0,"morse messages received ","morse_line_4", 0x14012009, 0x311e8, U8_REGS_FLAG, 32, 3, 9 }//!<"morse messages received " &ro
+,
+    { NULL, NULL, NULL, (u8*)&morse_reg->vars.morse_line_5[0], 0,"morse messages received ","morse_line_5", 0x1401200a, 0x311f8, U8_REGS_FLAG, 32, 3, 9 }//!<"morse messages received " &ro
+,
+    { NULL, NULL, NULL, (u8*)&morse_reg->vars.morse_counter, 0,"morse messages sent and received counter","morse_counter", 0x1401200b, 0x31208, U32_REGS_FLAG, 1, 3, 9 }//!<"morse messages sent and received counter" &ro
+,
+    { &def_table_version, NULL, NULL, (u8*)&morse_reg->vars.table_version, 6,"table version, resets regs to defaults on mismatch","table_version", 0x1401200c, 0x3120a, U32_REGS_FLAG, 1, 7, 9 }//!< "table version, resets regs to defaults on mismatch" &ro &save &def
+,
+};
+const regs_description_list_t regs_table_morse_reg = {
+    .description = regs_description_morse_reg,
+    .num_of_regs = NUM_OF_MORSE_REG_VARS,
+    .table_version = &def_table_version,
+    .space_name = morse_reg_space_name,
+    .saved_regs_buffer = morse_reg_saved_buf,
+    .saved_regs_buffer_size = sizeof(morse_reg_saved_buf),
+};
+/*#generator_use_description {"user_task_regs":"end_struct"}*/
+
 #define MORSE_TASK_PERIOD (5u)
 
 #if MORSE
@@ -142,6 +187,8 @@ static void handle_next_letter(const struct morse_node * node);
 static int morse_init(){
    int result = 0;
    regs_global->vars.current_state[0] |= CS0_TASK_ACTIVE_MORSE;
+   int table_ind = link_functions.regs_description_list_add_new(regs_table_morse_reg);
+   link_functions.preinit_table_vars((u16)table_ind);
    morse_reseived.message[0] = &morse_reg->vars.morse_line_1[0];
    morse_reseived.message[1] = &morse_reg->vars.morse_line_2[0];
    morse_reseived.message[2] = &morse_reg->vars.morse_line_3[0];

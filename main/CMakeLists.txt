@@ -53,56 +53,42 @@ add_custom_target(regs_generator_target
 add_dependencies(__idf_main regs_generator_target)
 
 # ---- User task regs generator ----
-# Build --user-task-header arguments from the root CMakeLists.txt options.
-set(USER_GENERATOR_ARGS "")
-set(USER_TASK_HDR_PATHS "")
-if(USER_TASK_SCD41)
-    list(APPEND USER_GENERATOR_ARGS "--user-task-header" "scd41.h")
-    list(APPEND USER_TASK_HDR_PATHS "${project_dir}/user_tasks/scd41.h")
-endif()
-if(USER_TASK_PWM)
-    list(APPEND USER_GENERATOR_ARGS "--user-task-header" "pwm_test.h")
-    list(APPEND USER_TASK_HDR_PATHS "${project_dir}/user_tasks/pwm_test.h")
-endif()
-if(USER_TASK_DI)
-    list(APPEND USER_GENERATOR_ARGS "--user-task-header" "di_handle.h")
-    list(APPEND USER_TASK_HDR_PATHS "${project_dir}/user_tasks/di_handle.h")
-endif()
-if(USER_TASK_FEEDER)
-    list(APPEND USER_GENERATOR_ARGS "--user-task-header" "feeder.h")
-    list(APPEND USER_TASK_HDR_PATHS "${project_dir}/user_tasks/feeder.h")
-endif()
-if(USER_TASK_MORSE)
-    list(APPEND USER_GENERATOR_ARGS "--user-task-header" "morse.h")
-    list(APPEND USER_TASK_HDR_PATHS "${project_dir}/user_tasks/morse.h")
-endif()
-if(USER_TASK_POLISHER)
-    list(APPEND USER_GENERATOR_ARGS "--user-task-header" "polisher.h")
-    list(APPEND USER_TASK_HDR_PATHS "${project_dir}/user_tasks/polisher.h")
-endif()
-if(USER_TASK_STEP_MOTOR)
-    list(APPEND USER_GENERATOR_ARGS "--user-task-header" "step_motor.h")
-    list(APPEND USER_TASK_HDR_PATHS "${project_dir}/user_tasks/step_motor.h")
-endif()
-if(USER_TASK_TEST_INT)
-    list(APPEND USER_GENERATOR_ARGS "--user-task-header" "test_int.h")
-    list(APPEND USER_TASK_HDR_PATHS "${project_dir}/user_tasks/test_int.h")
-endif()
-if(USER_TASK_TOUCH)
-    list(APPEND USER_GENERATOR_ARGS "--user-task-header" "touch_handle.h")
-    list(APPEND USER_TASK_HDR_PATHS "${project_dir}/user_tasks/touch_handle.h")
-endif()
+# Generation is unconditional: every task header with a #generator_use_description
+# struct gets its regs_description_t table (and table_version) injected into its own
+# .c file, regardless of whether that task is enabled below. Enabling/disabling a task
+# only controls whether user_tasks/CMakeLists.txt compiles that .c file - the generator
+# itself never checks the USER_TASK_* options.
+set(USER_TASK_HDR_PATHS
+    ${project_dir}/user_tasks/scd41.h
+    ${project_dir}/user_tasks/pwm_test.h
+    ${project_dir}/user_tasks/di_handle.h
+    ${project_dir}/user_tasks/feeder.h
+    ${project_dir}/user_tasks/morse.h
+    ${project_dir}/user_tasks/polisher.h
+    ${project_dir}/user_tasks/test_int.h
+    ${project_dir}/user_tasks/touch_handle.h
+)
+set(USER_TASK_C_PATHS
+    ${project_dir}/user_tasks/scd41.c
+    ${project_dir}/user_tasks/pwm_test.c
+    ${project_dir}/user_tasks/di_handle.c
+    ${project_dir}/user_tasks/feeder.c
+    ${project_dir}/user_tasks/morse.c
+    ${project_dir}/user_tasks/polisher.c
+    ${project_dir}/user_tasks/test_int.c
+    ${project_dir}/user_tasks/touch_handle.c
+)
 
 add_custom_command(
-    OUTPUT ${project_dir}/user_tasks/regs_description_user.c
-    COMMAND python regs_generator.py --user-tasks-only ${USER_GENERATOR_ARGS}
+    OUTPUT ${USER_TASK_C_PATHS}
+    COMMAND python regs_generator.py --user-tasks-only
     WORKING_DIRECTORY ${project_dir}/generator/
     DEPENDS ${USER_TASK_HDR_PATHS}
             ${project_dir}/generator/regs_generator.py
             ${project_dir}/generator/regs_handl.py
-    COMMENT "Generating regs_description_user.c for user tasks..."
+    COMMENT "Injecting regs_description tables into all user task sources..."
 )
 add_custom_target(user_regs_generator_target
-    DEPENDS ${project_dir}/user_tasks/regs_description_user.c
+    DEPENDS ${USER_TASK_C_PATHS}
 )
 add_dependencies(__idf_main user_regs_generator_target)

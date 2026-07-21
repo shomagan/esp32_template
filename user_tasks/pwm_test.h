@@ -75,6 +75,8 @@ typedef union{
         float servo_1;                   //!<"servo pwm value [0;100]" &def &min &max
         float servo_2;                   //!<"servo pwm value [0;100]" &def &min &max
         float servo_3;                   //!<"servo pwm value [0;100]" &def &min &max
+        float test_pwm_value;            //!<"test pwm value [0;100]" &def &min &max &save
+        u32 table_version;         //!< "table version, resets regs to defaults on mismatch" &ro &save &def
     }vars;
     u8 bytes[32]; //for full bksram copy
 }servo_control_part_t;// #generator_use_description {"message":"end_struct"}

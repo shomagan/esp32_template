@@ -49,6 +49,40 @@ typedef struct {
 task_handle_t feeder_handle_id = NULL;
 static const char *TAG = "feeder";
 
+/* Default values for feeder_interval/feeder_time_sec */
+const u16 def_feeder_interval        = 60u;   /* minutes */
+const u16 def_min_feeder_interval    = 1u;    /* minutes */
+const float def_feeder_time_sec      = 2.0f;  /* seconds */
+const float def_min_feeder_time_sec  = 0.1f;  /* seconds */
+const float def_max_feeder_time_sec  = 60.0f; /* seconds */
+
+/*#generator_use_description {"user_task_regs":"start_struct"}*/
+static feeder_reg_t feeder_reg_storage = {{0}};
+feeder_reg_t * const feeder_reg = &feeder_reg_storage;
+#define NUM_OF_FEEDER_REG_VARS 5
+static u8 feeder_reg_saved_buf[18];
+static const char feeder_reg_space_name[] = "feeder_reg_t";
+static regs_description_t const regs_description_feeder_reg[NUM_OF_FEEDER_REG_VARS] = {
+    { NULL, NULL, NULL, (u8*)&feeder_reg->vars.feeder_counter, 0,"how many time step motor started","feeder_counter", 0x1400c000, 0x31068, U32_REGS_FLAG, 1, 7, 6 }//!<"how many time step motor started" &save &ro
+,
+    { &def_feeder_interval, &def_min_feeder_interval, NULL, (u8*)&feeder_reg->vars.feeder_interval, 4,"minutes between a feeds","feeder_interval", 0x1400c001, 0x3106a, U16_REGS_FLAG, 1, 69, 6 }//!< "minutes between a feeds" &save &def &min
+,
+    { NULL, NULL, NULL, (u8*)&feeder_reg->vars.feeder_reserv0, 0,"reserved","feeder_reserv0", 0x1400c002, 0x3106b, U16_REGS_FLAG, 1, 1, 6 }//!< "reserved"
+,
+    { &def_feeder_time_sec, &def_min_feeder_time_sec, &def_max_feeder_time_sec, (u8*)&feeder_reg->vars.feeder_time_sec, 6,"turn time is seconds","feeder_time_sec", 0x1400c003, 0x3106c, FLOAT_REGS_FLAG, 1, 197, 6 }//!< "turn time is seconds" &save &def &min &max
+,
+    { &def_table_version, NULL, NULL, (u8*)&feeder_reg->vars.table_version, 10,"table version, resets regs to defaults on mismatch","table_version", 0x1400c004, 0x3106e, U32_REGS_FLAG, 1, 7, 6 }//!< "table version, resets regs to defaults on mismatch" &ro &save &def
+,
+};
+const regs_description_list_t regs_table_feeder_reg = {
+    .description = regs_description_feeder_reg,
+    .num_of_regs = NUM_OF_FEEDER_REG_VARS,
+    .table_version = &def_table_version,
+    .space_name = feeder_reg_space_name,
+    .saved_regs_buffer = feeder_reg_saved_buf,
+    .saved_regs_buffer_size = sizeof(feeder_reg_saved_buf),
+};
+/*#generator_use_description {"user_task_regs":"end_struct"}*/
 
 #if FEEDER
 static int feeder_init(rmt_step_motor_t * rmt_step_motor);
@@ -69,6 +103,8 @@ static esp_err_t rmt_step_motor_step(rmt_step_motor_t *rmt_handle, uint32_t n, u
 static int feeder_init(rmt_step_motor_t * rmt_step_motor){
    int result = 0;
    regs_global->vars.current_state[0] |= CS0_TASK_ACTIVE_FEEDER;
+   int table_ind = link_functions.regs_description_list_add_new(regs_table_feeder_reg);
+   link_functions.preinit_table_vars((u16)table_ind);
    gpio_config_t io_conf = {};
    io_conf.intr_type = GPIO_INTR_DISABLE;
    io_conf.mode = GPIO_MODE_OUTPUT;

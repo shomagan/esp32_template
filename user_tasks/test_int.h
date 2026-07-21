@@ -41,6 +41,7 @@ typedef union{
         u32 test_int_component;         //!<"component to be tested"
         u32 test_int_type;         //!<"test type - check, stress, performance"
         u32 test_int_result;         //!<"overall result" &ro
+        u32 table_version;         //!< "table version, resets regs to defaults on mismatch" &ro &save &def
     }vars;
     u32 bytes[4]; //for full bksram copy
 }test_int_reg_t;// #generator_use_description {"message":"end_struct"}

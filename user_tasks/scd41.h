@@ -38,6 +38,7 @@ typedef union {
         u16 scd41_measur_interval;   //!< "minutes between a measurement" &save &def &min &max
         u16 scd41_index_in_array;   //!< "Index in array" &ro &save
         u16 scd41_co2_array[SCD41_ARRAY_SIZE];         //!< "CO2 level in ppm" &ro &save
+        u32 table_version;         //!< "table version, resets regs to defaults on mismatch" &ro &save &def
     } vars;
     u32 bytes[32]; // for full bksram copy
 } scd41_reg_t; // #generator_use_description {"message":"end_struct"}

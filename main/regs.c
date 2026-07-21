@@ -61,6 +61,7 @@ static int regs_hadle_sets(regs_access_t reg, regs_template_t * regs_template);
 static void execute_main_command(u16 command);
 const char * const global_space_name = "GLOBAL_SPACE";
 u8 global_vars_mirror[INTERNAL_FLASH_MIRROR_ITEM_SIZE];
+extern const u32 def_table_version;
 
 const regs_description_list_t regs_table_global = {
     .description = regs_description_global,
@@ -85,7 +86,7 @@ int regs_init() {
       if ((is_ascii_symbol_or_digital((u8 *)&regs_global->vars.wifi_name, wifi_name_len) <= 0) ||
          (is_ascii_symbol_or_digital((u8 *)&regs_global->vars.wifi_password, wifi_password_len) <= 0) ||
          (strlen((char *)&regs_global->vars.wifi_router_name) == 0) ||
-         (strlen((char *)&regs_global->vars.wifi_router_password) == 0) || (regs_global->vars.table_version != def_table_version)) {
+         (strlen((char *)&regs_global->vars.wifi_router_password) == 0) || (regs_global->vars.table_version != *regs_table_global.table_version)) {
          main_printf(TAG, "regs init by default, wifi_name or wifi_password is not valid");
          set_regs_def_values(index);
          mirror_access_init_buffer(index);

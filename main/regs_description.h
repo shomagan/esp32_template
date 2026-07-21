@@ -23,7 +23,6 @@
 #define  MAX_ARRAY_SIZE 256
 #define  MAX_DESCRIPTIONS_REGS  2048
 #define NUM_OF_MAIN_VARS 61
-extern const u32 def_table_version;
 
 enum property{
     SELF      = 1<<0,
@@ -109,6 +108,7 @@ extern regs_description_t const regs_description_global[];
 extern const u16 def_table_id;
 int regs_description_list_add_new(regs_description_list_t regs_table);
 u8 * regs_description_list_get_buffer(u16 ind);
+u32 regs_description_list_get_table_version(u16 table_ind);
 size_t regs_description_list_get_saved_buffer_size(u16 ind);
 const char * regs_description_list_get_space_name(u16 table_ind);
 u32 regs_description_list_get_num_of_regs(u16 table_ind);

@@ -36,6 +36,7 @@ typedef union{
     struct MCU_PACK{
         // start regs struct
         u32 pin_state;                 //!<"current states of digital inputs"
+        u32 table_version;         //!< "table version, resets regs to defaults on mismatch" &ro &save &def
     }vars;
     u8 bytes[4]; //for full bksram copy
 }di_control_t;// #generator_use_description {"message":"end_struct"}

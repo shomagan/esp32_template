@@ -4,7 +4,7 @@ idf_build_get_property(project_dir PROJECT_DIR)
 # This file reads those options to control which sources are compiled.
 
 # Build source and define lists from selected options
-set(USER_TASK_SRCS   "regs_description_user.c" "user_tasks_init.c")
+set(USER_TASK_SRCS   "user_tasks_init.c")
 set(USER_TASK_DEFS   "")
 
 if(USER_TASK_SCD41)

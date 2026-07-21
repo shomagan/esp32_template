@@ -16,7 +16,7 @@
 #include "esp_log.h"
 #include "esp_check.h"
 #include "soc/rtc.h"
-#include "driver/rmt_tx.h"/*use rmt as step controller*/
+#include "driver/rmt_tx.h" /*use rmt as step controller*/
 #include "driver/rmt_encoder.h"
 #include "driver/rmt_types.h"
 #include <limits.h>
@@ -33,10 +33,39 @@
 
 task_handle_t polisher_handle_id = NULL;
 static const char *TAG = "polisher";
+
+/*#generator_use_description {"user_task_regs":"start_struct"}*/
+static polisher_reg_t polisher_reg_storage = {{0}};
+polisher_reg_t * const polisher_reg = &polisher_reg_storage;
+#define NUM_OF_POLISHER_REG_VARS 5
+static u8 polisher_reg_saved_buf[16];
+static const char polisher_reg_space_name[] = "polisher_reg_t";
+static regs_description_t const regs_description_polisher_reg[NUM_OF_POLISHER_REG_VARS] = {
+    { NULL, NULL, NULL, (u8*)&polisher_reg->vars.polisher_sec, 0,"how many time in seconds it was active","polisher_sec", 0x1400e000, 0x310cc, U32_REGS_FLAG, 1, 7, 7 }//!<"how many time in seconds it was active" &save &ro
+,
+    { NULL, NULL, NULL, (u8*)&polisher_reg->vars.polisher_last_sec, 0,"how many time in seconds it was active last session","polisher_last_sec", 0x1400e001, 0x310ce, U32_REGS_FLAG, 1, 3, 7 }//!<"how many time in seconds it was active last session" &ro
+,
+    { &def_polisher_speed, NULL, &def_max_polisher_speed, (u8*)&polisher_reg->vars.polisher_speed, 4,"polisher_speed","polisher_speed", 0x1400e002, 0x310d0, U16_REGS_FLAG, 1, 133, 7 }//!< "polisher_speed" &save &def &max
+,
+    { &def_polisher_direction, NULL, &def_max_polisher_direction, (u8*)&polisher_reg->vars.polisher_direction, 6,"polisher_direction","polisher_direction", 0x1400e003, 0x310d1, U16_REGS_FLAG, 1, 133, 7 }//!< "polisher_direction" &save &def &max
+,
+    { &def_table_version, NULL, NULL, (u8*)&polisher_reg->vars.table_version, 8,"table version, resets regs to defaults on mismatch","table_version", 0x1400e004, 0x310d2, U32_REGS_FLAG, 1, 7, 7 }//!< "table version, resets regs to defaults on mismatch" &ro &save &def
+,
+};
+const regs_description_list_t regs_table_polisher_reg = {
+    .description = regs_description_polisher_reg,
+    .num_of_regs = NUM_OF_POLISHER_REG_VARS,
+    .table_version = &def_table_version,
+    .space_name = polisher_reg_space_name,
+    .saved_regs_buffer = polisher_reg_saved_buf,
+    .saved_regs_buffer_size = sizeof(polisher_reg_saved_buf),
+};
+/*#generator_use_description {"user_task_regs":"end_struct"}*/
+
 typedef enum {
-    STOPPED = 0,
-    UNLIMITED_LOOP,
-    LIMITED_LOOP,
+   STOPPED = 0,
+   UNLIMITED_LOOP,
+   LIMITED_LOOP,
 } rmt_step_motor_running_status;
 
 typedef struct {
@@ -50,46 +79,45 @@ typedef struct {
 
 
 #if POLISHER
-static int polisher_init(rmt_step_motor_t * rmt_step_motor);
-static int polisher_deinit(rmt_step_motor_t * rmt_step_motor);
+static int polisher_init(rmt_step_motor_t *rmt_step_motor);
+static int polisher_deinit(rmt_step_motor_t *rmt_step_motor);
 static uint16_t helper_speed_to_duration(uint16_t speed);
 static esp_err_t helper_fill_rmt_items(rmt_symbol_word_t *items, uint32_t speed);
-static esp_err_t step_motor_create_rmt(rmt_step_motor_t * rmt_step_motor);
-static esp_err_t step_motor_delete_rmt(rmt_step_motor_t * rmt_step_motor);
+static esp_err_t step_motor_create_rmt(rmt_step_motor_t *rmt_step_motor);
+static esp_err_t step_motor_delete_rmt(rmt_step_motor_t *rmt_step_motor);
 static esp_err_t rmt_step_motor_step_impl(rmt_step_motor_t *rmt_handle, uint32_t n, uint32_t speed);
 static esp_err_t rmt_step_motor_step(rmt_step_motor_t *rmt_handle, uint32_t n, uint32_t speed);
 
 
-static int polisher_init(rmt_step_motor_t * rmt_step_motor){
+static int polisher_init(rmt_step_motor_t *rmt_step_motor) {
    int result = 0;
    regs_global->vars.current_state[0] |= CS0_TASK_ACTIVE_POLISHER;
+   int table_ind = link_functions.regs_description_list_add_new(regs_table_polisher_reg);
+   link_functions.preinit_table_vars((u16)table_ind);
    gpio_config_t io_conf = {};
    io_conf.intr_type = GPIO_INTR_DISABLE;
    io_conf.mode = GPIO_MODE_OUTPUT;
-   io_conf.pin_bit_mask = (1ull<<GPIO_OUTPUT_STEP_MOTOR_EN)|
-                        (1ull<<GPIO_OUTPUT_STEP_MOTOR_DIR0)|
-                        /*(1ull<<GPIO_OUTPUT_STEP_MOTOR_STEP0)|*/
-                        (1ull<<GPIO_OUTPUT_STEP_MOTOR_SLEEP);
-                        /*(1ull<<GPIO_OUTPUT_STEP_MOTOR_STEP1);*/
+   io_conf.pin_bit_mask = (1ull << GPIO_OUTPUT_STEP_MOTOR_EN) | (1ull << GPIO_OUTPUT_STEP_MOTOR_DIR0) |
+                          /*(1ull<<GPIO_OUTPUT_STEP_MOTOR_STEP0)|*/
+                          (1ull << GPIO_OUTPUT_STEP_MOTOR_SLEEP);
+   /*(1ull<<GPIO_OUTPUT_STEP_MOTOR_STEP1);*/
    io_conf.pull_down_en = 0;
    io_conf.pull_up_en = 0;
    gpio_config(&io_conf);
-   gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1);/*not active*/
+   gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1); /*not active*/
    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_DIR0, 0);
    gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 0);
    ESP_ERROR_CHECK(step_motor_create_rmt(rmt_step_motor));
    return result;
 }
-static int polisher_deinit(rmt_step_motor_t * rmt_step_motor){
+static int polisher_deinit(rmt_step_motor_t *rmt_step_motor) {
    int result = 0;
-   gpio_config_t io_conf = {0};
-   gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1);/*not active*/
+   gpio_config_t io_conf = { 0 };
+   gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1); /*not active*/
    io_conf.intr_type = GPIO_INTR_DISABLE;
    io_conf.mode = GPIO_MODE_DISABLE;
-   io_conf.pin_bit_mask = (1ull<<GPIO_OUTPUT_STEP_MOTOR_EN)|
-                        (1ull<<GPIO_OUTPUT_STEP_MOTOR_DIR0)|
-                        (1ull<<GPIO_OUTPUT_STEP_MOTOR_STEP0)|
-                        (1ull<<GPIO_OUTPUT_STEP_MOTOR_SLEEP);
+   io_conf.pin_bit_mask = (1ull << GPIO_OUTPUT_STEP_MOTOR_EN) | (1ull << GPIO_OUTPUT_STEP_MOTOR_DIR0) |
+                          (1ull << GPIO_OUTPUT_STEP_MOTOR_STEP0) | (1ull << GPIO_OUTPUT_STEP_MOTOR_SLEEP);
    io_conf.pull_down_en = 0;
    io_conf.pull_up_en = 0;
    gpio_config(&io_conf);
@@ -97,51 +125,50 @@ static int polisher_deinit(rmt_step_motor_t * rmt_step_motor){
    regs_global->vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_POLISHER);
    return result;
 }
-void polisher_task(void *arg){
+void polisher_task(void *arg) {
    (void)arg;
    uint32_t signal_value;
-   rmt_step_motor_t rmt_step_motor = {0};
+   rmt_step_motor_t rmt_step_motor = { 0 };
    polisher_init(&rmt_step_motor);
    u64 task_counter = 0u;
-   u16 polisher_speed;        //!< "speed"
-   u16 polisher_direction;    //!< "reserved"
-   while(1){
-      if(link_functions.os_thread_signal_wait(STOP_CHILD_PROCCES, &signal_value, POLISHER_TASK_PERIOD)==pdTRUE){
+   u16 polisher_speed; //!< "speed"
+   u16 polisher_direction; //!< "reserved"
+   while (1) {
+      if (link_functions.os_thread_signal_wait(STOP_CHILD_PROCCES, &signal_value, POLISHER_TASK_PERIOD) == pdTRUE) {
          /*by signal*/
-         if (signal_value & STOP_CHILD_PROCCES){
+         if (signal_value & STOP_CHILD_PROCCES) {
             polisher_deinit(&rmt_step_motor);
             link_functions.os_thread_terminate(link_functions.os_thread_get_id());
          }
       }
-      regs_copy_safe(&polisher_speed,&polisher_reg->vars.polisher_speed,sizeof(polisher_speed));
-      regs_copy_safe(&polisher_direction,&polisher_reg->vars.polisher_direction,sizeof(polisher_direction));
+      regs_copy_safe(&polisher_speed, &polisher_reg->vars.polisher_speed, sizeof(polisher_speed));
+      regs_copy_safe(&polisher_direction, &polisher_reg->vars.polisher_direction, sizeof(polisher_direction));
       esp_err_t step_result;
-      if (polisher_speed){
-         if (polisher_direction){
+      if (polisher_speed) {
+         if (polisher_direction) {
             gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_DIR0, TRUE);
-         }else{
+         } else {
             gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_DIR0, FALSE);
          }
-         gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 0);    /*active*/
+         gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 0); /*active*/
          gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 1); /*active*/
          link_functions.os_thread_delay(1);
          step_result = rmt_step_motor_step(&rmt_step_motor, UINT32_MAX, polisher_speed);
          polisher_reg->vars.polisher_sec += 1;
          polisher_reg->vars.polisher_last_sec += 1;
-      }else{
-         gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1);    /*not active*/
+      } else {
+         gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_EN, 1); /*not active*/
          gpio_set_level(GPIO_OUTPUT_STEP_MOTOR_SLEEP, 0); /*not active*/
          step_result = rmt_step_motor_step(&rmt_step_motor, 0, polisher_speed);
       }
-      if (step_result != ESP_OK){
-         link_functions.os_log_error(TAG,"rmt_step_motor_step problem");
+      if (step_result != ESP_OK) {
+         link_functions.os_log_error(TAG, "rmt_step_motor_step problem");
       }
       task_counter++;
    }
 }
 // assume n != 0 and speed is within considerable range
-static esp_err_t rmt_step_motor_step_impl(rmt_step_motor_t *rmt_handle, uint32_t n, uint32_t speed)
-{
+static esp_err_t rmt_step_motor_step_impl(rmt_step_motor_t *rmt_handle, uint32_t n, uint32_t speed) {
    if (rmt_handle == NULL) {
       return ESP_ERR_INVALID_ARG;
    }
@@ -157,25 +184,21 @@ static esp_err_t rmt_step_motor_step_impl(rmt_step_motor_t *rmt_handle, uint32_t
    rmt_transmit_config_t tx_cfg = {
       .loop_count = (int)n,
    };
-   ESP_RETURN_ON_ERROR(rmt_transmit(rmt_handle->tx_chan,
-                                    rmt_handle->copy_encoder,
-                                    &rmt_handle->rmt_items_loop,
-                                    sizeof(rmt_handle->rmt_items_loop),
-                                    &tx_cfg), TAG, "failed to transmit finite step loop");
+   ESP_RETURN_ON_ERROR(rmt_transmit(rmt_handle->tx_chan, rmt_handle->copy_encoder, &rmt_handle->rmt_items_loop,
+                                    sizeof(rmt_handle->rmt_items_loop), &tx_cfg),
+                       TAG, "failed to transmit finite step loop");
    ESP_RETURN_ON_ERROR(rmt_tx_wait_all_done(rmt_handle->tx_chan, -1), TAG, "failed while waiting finite step loop");
 
    rmt_handle->status = STOPPED;
    return ESP_OK;
 }
-static esp_err_t rmt_step_motor_step(rmt_step_motor_t *rmt_handle, uint32_t n, uint32_t speed)
-{
+static esp_err_t rmt_step_motor_step(rmt_step_motor_t *rmt_handle, uint32_t n, uint32_t speed) {
    esp_err_t result = ESP_FAIL;
    if (rmt_handle == NULL) {
       return ESP_ERR_INVALID_ARG;
    }
 
-   if (n == UINT32_MAX)
-   { // forever loop, non-blocking
+   if (n == UINT32_MAX) { // forever loop, non-blocking
       if (helper_speed_to_duration(speed) <= 1) {
          return ESP_ERR_INVALID_ARG;
       }
@@ -186,18 +209,14 @@ static esp_err_t rmt_step_motor_step(rmt_step_motor_t *rmt_handle, uint32_t n, u
          rmt_transmit_config_t tx_cfg = {
             .loop_count = -1,
          };
-         ESP_RETURN_ON_ERROR(rmt_transmit(rmt_handle->tx_chan,
-                                          rmt_handle->copy_encoder,
-                                          &rmt_handle->rmt_items_loop,
-                                          sizeof(rmt_handle->rmt_items_loop),
-                                          &tx_cfg), TAG, "failed to start infinite loop transmission");
+         ESP_RETURN_ON_ERROR(rmt_transmit(rmt_handle->tx_chan, rmt_handle->copy_encoder, &rmt_handle->rmt_items_loop,
+                                          sizeof(rmt_handle->rmt_items_loop), &tx_cfg),
+                             TAG, "failed to start infinite loop transmission");
          rmt_handle->status = UNLIMITED_LOOP;
          rmt_handle->current_speed = speed;
       }
       result = ESP_OK;
-   }
-   else if (n == 0)
-   { // break the forever loop
+   } else if (n == 0) { // break the forever loop
       if (rmt_handle->status == UNLIMITED_LOOP) {
          ESP_RETURN_ON_ERROR(rmt_disable(rmt_handle->tx_chan), TAG, "failed to disable channel");
          ESP_RETURN_ON_ERROR(rmt_enable(rmt_handle->tx_chan), TAG, "failed to re-enable channel after stop");
@@ -205,29 +224,25 @@ static esp_err_t rmt_step_motor_step(rmt_step_motor_t *rmt_handle, uint32_t n, u
       rmt_handle->status = STOPPED;
       rmt_handle->current_speed = 0;
       result = ESP_OK;
-   }
-   else
-   { // normally move n steps
+   } else { // normally move n steps
       if (rmt_handle->status == UNLIMITED_LOOP) {
          ESP_RETURN_ON_ERROR(rmt_disable(rmt_handle->tx_chan), TAG, "failed to disable channel before finite move");
          ESP_RETURN_ON_ERROR(rmt_enable(rmt_handle->tx_chan), TAG, "failed to re-enable channel before finite move");
          rmt_handle->status = STOPPED;
          rmt_handle->current_speed = 0;
       }
-      if (helper_speed_to_duration(speed) > 1){
-         result =  rmt_step_motor_step_impl(rmt_handle, n, speed);
+      if (helper_speed_to_duration(speed) > 1) {
+         result = rmt_step_motor_step_impl(rmt_handle, n, speed);
       }
    }
    return result;
 }
 
-static uint16_t helper_speed_to_duration(uint16_t speed)
-{
+static uint16_t helper_speed_to_duration(uint16_t speed) {
    return (uint16_t)round(1.0 * 1000 * 1000 / speed);
 }
 
-static esp_err_t helper_fill_rmt_items(rmt_symbol_word_t *items, uint32_t speed)
-{
+static esp_err_t helper_fill_rmt_items(rmt_symbol_word_t *items, uint32_t speed) {
    items->duration1 = 100;
    items->level1 = 1;
    items->level0 = 0;
@@ -235,16 +250,14 @@ static esp_err_t helper_fill_rmt_items(rmt_symbol_word_t *items, uint32_t speed)
    if (delay_period <= 100) {
       link_functions.os_log_info(TAG, "maximum rate reached, driver will generate another possible highest rate instead");
       items->duration0 = 100;
-   }   else   {
+   } else {
       items->duration0 = delay_period;
    }
    return ESP_OK;
 }
 /*all args preallocated*/
-static esp_err_t step_motor_create_rmt(rmt_step_motor_t * rmt_step_motor)
-{
-   if (rmt_step_motor == NULL)
-   {
+static esp_err_t step_motor_create_rmt(rmt_step_motor_t *rmt_step_motor) {
+   if (rmt_step_motor == NULL) {
       return ESP_ERR_INVALID_ARG;
    }
    rmt_step_motor->tx_chan = NULL;
@@ -278,8 +291,7 @@ static esp_err_t step_motor_create_rmt(rmt_step_motor_t * rmt_step_motor)
 
    return ESP_OK;
 }
-static esp_err_t step_motor_delete_rmt(rmt_step_motor_t * rmt_step_motor)
-{
+static esp_err_t step_motor_delete_rmt(rmt_step_motor_t *rmt_step_motor) {
    if (rmt_step_motor == NULL) {
       return ESP_ERR_INVALID_ARG;
    }

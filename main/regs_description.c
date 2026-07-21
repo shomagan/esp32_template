@@ -145,6 +145,13 @@ regs_description_t * regs_description_list_get_description(u16 table_ind){
    }
    return result;
 }
+u32 regs_description_list_get_table_version(u16 table_ind){
+   u32 result = 0;
+   if ((table_ind < num_of_list_descriptions) && (regs_description_list[table_ind].table_version != NULL)){
+      result = *regs_description_list[table_ind].table_version;
+   }
+   return result;
+}
 
 const char *regs_description_list_get_space_name(u16 table_ind){
    const char * result = NULL;

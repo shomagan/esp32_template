@@ -187,7 +187,7 @@ typedef struct {
 #define FW_VERSION_SIZE 4
 #define FW_VERSION {0,11,0,0}
 #define FW_VERSION_STR "0.11.0-beta.0"
-#define FW_FIRMWARE_HASH "85-1f7e939ac4b8e6f140b7bdfc8f198c"
+#define FW_FIRMWARE_HASH "86-f2dff349265887bb6e1eaf82933394"
 #define FW_HASH 0x00000000
 #define REGS_MAX_NAME_SIZE 32
 #define DEVICE_NAME_SIZE 40

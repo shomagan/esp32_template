@@ -48,6 +48,7 @@ typedef union{
         u8 morse_line_4[32];         //!<"morse messages received " &ro
         u8 morse_line_5[32];         //!<"morse messages received " &ro
         u32 morse_counter;         //!<"morse messages sent and received counter" &ro
+        u32 table_version;         //!< "table version, resets regs to defaults on mismatch" &ro &save &def
     }vars;
     u32 bytes[256]; //for full bksram copy
 }morse_reg_t;// #generator_use_description {"message":"end_struct"}
