@@ -43,6 +43,10 @@ if(USER_TASK_TOUCH)
     list(APPEND USER_TASK_SRCS "touch_handle.c")
     list(APPEND USER_TASK_DEFS "TOUCH_HANDLE_ENABLE=1")
 endif()
+if(USER_TASK_LED_STRIP)
+    list(APPEND USER_TASK_SRCS "led_strip.c")
+    list(APPEND USER_TASK_DEFS "LED_STRIP=1")
+endif()
 
 idf_component_register(
     SRCS ${USER_TASK_SRCS}

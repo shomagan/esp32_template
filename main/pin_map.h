@@ -119,6 +119,8 @@ GP21  tx     d6    ───┤       ├───d7  rx   GP20
 #define GPIO_OUTPUT_STEP_MOTOR_STEP1     6
 #define GPIO_PWM_TEST_OUT     21 /*d6*/
 #define EXT_WAKEUP_PIN 3
+#define GPIO_LED_STRIP_DATA   10
+#define GPIO_LED_STRIP_CLOCK  8
 #define NOKIA_PIN_BL 6u
 #define NOKIA_PIN_SDA 10u
 #define NOKIA_PIN_SCK 8u

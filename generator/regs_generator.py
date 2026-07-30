@@ -10,6 +10,7 @@ import base_object
 from git import Repo
 import hashlib
 import json
+import subprocess
 try:
     import msvcrt
     PLATFORM = "win"
@@ -212,13 +213,11 @@ def main():
 
     # ---- Full generation mode ----
     print("module type - {}".format(args.type))
-    regs_h_had_changed = 1
     with open(REGS_H_PATH, "rb") as f:
         sha_file_path = "../regs_sha256.txt"
         bytes_read = f.read()         # read entire file as bytes
         readable_hash = hashlib.sha256(bytes_read).hexdigest()
         if not os.path.exists(sha_file_path):
-            regs_h_had_changed = 1
             sha_file = open(sha_file_path, 'w')
             sha_file.write(str(readable_hash))
             sha_file.close()
@@ -227,19 +226,14 @@ def main():
             sha = sha_file.read()
             sha_file.close()
             if sha != str(readable_hash):
-                regs_h_had_changed = 1
                 sha_file = open(sha_file_path, 'w')
                 sha_file.write(str(readable_hash))
                 sha_file.close()
-            else:
-                regs_h_had_changed = 1
     version_file_path = "../version_from_git.txt"
     current_path = os.path.dirname(os.path.abspath(__file__))
     git_path = (current_path + "/../")
     version_from_git = get_git_version(git_path)
-
     if not os.path.exists(version_file_path):
-        regs_h_had_changed = 1
         version_file = open(version_file_path, 'w')
         version_file.write(version_from_git)
         version_file.close()
@@ -250,22 +244,17 @@ def main():
         version_file.close()
         if version_from_file != version_from_git:
             print("file version_from_git.txt was changed")
-            regs_h_had_changed = 1
             version_file = open(version_file_path, 'w')
             version_file.write(version_from_git)
             version_file.close()
-    if regs_h_had_changed:
-        print("regs.h file was changed")
-        generate(args.type, skip_user_tasks=args.no_user_tasks)
-    else:
-        fs_save_file = open('../main/http/fs.c', 'a')
-        fs_save_file.write(' ')
+    #let's go
+    generate(args.type, skip_user_tasks=args.no_user_tasks)
     print('start makefsdata')
     os.chdir("../main/http/")
     if PLATFORM == "win":
-        os.system("makefsdata.exe")
+        subprocess.Popen(["makefsdata.exe"], shell=True).wait()
     else:
-        os.system("./makefsdata_l")
+        subprocess.Popen(["./makefsdata_l"], shell=True).wait()
     os.chdir("../../generator/")
 
 

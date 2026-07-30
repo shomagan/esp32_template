@@ -40,6 +40,9 @@
 #if PWM_CONTROL_ENABLE
 #include "pwm_test.h"
 #endif
+#if LED_STRIP
+#include "led_strip.h"
+#endif
 
 static const char *TAG = "user_tasks_init";
 
@@ -121,6 +124,13 @@ void user_tasks_start(void *wakeup_cause) {
    if (res != pdTRUE) {
       link_functions.os_log_info(TAG, "pwm_control_task init failed");
    }
+#endif
+
+#if LED_STRIP
+    res = link_functions.os_thread_create(led_strip_task, "led_strip_task", 2464, NULL, (tskIDLE_PRIORITY + 2), &led_strip_handle_id);
+    if (res != pdTRUE) {
+        link_functions.os_log_info(TAG, "create led_strip_task failed");
+    }
 #endif
 }
 

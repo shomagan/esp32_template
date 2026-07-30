@@ -67,6 +67,7 @@ set(USER_TASK_HDR_PATHS
     ${project_dir}/user_tasks/polisher.h
     ${project_dir}/user_tasks/test_int.h
     ${project_dir}/user_tasks/touch_handle.h
+    ${project_dir}/user_tasks/led_strip.h
 )
 set(USER_TASK_C_PATHS
     ${project_dir}/user_tasks/scd41.c
@@ -77,6 +78,7 @@ set(USER_TASK_C_PATHS
     ${project_dir}/user_tasks/polisher.c
     ${project_dir}/user_tasks/test_int.c
     ${project_dir}/user_tasks/touch_handle.c
+    ${project_dir}/user_tasks/led_strip.c
 )
 
 add_custom_command(
