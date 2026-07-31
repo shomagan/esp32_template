@@ -127,7 +127,7 @@ void user_tasks_start(void *wakeup_cause) {
 #endif
 
 #if LED_STRIP
-    res = link_functions.os_thread_create(led_strip_task, "led_strip_task", 2464, NULL, (tskIDLE_PRIORITY + 2), &led_strip_handle_id);
+    res = link_functions.os_thread_create(led_strip_task, "led_strip_task", 2464, NULL, (tskIDLE_PRIORITY + 3), &led_strip_handle_id);
     if (res != pdTRUE) {
         link_functions.os_log_info(TAG, "create led_strip_task failed");
     }

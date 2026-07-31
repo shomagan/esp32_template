@@ -90,18 +90,12 @@ servo_control_part_t * const servo_control_part = &servo_control_part_storage;
 static u8 servo_control_part_saved_buf[12];
 static const char servo_control_part_space_name[] = "servo_control_p";
 static regs_description_t const regs_description_servo_control_part[NUM_OF_SERVO_CONTROL_PART_VARS] = {
-    { &def_servo_0, &def_min_servo_0, &def_max_servo_0, (u8*)&servo_control_part->vars.servo_0, 0,"servo pwm value [0;100]","servo_0", 0x14004000, 0x307d0, FLOAT_REGS_FLAG, 1, 193, 2 }//!<"servo pwm value [0;100]" &def &min &max
-,
-    { &def_servo_1, &def_min_servo_1, &def_max_servo_1, (u8*)&servo_control_part->vars.servo_1, 0,"servo pwm value [0;100]","servo_1", 0x14004001, 0x307d2, FLOAT_REGS_FLAG, 1, 193, 2 }//!<"servo pwm value [0;100]" &def &min &max
-,
-    { &def_servo_2, &def_min_servo_2, &def_max_servo_2, (u8*)&servo_control_part->vars.servo_2, 0,"servo pwm value [0;100]","servo_2", 0x14004002, 0x307d4, FLOAT_REGS_FLAG, 1, 193, 2 }//!<"servo pwm value [0;100]" &def &min &max
-,
-    { &def_servo_3, &def_min_servo_3, &def_max_servo_3, (u8*)&servo_control_part->vars.servo_3, 0,"servo pwm value [0;100]","servo_3", 0x14004003, 0x307d6, FLOAT_REGS_FLAG, 1, 193, 2 }//!<"servo pwm value [0;100]" &def &min &max
-,
-    { &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&servo_control_part->vars.test_pwm_value, 0,"test pwm value [0;100]","test_pwm_value", 0x14004004, 0x307d8, FLOAT_REGS_FLAG, 1, 197, 2 }//!<"test pwm value [0;100]" &def &min &max &save
-,
-    { &def_table_version, NULL, NULL, (u8*)&servo_control_part->vars.table_version, 4,"table version, resets regs to defaults on mismatch","table_version", 0x14004005, 0x307da, U32_REGS_FLAG, 1, 7, 2 }//!< "table version, resets regs to defaults on mismatch" &ro &save &def
-,
+    { &def_servo_0, &def_min_servo_0, &def_max_servo_0, (u8*)&servo_control_part->vars.servo_0, 0,"servo pwm value [0;100]","servo_0", 0x14004000, 0x307d0, FLOAT_REGS_FLAG, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max 
+    { &def_servo_1, &def_min_servo_1, &def_max_servo_1, (u8*)&servo_control_part->vars.servo_1, 0,"servo pwm value [0;100]","servo_1", 0x14004001, 0x307d2, FLOAT_REGS_FLAG, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max 
+    { &def_servo_2, &def_min_servo_2, &def_max_servo_2, (u8*)&servo_control_part->vars.servo_2, 0,"servo pwm value [0;100]","servo_2", 0x14004002, 0x307d4, FLOAT_REGS_FLAG, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max 
+    { &def_servo_3, &def_min_servo_3, &def_max_servo_3, (u8*)&servo_control_part->vars.servo_3, 0,"servo pwm value [0;100]","servo_3", 0x14004003, 0x307d6, FLOAT_REGS_FLAG, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max 
+    { &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&servo_control_part->vars.test_pwm_value, 0,"test pwm value [0;100]","test_pwm_value", 0x14004004, 0x307d8, FLOAT_REGS_FLAG, 1, 197, 2 },//!<"test pwm value [0;100]" &def &min &max &save 
+    { &def_table_version, NULL, NULL, (u8*)&servo_control_part->vars.table_version, 4,"table version, resets regs to defaults on mismatch","table_version", 0x14004005, 0x307da, U32_REGS_FLAG, 1, 7, 2 },//!< "table version, resets regs to defaults on mismatch" &ro &save &def 
 };
 const regs_description_list_t regs_table_servo_control_part = {
     .description = regs_description_servo_control_part,

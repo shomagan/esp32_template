@@ -35,10 +35,12 @@ extern "C" {
 typedef union {
    struct MCU_PACK {
       // start regs struct
-      u32 table_version; //!< "table version, resets regs to defaults on mismatch" &ro &save
       u32 led_number; //!< "number of leds in strip" &save &def
       u32 led_brightness; //!< "brightness of leds in strip" &save &def
       u32 led_color; //!< "color of leds in strip" &save &def
+      u32 delay; //!< "delay between led updates in ms" &save &def &min
+      u32 smooth_number; //!< "number of neighbor leds" &save &def
+      u32 table_version; //!< "table version, resets regs to defaults on mismatch" &ro &def &save
    } vars;
    u32 bytes[4]; //for full bksram copy
 }led_strip_reg_t; // #generator_use_description {"message":"end_struct"}

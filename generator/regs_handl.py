@@ -485,7 +485,7 @@ class RegsHand(base_object.Base):
         else:
             p_value = f"(u8*)&{mdb_regs_global_name}->vars.{self.internal_name}"
         guid = self.compute_guid(address_space, modbus_function, self.ind)
-        entry = ('{{ {}, {}, {}, {}, {},\"{}\",\"{}\", {}, {}, {}, {}, {}, {} }}'
+        entry = ('{{ {}, {}, {}, {}, {},\"{}\",\"{}\", {}, {}, {}, {}, {}, {} }},'
                  '{}'.format(self.p_default, self.p_min_value, self.p_max_value,
                              p_value, str(saved_address), self.description,
                              name, str(hex(guid)), str(hex(register_start_address)),

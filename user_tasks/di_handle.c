@@ -25,10 +25,8 @@ di_control_t * const di_control = &di_control_storage;
 static u8 di_control_saved_buf[8];
 static const char di_control_space_name[] = "di_control_t";
 static regs_description_t const regs_description_di_control[NUM_OF_DI_CONTROL_VARS] = {
-    { NULL, NULL, NULL, (u8*)&di_control->vars.pin_state, 0,"current states of digital inputs","pin_state", 0x14006000, 0x30bb8, U32_REGS_FLAG, 1, 1, 3 }//!<"current states of digital inputs"
-,
-    { &def_table_version, NULL, NULL, (u8*)&di_control->vars.table_version, 0,"table version, resets regs to defaults on mismatch","table_version", 0x14006001, 0x30bba, U32_REGS_FLAG, 1, 7, 3 }//!< "table version, resets regs to defaults on mismatch" &ro &save &def
-,
+    { NULL, NULL, NULL, (u8*)&di_control->vars.pin_state, 0,"current states of digital inputs","pin_state", 0x14006000, 0x30bb8, U32_REGS_FLAG, 1, 1, 3 },//!<"current states of digital inputs" 
+    { &def_table_version, NULL, NULL, (u8*)&di_control->vars.table_version, 0,"table version, resets regs to defaults on mismatch","table_version", 0x14006001, 0x30bba, U32_REGS_FLAG, 1, 7, 3 },//!< "table version, resets regs to defaults on mismatch" &ro &save &def 
 };
 const regs_description_list_t regs_table_di_control = {
     .description = regs_description_di_control,

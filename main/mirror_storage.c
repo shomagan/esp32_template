@@ -50,11 +50,9 @@
 static const char *TAG = "mirror_storage";
 static const char *mirror_key = "mirror_key";
 semaphore_handle_t global_vars_mirror_mutex = NULL;
-/**
- * @brief bkram_access_recalc_crc calculate crc and write to bkram(last 4 byte)
- * @return
- */
-int mirror_recalc_crc(u8 *data, u32 size);
+
+static int mirror_recalc_crc(u8 *data, u32 size);
+static u8 mirror_check_crc(u8 *data, u32 size);
 esp_err_t mirror_storage_init(void) {
    if (global_vars_mirror_mutex == NULL) {
       global_vars_mirror_mutex = semaphore_create_binary();
@@ -151,7 +149,7 @@ int mirror_access_read(regs_template_t *regs_template) {
    }
 }
 
-int mirror_recalc_crc(u8 * data, u32 size){
+static int mirror_recalc_crc(u8 * data, u32 size){
    if(data){
       semaphore_take(global_vars_mirror_mutex, portMAX_DELAY );
       u32 crc = calc_crc_for_u32((void*)data, (size-4)/4);
@@ -162,6 +160,24 @@ int mirror_recalc_crc(u8 * data, u32 size){
       return -1;
    }
 }
+static u8 mirror_check_crc(u8 * data, u32 size){
+   u8 res = 0;
+   if(data){
+      semaphore_take(global_vars_mirror_mutex, portMAX_DELAY );
+      main_printf(TAG, "calc_crc_for_u32 size: %u", size);
+      u32 crc = calc_crc_for_u32((void*)data, (size-4)/4);
+      main_printf(TAG, "calc_crc_for_u32 crc: %u", crc);
+      u32 * crc_in_mirror = (u32 *)&data[size-sizeof(u32)];
+      if(memcmp(&crc, crc_in_mirror, sizeof(crc)) == 0){
+         res = 1;
+      }
+      semaphore_release(global_vars_mirror_mutex);
+      return res;
+   }else{
+      return res;
+   }
+}
+
 void print_nvs_files(void) {
    /*finds all files in NVS and print out names*/
    nvs_iterator_t it = NULL;
@@ -191,8 +207,9 @@ int internal_flash_save_mirror_to_flash(u16 table_ind) {
       res = nvs_open(space_name, NVS_READWRITE, &my_handle);
       if (res == ESP_OK) {
          u8 temp_mirror[size];
-         res = nvs_get_blob(my_handle, mirror_key, temp_mirror, &size);
-         if (memcmp(temp_mirror, data, size) != 0) {
+         size_t size_blob = size;
+         res = nvs_get_blob(my_handle, mirror_key, temp_mirror, &size_blob);
+         if ((size_blob != size) || memcmp(temp_mirror, data, size) != 0) {
             nvs_set_blob(my_handle, mirror_key, data, size);
             res = nvs_commit(my_handle);
             if (res >= 0) {
@@ -214,21 +231,38 @@ int internal_flash_restore_mirror_from_flash(u16 table_ind) {
    int res = 0;
    const char *space_name = regs_description_list_get_space_name(table_ind);
    if(space_name){
-      semaphore_take(global_vars_mirror_mutex, portMAX_DELAY);
-      {
-         nvs_handle_t my_handle = {0};
-         main_printf(TAG, "mirror is getting from flash %s", space_name);
-         res = nvs_open(space_name, NVS_READWRITE, &my_handle);
-         if (res == ESP_OK) {
-            size_t size = regs_description_list_get_saved_buffer_size(table_ind);
-            u8 *data = regs_description_list_get_buffer(table_ind);
-            res = nvs_get_blob(my_handle, mirror_key, data, &size);
-            nvs_close(my_handle);
-         }else{
-            main_error_message(TAG, "Error opening NVS handle! Error code: %s , %d", space_name, res);
+      size_t size = regs_description_list_get_saved_buffer_size(table_ind);
+      size_t size_blob = size;
+      u8 *data = regs_description_list_get_buffer(table_ind);
+      if(data){
+         semaphore_take(global_vars_mirror_mutex, portMAX_DELAY);
+         {
+            nvs_handle_t my_handle = {0};
+            main_printf(TAG, "mirror is getting from flash %s", space_name);
+            res = nvs_open(space_name, NVS_READWRITE, &my_handle);
+            if (res == ESP_OK) {
+               res = nvs_get_blob(my_handle, mirror_key, data, &size_blob);
+               if(size_blob != size){
+                  main_error_message(TAG, "nvs size mismatch: %d ,res: %d", size_blob, size);
+                  res = -4;
+               }
+               nvs_close(my_handle);
+            }else{
+               main_error_message(TAG, "Error opening NVS handle! space name: %s ,res: %d", space_name, res);
+            }
          }
+         semaphore_release(global_vars_mirror_mutex);
+         if(res == 0){
+            if(mirror_check_crc(data, size)){
+               res = 0;
+            }else{
+               main_error_message(TAG, "nvs crc mismatch! space name: %s", space_name);
+               res = -2;
+            }
+         }
+      }else{
+         res = -3;
       }
-      semaphore_release(global_vars_mirror_mutex);
    }else{
       res = -1;
    }
@@ -242,7 +276,7 @@ void preinit_table_vars(u16 table_ind) {
    if (internal_flash_restore_mirror_from_flash(table_ind) == 0) {
       main_printf(TAG, "regs inited from saved space");
       u32 num_of_regs = regs_description_list_get_num_of_regs(table_ind);
-      u8 * table_version_addr = NULL;
+      u32 * table_version_addr = NULL;
       for (u32 i = 0; i < num_of_regs; i++) {
          if (regs_description_get_by_index_in_table(&regs_template, i) == 0) {
             if (regs_template.property & SAVING) {
@@ -256,22 +290,17 @@ void preinit_table_vars(u16 table_ind) {
                          regs_size_in_byte(regs_template.type) * regs_template.size);
                }
             }
-            /* if this table has a "table_version" register, remember where it landed so it
-             * can be compared once the whole table has been restored */
             if (strcmp(regs_template.name, "table_version") == 0) {
-               table_version_addr = regs_template.p_value;
+               table_version_addr = (u32 *)regs_template.p_value;
             }
          }
       }
       if (table_version_addr != NULL) {
-         u32 restored_version = 0;
          u32 current_version = regs_description_list_get_table_version(table_ind);
-         memcpy(&restored_version, table_version_addr, sizeof(restored_version));
-         if (restored_version != current_version) {
-            main_printf(TAG, "table_version mismatch, restoring defaults");
+         if (*table_version_addr != current_version) {
+            main_printf(TAG, "table_version mismatch, restoring defaults %u %u", current_version, *table_version_addr);
             set_regs_def_values(table_ind);
-            mirror_access_init_buffer(table_ind);
-            memcpy(table_version_addr, &current_version, sizeof(current_version));
+            main_printf(TAG, "table_version  %u",*table_version_addr);
             mirror_access_init_buffer(table_ind);
          }
       }

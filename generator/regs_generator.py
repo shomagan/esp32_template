@@ -139,7 +139,8 @@ def build_user_task_regs_block(regs_hand, task_descriptions, structure_numbers):
         lines.append(f'static const char {global_name}_space_name[] = "{space_name}";')
         lines.append(f'static regs_description_t const regs_description_{global_name}[NUM_OF_{global_name.upper()}_VARS] = {{')
         for entry in entries:
-            lines.append(f'    {entry},')
+            entry = entry.replace('\n', ' ')
+            lines.append(f'    {entry}')
         lines.append('};')
         lines.append(f'const regs_description_list_t regs_table_{global_name} = {{')
         lines.append(f'    .description = regs_description_{global_name},')

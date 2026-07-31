@@ -41,16 +41,11 @@ polisher_reg_t * const polisher_reg = &polisher_reg_storage;
 static u8 polisher_reg_saved_buf[16];
 static const char polisher_reg_space_name[] = "polisher_reg_t";
 static regs_description_t const regs_description_polisher_reg[NUM_OF_POLISHER_REG_VARS] = {
-    { NULL, NULL, NULL, (u8*)&polisher_reg->vars.polisher_sec, 0,"how many time in seconds it was active","polisher_sec", 0x1400e000, 0x310cc, U32_REGS_FLAG, 1, 7, 7 }//!<"how many time in seconds it was active" &save &ro
-,
-    { NULL, NULL, NULL, (u8*)&polisher_reg->vars.polisher_last_sec, 0,"how many time in seconds it was active last session","polisher_last_sec", 0x1400e001, 0x310ce, U32_REGS_FLAG, 1, 3, 7 }//!<"how many time in seconds it was active last session" &ro
-,
-    { &def_polisher_speed, NULL, &def_max_polisher_speed, (u8*)&polisher_reg->vars.polisher_speed, 4,"polisher_speed","polisher_speed", 0x1400e002, 0x310d0, U16_REGS_FLAG, 1, 133, 7 }//!< "polisher_speed" &save &def &max
-,
-    { &def_polisher_direction, NULL, &def_max_polisher_direction, (u8*)&polisher_reg->vars.polisher_direction, 6,"polisher_direction","polisher_direction", 0x1400e003, 0x310d1, U16_REGS_FLAG, 1, 133, 7 }//!< "polisher_direction" &save &def &max
-,
-    { &def_table_version, NULL, NULL, (u8*)&polisher_reg->vars.table_version, 8,"table version, resets regs to defaults on mismatch","table_version", 0x1400e004, 0x310d2, U32_REGS_FLAG, 1, 7, 7 }//!< "table version, resets regs to defaults on mismatch" &ro &save &def
-,
+    { NULL, NULL, NULL, (u8*)&polisher_reg->vars.polisher_sec, 0,"how many time in seconds it was active","polisher_sec", 0x1400e000, 0x310cc, U32_REGS_FLAG, 1, 7, 7 },//!<"how many time in seconds it was active" &save &ro 
+    { NULL, NULL, NULL, (u8*)&polisher_reg->vars.polisher_last_sec, 0,"how many time in seconds it was active last session","polisher_last_sec", 0x1400e001, 0x310ce, U32_REGS_FLAG, 1, 3, 7 },//!<"how many time in seconds it was active last session" &ro 
+    { &def_polisher_speed, NULL, &def_max_polisher_speed, (u8*)&polisher_reg->vars.polisher_speed, 4,"polisher_speed","polisher_speed", 0x1400e002, 0x310d0, U16_REGS_FLAG, 1, 133, 7 },//!< "polisher_speed" &save &def &max 
+    { &def_polisher_direction, NULL, &def_max_polisher_direction, (u8*)&polisher_reg->vars.polisher_direction, 6,"polisher_direction","polisher_direction", 0x1400e003, 0x310d1, U16_REGS_FLAG, 1, 133, 7 },//!< "polisher_direction" &save &def &max 
+    { &def_table_version, NULL, NULL, (u8*)&polisher_reg->vars.table_version, 8,"table version, resets regs to defaults on mismatch","table_version", 0x1400e004, 0x310d2, U32_REGS_FLAG, 1, 7, 7 },//!< "table version, resets regs to defaults on mismatch" &ro &save &def 
 };
 const regs_description_list_t regs_table_polisher_reg = {
     .description = regs_description_polisher_reg,
