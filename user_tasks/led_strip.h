@@ -35,6 +35,7 @@ extern "C" {
 typedef union {
    struct MCU_PACK {
       // start regs struct
+      u32 mode; //!< "led strip mode, 1 run, 2 full" &save &def
       u32 led_number; //!< "number of leds in strip" &save &def
       u32 led_brightness; //!< "brightness of leds in strip" &save &def
       u32 led_color; //!< "color of leds in strip" &save &def

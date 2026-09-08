@@ -178,7 +178,7 @@ static inline BaseType_t os_abort_delay(TaskHandle_t task) {
                                 uint32_t ulBitsToClearOnExit,
                                 uint32_t * pulNotificationValue,
                                 TickType_t xTicksToWait )   */
-static inline BaseType_t task_notify_wait(uint32_t flags, uint32_t *signal, u32 ms) {
+static inline BaseType_t task_notify_wait(uint32_t flags, uint32_t *signal, uint32_t ms) {
    return xTaskNotifyWait(0, flags, signal, ms / portTICK_PERIOD_MS);
 }
 static inline BaseType_t task_notify_send(TaskHandle_t thread_id, uint32_t signal, uint32_t *prev_value) {
