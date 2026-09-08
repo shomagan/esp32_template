@@ -5,7 +5,34 @@ import threading
 import socket
 import atexit
 import time
-import msvcrt
+try:
+    import msvcrt
+    PLATFORM = "win"
+except ImportError:
+    PLATFORM = "unix"
+    import tty
+    import termios
+    from select import select
+
+def get_ch():
+    if PLATFORM == "win":
+        ch = msvcrt.getch()
+        return ch
+    elif PLATFORM == "unix":
+        fd = sys.stdin.fileno()
+        old_setting = termios.tcgetattr(fd)
+        try:
+            tty.setraw(sys.stdin.fileno())
+            i, o, e = select([sys.stdin.fileno()], [], [], 5)
+            if i:
+                ch = sys.stdin.read(1)
+            else:
+                ch = ""
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_setting)
+        return ch
+    else:
+        return ""
 
 
 def udp_list(sock):
@@ -33,14 +60,16 @@ def main():
     thread.start_new_thread(udp_list, (sock,))
     message = b"UDP_REQUEST"
     while 1:
-        q = msvcrt.getch()
-        print(q)
-        if ord(q) == 113: #q
-            sock.close()
-            sys.exit(1)
-        elif ord(q) == 117: #u
-            print("send message",message)
-            sock.sendto(message, ('192.168.0.255', 65500))
+        q = get_ch()
+        if len(q):
+            print(q)
+            if q == 'q':
+                sock.close()
+                time.sleep(0.3)
+                sys.exit(1)
+            elif ord(q) == 'u': #u
+                print("send message",message)
+                sock.sendto(message, ('192.168.0.255', 65500))
 
 
 if __name__ == "__main__":
