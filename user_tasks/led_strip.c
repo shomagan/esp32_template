@@ -47,21 +47,21 @@ led_strip_reg_t * const led_strip_reg = &led_strip_reg_storage;
 static u8 led_strip_reg_saved_buf[32];
 static const char led_strip_reg_space_name[] = "led_strip_reg_t";
 static regs_description_t const regs_description_led_strip_reg[NUM_OF_LED_STRIP_REG_VARS] = {
-    { &def_mode, NULL, NULL, (u8*)&led_strip_reg->vars.mode, 0,"led strip mode, 1 run, 2 full","mode", 0x14018000, 0x31324, U32_REGS_FLAG, 1, 5, 12 },//!< "led strip mode, 1 run, 2 full" &save &def
-    { &def_led_number, NULL, NULL, (u8*)&led_strip_reg->vars.led_number, 4,"number of leds in strip","led_number", 0x14018001, 0x31326, U32_REGS_FLAG, 1, 5, 12 },//!< "number of leds in strip" &save &def
-    { &def_led_brightness, NULL, NULL, (u8*)&led_strip_reg->vars.led_brightness, 8,"brightness of leds in strip","led_brightness", 0x14018002, 0x31328, U32_REGS_FLAG, 1, 5, 12 },//!< "brightness of leds in strip" &save &def
-    { &def_led_color, NULL, NULL, (u8*)&led_strip_reg->vars.led_color, 12,"color of leds in strip","led_color", 0x14018003, 0x3132a, U32_REGS_FLAG, 1, 5, 12 },//!< "color of leds in strip" &save &def
-    { &def_delay, &def_min_delay, NULL, (u8*)&led_strip_reg->vars.delay, 16,"delay between led updates in ms","delay", 0x14018004, 0x3132c, U32_REGS_FLAG, 1, 69, 12 },//!< "delay between led updates in ms" &save &def &min
-    { &def_smooth_number, NULL, NULL, (u8*)&led_strip_reg->vars.smooth_number, 20,"number of neighbor leds","smooth_number", 0x14018005, 0x3132e, U32_REGS_FLAG, 1, 5, 12 },//!< "number of neighbor leds" &save &def
-    { &def_table_version, NULL, NULL, (u8*)&led_strip_reg->vars.table_version, 24,"table version, resets regs to defaults on mismatch","table_version", 0x14018006, 0x31330, U32_REGS_FLAG, 1, 7, 12 },//!< "table version, resets regs to defaults on mismatch" &ro &def &save
+   { &def_mode, NULL, NULL, (u8*)&led_strip_reg->vars.mode, 0,"led strip mode, 1 run, 2 full","mode", 0x14018000, 0x31324, U32_REGS_FLAG, 1, 5, 12 },//!< "led strip mode, 1 run, 2 full" &save &def
+   { &def_led_number, NULL, NULL, (u8*)&led_strip_reg->vars.led_number, 4,"number of leds in strip","led_number", 0x14018001, 0x31326, U32_REGS_FLAG, 1, 5, 12 },//!< "number of leds in strip" &save &def
+   { &def_led_brightness, NULL, NULL, (u8*)&led_strip_reg->vars.led_brightness, 8,"brightness of leds in strip","led_brightness", 0x14018002, 0x31328, U32_REGS_FLAG, 1, 5, 12 },//!< "brightness of leds in strip" &save &def
+   { &def_led_color, NULL, NULL, (u8*)&led_strip_reg->vars.led_color, 12,"color of leds in strip","led_color", 0x14018003, 0x3132a, U32_REGS_FLAG, 1, 5, 12 },//!< "color of leds in strip" &save &def
+   { &def_delay, &def_min_delay, NULL, (u8*)&led_strip_reg->vars.delay, 16,"delay between led updates in ms","delay", 0x14018004, 0x3132c, U32_REGS_FLAG, 1, 69, 12 },//!< "delay between led updates in ms" &save &def &min
+   { &def_smooth_number, NULL, NULL, (u8*)&led_strip_reg->vars.smooth_number, 20,"number of neighbor leds","smooth_number", 0x14018005, 0x3132e, U32_REGS_FLAG, 1, 5, 12 },//!< "number of neighbor leds" &save &def
+   { &def_table_version, NULL, NULL, (u8*)&led_strip_reg->vars.table_version, 24,"table version, resets regs to defaults on mismatch","table_version", 0x14018006, 0x31330, U32_REGS_FLAG, 1, 7, 12 },//!< "table version, resets regs to defaults on mismatch" &ro &def &save
 };
 const regs_description_list_t regs_table_led_strip_reg = {
-    .description = regs_description_led_strip_reg,
-    .num_of_regs = NUM_OF_LED_STRIP_REG_VARS,
-    .table_version = &def_table_version,
-    .space_name = led_strip_reg_space_name,
-    .saved_regs_buffer = led_strip_reg_saved_buf,
-    .saved_regs_buffer_size = sizeof(led_strip_reg_saved_buf),
+   .description = regs_description_led_strip_reg,
+   .num_of_regs = NUM_OF_LED_STRIP_REG_VARS,
+   .table_version = &def_table_version,
+   .space_name = led_strip_reg_space_name,
+   .saved_regs_buffer = led_strip_reg_saved_buf,
+   .saved_regs_buffer_size = sizeof(led_strip_reg_saved_buf),
 };
 /*#generator_use_description {"user_task_regs":"end_struct"}*/
 

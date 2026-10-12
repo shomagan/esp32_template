@@ -139,16 +139,15 @@ def build_user_task_regs_block(regs_hand, task_descriptions, structure_numbers):
         lines.append(f'static const char {global_name}_space_name[] = "{space_name}";')
         lines.append(f'static regs_description_t const regs_description_{global_name}[NUM_OF_{global_name.upper()}_VARS] = {{')
         for entry in entries:
-            entry = entry.replace('\n', ' ')
-            lines.append(f'    {entry}')
+            lines.append(f'   {entry}')
         lines.append('};')
         lines.append(f'const regs_description_list_t regs_table_{global_name} = {{')
-        lines.append(f'    .description = regs_description_{global_name},')
-        lines.append(f'    .num_of_regs = NUM_OF_{global_name.upper()}_VARS,')
-        lines.append('    .table_version = &def_table_version,')
-        lines.append(f'    .space_name = {global_name}_space_name,')
-        lines.append(f'    .saved_regs_buffer = {global_name}_saved_buf,')
-        lines.append(f'    .saved_regs_buffer_size = sizeof({global_name}_saved_buf),')
+        lines.append(f'   .description = regs_description_{global_name},')
+        lines.append(f'   .num_of_regs = NUM_OF_{global_name.upper()}_VARS,')
+        lines.append('   .table_version = &def_table_version,')
+        lines.append(f'   .space_name = {global_name}_space_name,')
+        lines.append(f'   .saved_regs_buffer = {global_name}_saved_buf,')
+        lines.append(f'   .saved_regs_buffer_size = sizeof({global_name}_saved_buf),')
         lines.append('};')
     return lines
 
@@ -386,10 +385,10 @@ def fill_up_regs_h_main_structure(file_path, struct_descriptions):
             cancel = re.compile(r'^\s*\}\s*regs_main_t\;', re.ASCII)
             if cancel.match(line):
                 replace = 0
-                print('typedef struct{\n', end='')
+                print('typedef struct {\n', end='')
                 for description in struct_descriptions:
                     #keep it for future print(f'#if USE_{description["regs_global_name"].upper()}\n', end='')
-                    print(f'    {description["struct_type"]} {description["regs_global_name"]}; //!< "{description["struct_type"]}"\n', end='')
+                    print(f'   {description["struct_type"]} {description["regs_global_name"]}; //!< "{description["struct_type"]}"\n', end='')
                     #keep it for future print('#endif\n', end='')
                     number += 1
                 print(line, end='')

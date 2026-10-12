@@ -112,6 +112,7 @@ class RegsHand(base_object.Base):
         self.last_modbus_address_client = -1
         self.user_task_entries = {}
         self.user_task_saved_sizes = {}
+        self.pending_declaration = ""
 
     def regs_file_handling_user_task(self, path_to_file):
         regs_file = open(path_to_file, 'r', errors='ignore')
@@ -141,6 +142,10 @@ class RegsHand(base_object.Base):
                     else:
                         self.print_error("error struct type {} or reg_global_name {}"
                                          "".format(struct_type, regs_global_name))
+            if struct_started:
+                line_full = self.join_wrapped_declaration(line_full)
+                if line_full is None:
+                    continue
             if '//' in line_full:
                 start = line_full.find('//')
                 line = line_full[:start]
@@ -200,6 +205,10 @@ class RegsHand(base_object.Base):
                     else:
                         self.print_error("error struct type {} or reg_global_name {}"
                                          "".format(struct_type, regs_global_name))
+            if struct_started:
+                line_full = self.join_wrapped_declaration(line_full)
+                if line_full is None:
+                    continue
             if '//' in line_full:
                 start = line_full.find('//')
                 line = line_full[:start]
@@ -236,6 +245,16 @@ class RegsHand(base_object.Base):
                         if self.flag & SAVE_TYPE_FLAG:
                             self.saved_address += self.size_array * REGS_SIZE[self.type]
         regs_file.close()
+
+    def join_wrapped_declaration(self, line_full):
+        """clang-format may wrap a long declaration over several lines; glue them back until ';'"""
+        line_full = self.pending_declaration + line_full
+        self.pending_declaration = ""
+        code = line_full.split('//')[0].strip()
+        if code and not code.startswith('#') and not re.search(r'[;{}]', code):
+            self.pending_declaration = line_full.rstrip('\r\n') + ' '
+            return None
+        return line_full
 
     def check(self, line):
         self.size_array = 1
@@ -490,7 +509,7 @@ class RegsHand(base_object.Base):
                              p_value, str(saved_address), self.description,
                              name, str(hex(guid)), str(hex(register_start_address)),
                              self.type, str(self.size_array), str(self.flag),
-                             address_space, self.temp_description))
+                             address_space, self.temp_description.rstrip()))
         if self.structure_number not in self.user_task_entries:
             self.user_task_entries[self.structure_number] = []
             self.user_task_saved_sizes[self.structure_number] = 0
@@ -621,7 +640,7 @@ def find_global_register(path_to_file, struct_type):
     regs_file_temp = open(path_to_file, 'r', errors='ignore')
     lines = regs_file_temp.readlines()
     for line_number in range(len(lines)):
-        define_temp = re.compile("^\s*extern\s+"+ struct_type + "\s+\*\s+const\s+(?P<GLOBAL_REG>[\w\d]+)\s*;\s*", re.UNICODE)
+        define_temp = re.compile("^\s*extern\s+"+ struct_type + "\s*\*\s*const\s+(?P<GLOBAL_REG>[\w\d]+)\s*;\s*", re.UNICODE)
         match = define_temp.match(lines[line_number])
         if match:
             search = define_temp.search(lines[line_number])

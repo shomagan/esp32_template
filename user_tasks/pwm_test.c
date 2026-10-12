@@ -58,6 +58,7 @@
 #define PWM_TEST_MCPWM_RESOLUTION_HZ (10000000u)
 #elif CONFIG_IDF_TARGET_ESP32C3
 #define PWM_TEST_RMT_RESOLUTION_HZ (1000000u)
+#define PWM_FRAME_PERIOD_US (100u)
 #define SERVO_FRAME_PERIOD_US (20000u)
 #define SERVO_PULSE_MIN_US (1000u)
 #define SERVO_PULSE_MAX_US (2000u)
@@ -86,24 +87,25 @@ static const float def_max_test_pwm_value = 100.0f;
 /*#generator_use_description {"user_task_regs":"start_struct"}*/
 static servo_control_part_t servo_control_part_storage = {{0}};
 servo_control_part_t * const servo_control_part = &servo_control_part_storage;
-#define NUM_OF_SERVO_CONTROL_PART_VARS 6
-static u8 servo_control_part_saved_buf[12];
+#define NUM_OF_SERVO_CONTROL_PART_VARS 7
+static u8 servo_control_part_saved_buf[16];
 static const char servo_control_part_space_name[] = "servo_control_p";
 static regs_description_t const regs_description_servo_control_part[NUM_OF_SERVO_CONTROL_PART_VARS] = {
-    { &def_servo_0, &def_min_servo_0, &def_max_servo_0, (u8*)&servo_control_part->vars.servo_0, 0,"servo pwm value [0;100]","servo_0", 0x14004000, 0x307d0, FLOAT_REGS_FLAG, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max 
-    { &def_servo_1, &def_min_servo_1, &def_max_servo_1, (u8*)&servo_control_part->vars.servo_1, 0,"servo pwm value [0;100]","servo_1", 0x14004001, 0x307d2, FLOAT_REGS_FLAG, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max 
-    { &def_servo_2, &def_min_servo_2, &def_max_servo_2, (u8*)&servo_control_part->vars.servo_2, 0,"servo pwm value [0;100]","servo_2", 0x14004002, 0x307d4, FLOAT_REGS_FLAG, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max 
-    { &def_servo_3, &def_min_servo_3, &def_max_servo_3, (u8*)&servo_control_part->vars.servo_3, 0,"servo pwm value [0;100]","servo_3", 0x14004003, 0x307d6, FLOAT_REGS_FLAG, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max 
-    { &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&servo_control_part->vars.test_pwm_value, 0,"test pwm value [0;100]","test_pwm_value", 0x14004004, 0x307d8, FLOAT_REGS_FLAG, 1, 197, 2 },//!<"test pwm value [0;100]" &def &min &max &save 
-    { &def_table_version, NULL, NULL, (u8*)&servo_control_part->vars.table_version, 4,"table version, resets regs to defaults on mismatch","table_version", 0x14004005, 0x307da, U32_REGS_FLAG, 1, 7, 2 },//!< "table version, resets regs to defaults on mismatch" &ro &save &def 
+   { &def_servo_0, &def_min_servo_0, &def_max_servo_0, (u8*)&servo_control_part->vars.servo_0, 0,"servo pwm value [0;100]","servo_0", 0x14004000, 0x307d0, FLOAT_REGS_FLAG, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+   { &def_servo_1, &def_min_servo_1, &def_max_servo_1, (u8*)&servo_control_part->vars.servo_1, 0,"servo pwm value [0;100]","servo_1", 0x14004001, 0x307d2, FLOAT_REGS_FLAG, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+   { &def_servo_2, &def_min_servo_2, &def_max_servo_2, (u8*)&servo_control_part->vars.servo_2, 0,"servo pwm value [0;100]","servo_2", 0x14004002, 0x307d4, FLOAT_REGS_FLAG, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+   { &def_servo_3, &def_min_servo_3, &def_max_servo_3, (u8*)&servo_control_part->vars.servo_3, 0,"servo pwm value [0;100]","servo_3", 0x14004003, 0x307d6, FLOAT_REGS_FLAG, 1, 193, 2 },//!<"servo pwm value [0;100]" &def &min &max
+   { &def_test_pwm_value, &def_min_test_pwm_value, &def_max_test_pwm_value, (u8*)&servo_control_part->vars.test_pwm_value, 0,"test pwm value [0;100]","test_pwm_value", 0x14004004, 0x307d8, FLOAT_REGS_FLAG, 1, 197, 2 },//!<"test pwm value [0;100]" &def &min &max &save
+   { NULL, NULL, NULL, (u8*)&servo_control_part->vars.config, 4,"config, 0 - pwm , 1 - servo","config", 0x14004005, 0x307da, U32_REGS_FLAG, 1, 5, 2 },//!< "config, 0 - pwm , 1 - servo" &save
+   { &def_table_version, NULL, NULL, (u8*)&servo_control_part->vars.table_version, 8,"table version, resets regs to defaults on mismatch","table_version", 0x14004006, 0x307dc, U32_REGS_FLAG, 1, 7, 2 },//!< "table version, resets regs to defaults on mismatch" &ro &save &def
 };
 const regs_description_list_t regs_table_servo_control_part = {
-    .description = regs_description_servo_control_part,
-    .num_of_regs = NUM_OF_SERVO_CONTROL_PART_VARS,
-    .table_version = &def_table_version,
-    .space_name = servo_control_part_space_name,
-    .saved_regs_buffer = servo_control_part_saved_buf,
-    .saved_regs_buffer_size = sizeof(servo_control_part_saved_buf),
+   .description = regs_description_servo_control_part,
+   .num_of_regs = NUM_OF_SERVO_CONTROL_PART_VARS,
+   .table_version = &def_table_version,
+   .space_name = servo_control_part_space_name,
+   .saved_regs_buffer = servo_control_part_saved_buf,
+   .saved_regs_buffer_size = sizeof(servo_control_part_saved_buf),
 };
 /*#generator_use_description {"user_task_regs":"end_struct"}*/
 
@@ -223,7 +225,7 @@ void pwm_control_task(void *arg) {
    rmt_channel_handle_t tx_chan = NULL;
    rmt_encoder_handle_t copy_encoder = NULL;
    rmt_tx_channel_config_t tx_chan_cfg = {
-      .gpio_num = GPIO_PWM_TEST_OUT,
+      .gpio_num = GPIO_PWM_TEST_OUT,//GPIO_OUTPUT_STEP_MOTOR_STEP0,
       .clk_src = RMT_CLK_SRC_DEFAULT,
       .resolution_hz = PWM_TEST_RMT_RESOLUTION_HZ,
       .mem_block_symbols = 64,
@@ -283,11 +285,20 @@ void pwm_control_task(void *arg) {
          pwm_value_last = pwm_value;
          ESP_ERROR_CHECK(rmt_disable(tx_chan));
          ESP_ERROR_CHECK(rmt_enable(tx_chan));
-         uint32_t pulse_us = SERVO_PULSE_MIN_US + ((uint32_t)pwm_value * (SERVO_PULSE_MAX_US - SERVO_PULSE_MIN_US)) / 100u;
-         rmt_items_loop.duration1 = pulse_us;
-         rmt_items_loop.level1 = 1;
-         rmt_items_loop.level0 = 0;
-         rmt_items_loop.duration0 = SERVO_FRAME_PERIOD_US - pulse_us;
+         if(servo_control_part->vars.config == 1) {
+            uint16_t pulse_us = SERVO_PULSE_MIN_US + ((uint32_t)pwm_value * (SERVO_PULSE_MAX_US - SERVO_PULSE_MIN_US)) / 100u;
+            rmt_items_loop.duration1 = pulse_us;
+            rmt_items_loop.level1 = 1;
+            rmt_items_loop.level0 = 0;
+            rmt_items_loop.duration0 = SERVO_FRAME_PERIOD_US - pulse_us;
+         }else{
+            uint16_t pulse_us = pwm_value * (PWM_FRAME_PERIOD_US / 100u);
+            rmt_items_loop.duration1 = pulse_us;
+            rmt_items_loop.level1 = 1;
+            rmt_items_loop.level0 = 0;
+            rmt_items_loop.duration0 = PWM_FRAME_PERIOD_US - pulse_us;
+         }
+
          rmt_transmit_config_t tx_cfg = {
             .loop_count = -1,
          };
