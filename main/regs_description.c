@@ -48,7 +48,7 @@ static const u8 def_wifi_password[WIFI_PASSWORD_LEN] = "bricsofi";            //
 static const u8 def_wifi_router_name[WIFI_ROUTER_NAME_LEN] = WIFE_STATION_SECURE_NAME;
 static const u8 def_wifi_router_password[WIFI_ROUTER_PASSWORD_LEN] = WIFE_STATION_SECURE_PASSWORD;
 static const u16 def_wifi_setting = WIFI_CLIENT;               //!<"type of wifi and settings" &save &def
-const u32 def_table_version = 1;   //!<"current version, if changed, starting from scratch"
+const u32 def_table_version = 2;   //!<"current version, if changed, starting from scratch"
 static const u16 def_slave_modbus_address = 3;
 static const u16 def_min_slave_modbus_address = 1;
 static const u16 def_max_slave_modbus_address = 247;
@@ -437,9 +437,12 @@ u32 regs_description_get_regs_string_value(regs_template_t *regs_template, u8 re
    u32 pos = 0;
    char temp_buf[128] = { 0 };
    u32 temp_buf_len = 0;
-   if (buffer != NULL || buffer_size != 0) {
-      temp_buf_len += sprintf(temp_buf, "%s: ", regs_template->name);
+   if ((buffer != NULL) && (buffer_size != 0)) {
+      temp_buf_len += snprintf(temp_buf, sizeof(temp_buf), "%s: ", regs_template->name);
       for (u16 i = 0; i < regs_template->size; i++) {
+         if (temp_buf_len >= sizeof(temp_buf) - 1) {
+            break;
+         }
          switch (regs_template->type) {
          case U8_REGS_FLAG:
          case U16_REGS_FLAG:
@@ -449,41 +452,41 @@ u32 regs_description_get_regs_string_value(regs_template_t *regs_template, u8 re
             val_u64 = 0;
             memcpy(&val_u64, (regs_template->p_value + i * regs_size_in_byte(regs_template->type)),
                    regs_size_in_byte(regs_template->type));
-            temp_buf_len += sprintf(&temp_buf[temp_buf_len], "%llu,", val_u64);
+            temp_buf_len += snprintf(&temp_buf[temp_buf_len], sizeof(temp_buf) - temp_buf_len, "%llu,", val_u64);
             break;
          case I8_REGS_FLAG:
             temp_i8 = 0;
             memcpy(&temp_i8, (regs_template->p_value + i * regs_size_in_byte(regs_template->type)),
                    regs_size_in_byte(regs_template->type));
-            temp_buf_len += sprintf(&temp_buf[temp_buf_len], "%i,", temp_i8);
+            temp_buf_len += snprintf(&temp_buf[temp_buf_len], sizeof(temp_buf) - temp_buf_len, "%i,", temp_i8);
             break;
          case S16_REGS_FLAG:
             temp_i16 = 0;
             memcpy(&temp_i16, (regs_template->p_value + i * regs_size_in_byte(regs_template->type)),
                    regs_size_in_byte(regs_template->type));
-            temp_buf_len += sprintf(&temp_buf[temp_buf_len], "%i,", temp_i16);
+            temp_buf_len += snprintf(&temp_buf[temp_buf_len], sizeof(temp_buf) - temp_buf_len, "%i,", temp_i16);
             break;
          case S32_REGS_FLAG:
          case INT_REGS_FLAG:
             temp_i32 = 0;
             memcpy(&temp_i32, (regs_template->p_value + i * regs_size_in_byte(regs_template->type)),
                    regs_size_in_byte(regs_template->type));
-            temp_buf_len += sprintf(&temp_buf[temp_buf_len], "%li,", temp_i32);
+            temp_buf_len += snprintf(&temp_buf[temp_buf_len], sizeof(temp_buf) - temp_buf_len, "%li,", temp_i32);
             break;
          case S64_REGS_FLAG:
             temp_i64 = 0;
             memcpy(&temp_i64, (regs_template->p_value + i * regs_size_in_byte(regs_template->type)),
                    regs_size_in_byte(regs_template->type));
-            temp_buf_len += sprintf(&temp_buf[temp_buf_len], "%lli,", temp_i64);
+            temp_buf_len += snprintf(&temp_buf[temp_buf_len], sizeof(temp_buf) - temp_buf_len, "%lli,", temp_i64);
             break;
          case FLOAT_REGS_FLAG:
             val_float = 0.0f;
             memcpy(&val_float, (regs_template->p_value + i * regs_size_in_byte(regs_template->type)),
                    regs_size_in_byte(regs_template->type));
             if (isnanf(val_float) || isinff(val_float)) {
-               temp_buf_len += sprintf(&temp_buf[temp_buf_len], "\"%f\",", (double)val_float);
+               temp_buf_len += snprintf(&temp_buf[temp_buf_len], sizeof(temp_buf) - temp_buf_len, "\"%f\",", (double)val_float);
             } else {
-               temp_buf_len += sprintf(&temp_buf[temp_buf_len], "%f,", (double)val_float);
+               temp_buf_len += snprintf(&temp_buf[temp_buf_len], sizeof(temp_buf) - temp_buf_len, "%f,", (double)val_float);
             }
             break;
          case DOUBLE_REGS_FLAG:
@@ -491,12 +494,15 @@ u32 regs_description_get_regs_string_value(regs_template_t *regs_template, u8 re
             memcpy(&val_double, (regs_template->p_value + i * regs_size_in_byte(regs_template->type)),
                    regs_size_in_byte(regs_template->type));
             if (isnanf((float)val_double) || isinff((float)val_double)) {
-               temp_buf_len += sprintf(&temp_buf[temp_buf_len], "\"%f\",", val_double);
+               temp_buf_len += snprintf(&temp_buf[temp_buf_len], sizeof(temp_buf) - temp_buf_len, "\"%f\",", val_double);
             } else {
-               temp_buf_len += sprintf(&temp_buf[temp_buf_len], "%f,", val_double);
+               temp_buf_len += snprintf(&temp_buf[temp_buf_len], sizeof(temp_buf) - temp_buf_len, "%f,", val_double);
             }
             break;
          }
+      }
+      if (temp_buf_len > sizeof(temp_buf) - 1) {
+         temp_buf_len = sizeof(temp_buf) - 1;
       }
       if(temp_buf_len < buffer_size){
          memcpy(buffer, temp_buf, temp_buf_len);
@@ -554,6 +560,7 @@ int set_regs_def_values(u16 table_ind) {
    regs_template.table_ind = table_ind;
    u32 num_of_regs = regs_description_list_get_num_of_regs(table_ind);
    main_printf(TAG,"set_regs_def_values: table_ind=%d, num_of_regs=%d\n", table_ind, num_of_regs);
+   semaphore_take(regs_access_mutex, portMAX_DELAY);
    for (u32 i = 0; i < num_of_regs; i++) {
       if (regs_description_get_by_index_in_table(&regs_template, i) == 0) {
          if (regs_template.p_default == NULL) {
@@ -561,8 +568,10 @@ int set_regs_def_values(u16 table_ind) {
          } else {
             memcpy(regs_template.p_value, regs_template.p_default, regs_template.size_in_bytes);
          }
+         res = 1;
       }
    }
+   semaphore_release(regs_access_mutex);
    return res;
 }
 

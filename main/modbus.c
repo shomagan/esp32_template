@@ -182,9 +182,12 @@ u16 modbus_rtu_packet (u8* pckt,u16 len_in){
             coil_number = (u16)(pckt[2] << 8) + pckt[3];		// 2-3 bit start
             num_bit = (u16)(pckt[4] << 8) + pckt[5];		// 4-5num bit
             p_value = regs_description_get_pointer_by_modbus(coil_number,function);
-            if (p_value != NULL){
+            if ((p_value == NULL) ||
+                (regs_description_get_pointer_by_modbus(coil_number + num_bit - 1, function) == NULL)) {
+                error = ILLEGAL_DATA_ADDRESS;
+            } else {
                 len_reply = (u8)((num_bit+7)/8);
-                if (num_bit == 0) {
+                if ((num_bit == 0) || (num_bit > MODBUS_MAX_READ_COILS)) {
                     error = ILLEGAL_DATA_VALUE;
                 } else {
                     regs_access_t reg;
@@ -279,7 +282,9 @@ u16 modbus_rtu_packet (u8* pckt,u16 len_in){
             coil_number= (u16)((u16)pckt[2] << 8) + (u16)pckt[3];
             status  = (u16)((u16)pckt[4] << 8) + ((u16)pckt[5]);
             p_value = regs_description_get_pointer_by_modbus(coil_number, MDB_COILS_RW);
-            if (p_value != NULL){
+            if (p_value == NULL) {
+                error = ILLEGAL_DATA_ADDRESS;
+            } else {
                 reg_temp.flag = U16_REGS_FLAG;
                 if (!error) {
                     if(status == 0xff00){
@@ -338,9 +343,10 @@ u16 modbus_rtu_packet (u8* pckt,u16 len_in){
         coil_number = (u16)(pckt[2] << 8) + pckt[3];		// 2-3 bit start
         num_bit = (u16)(pckt[4] << 8) + pckt[5];		// 4-5num bit
         p_value = regs_description_get_pointer_by_modbus(coil_number, MDB_COILS_RW);
-        if (p_value !=NULL){
+        if ((p_value != NULL) &&
+            (regs_description_get_pointer_by_modbus(coil_number + num_bit - 1, MDB_COILS_RW) != NULL)) {
             bytes_num = pckt[6];
-            if (num_bit == 0) {
+            if ((num_bit == 0) || (num_bit > MODBUS_MAX_WRITE_COILS) || (bytes_num != (num_bit + 7) / 8)) {
                 error = ILLEGAL_DATA_VALUE;
             } else {
                 u16 write_bit = 0;
@@ -385,7 +391,7 @@ u16 modbus_rtu_packet (u8* pckt,u16 len_in){
         if (!error){
             htons_buff((u16*)(void*)(pckt+7), (u8)regs_numm);
             int res_temp = regs_set_buffer(p_value, (u8*)(pckt+7), regs_numm*2);
-            if (res_temp != 0) {
+            if (res_temp < 0) {
                 if(res_temp == -ILLEGAL_DATA_ADDRESS){
                     error = ILLEGAL_DATA_ADDRESS;
                 }else if(res_temp == -ILLEGAL_DATA_VALUE){
@@ -423,7 +429,8 @@ u8 modbus_err_packet_type(u8 rtu_flag,u8* packet,u8 error_code){
     if(rtu_flag == MODBUS_TCP_PACKET){
         genenerate_error_packet(&packet[6],error_code);
         len = 9;
-        packet[5] = len;
+        packet[4] = 0;
+        packet[5] = 3;
     }else{
         genenerate_error_packet(packet,error_code);
         len = 5;
@@ -598,7 +605,7 @@ int it_modbus_responde_check(u8* buff,u16 length){
  * */
 int it_modbus_tcp_full_check(u8* buff,u16 len){
     //add fake crc for it_modbus_full_check
-    u8 temp_buff[256];
+    u8 temp_buff[264];
     memcpy(temp_buff,buff,len);
     *(u16*)(void*)(&temp_buff[len])=modbus_crc16((u8*)(temp_buff+MODBUS_TCP_HEADER_SIZE),\
                                                len-MODBUS_TCP_HEADER_SIZE);
@@ -825,7 +832,7 @@ static int modbus_response_lenght(u8 function, u16 items_number){
     case 0:
     case 1:
     case 2:
-        result = items_number%8 + 1 + 5;
+        result = (items_number + 7) / 8 + 5;
         break;
     case 3:
     case 4:
@@ -927,7 +934,7 @@ int modbus_master_execute_request(client_request_t * client_requests,int socket_
 static int modbus_master_read_bits(u8  function,u8  slave,u16 start_addr,u16 count,
                                    u16 *dest,int dest_size,u16 channel,
                                    u8  *error_code,u32 response_timeout,int socket_id,file_desc_set_t file_desc_set) {
-    u8 packet[MODBUS_PACKET_LEN];  //use for sending and receiving data
+    u8 packet[MODBUS_PACKET_LEN + 2];  //use for sending and receiving data
     int response_length;
     int query_length;
     int i, bit;
@@ -967,23 +974,26 @@ static int modbus_master_read_bits(u8  function,u8  slave,u16 start_addr,u16 cou
                 res = 0;
             }else{
                 u16 calc_len = body[2] + 3 + 2;//address + function + byte_num + crc + data
-                if (modbus_crc16_check(body,calc_len) && (dest !=0)){
-
-                    for( i = 0; (i < body[2]) && (i < dest_size); i++ ) {
-                        temp = body[3 + i];
-                        for( bit = 0x01; (bit & 0xff) && (coils_processed < count); ) {
-                            if((temp & (u8)bit)){
-                                dest[dest_pos] = 1;
-                            }else{
-                                dest[dest_pos] = 0;
+                if (modbus_crc16_check(body,calc_len) == 0) {
+                    res = INVALID_FRAME;
+                } else {
+                    if (dest != 0) {
+                        for( i = 0; (i < body[2]) && (i < dest_size); i++ ) {
+                            temp = body[3 + i];
+                            for( bit = 0x01; (bit & 0xff) && (coils_processed < count); ) {
+                                if((temp & (u8)bit)){
+                                    dest[dest_pos] = 1;
+                                }else{
+                                    dest[dest_pos] = 0;
+                                }
+                                coils_processed++;
+                                bit = bit << 1;
+                                dest_pos++;
                             }
-                            coils_processed++;
-                            bit = bit << 1;
-                            dest_pos++;
                         }
                     }
+                    res = response_length;
                 }
-                res = response_length;
             }
         }
     }
@@ -1038,7 +1048,7 @@ static int modbus_master_read_registers(u8  function,u8  slave,u16 start_addr,u1
                         dest[i] = (u16)(body[3 + i *2] << 8) | (u16)body[4 + i * 2];    /* copy reg hi byte to temp hi byte*/
                     }
                 }else{
-
+                    res = INVALID_FRAME;
                 }
             }
         }
@@ -1049,7 +1059,7 @@ static int modbus_master_read_registers(u8  function,u8  slave,u16 start_addr,u1
 /* Execute a transaction for functions that WRITE a sinlge BIT. */
 static int modbus_master_set_single(u8  function,u8  slave,u16 start_addr,u16 value,
                                     u16 channel,u8  *error_code,u32 response_timeout,int socket_id,file_desc_set_t file_desc_set) {
-    u8 packet[MODBUS_PACKET_LEN];
+    u8 packet[MODBUS_PACKET_LEN + 2];
     int query_length, response_length,res;
     (void)error_code;
     if ((channel == PACKET_CHANNEL_TCP)||
@@ -1095,7 +1105,7 @@ static int modbus_master_set_single(u8  function,u8  slave,u16 start_addr,u16 va
 static int modbus_master_write_output_bits(u8  function,u8  slave,u16 start_addr,u16* data,u8 coil_count,
                                     u16 channel,u8  *error_code,u32 response_timeout,int socket_id,file_desc_set_t file_desc_set) {
     int query_length, response_length, res;
-    u8 packet[MODBUS_PACKET_LEN];
+    u8 packet[MODBUS_PACKET_LEN + 2];
     (void)error_code;
     if( coil_count > MODBUS_MAX_READ_BITS) {
         coil_count = MODBUS_MAX_READ_BITS;
@@ -1106,7 +1116,7 @@ static int modbus_master_write_output_bits(u8  function,u8  slave,u16 start_addr
         response_length = modbus_tcp_response_lenght(function,coil_count);
     }else{
         query_length = modbus_make_packet(slave, function, start_addr, coil_count, (u8*)data, packet);
-        response_length = modbus_tcp_response_lenght(function,coil_count);
+        response_length = modbus_response_lenght(function,coil_count);
     }
     if ((query_length <= 0) || (response_length<=2) ||
             (response_length>256)){
@@ -1145,7 +1155,7 @@ static int modbus_master_write_output_bits(u8  function,u8  slave,u16 start_addr
 static int modbus_master_write_output_words(u8  function,u8  slave,u16 start_addr,u16* data,u8 reg_numm,
                                      u16 channel,u8  *error_code,u32 response_timeout,int socket_id,file_desc_set_t file_desc_set) {
     int query_length, response_length, res ;
-    u8 packet[MODBUS_PACKET_LEN];
+    u8 packet[MODBUS_PACKET_LEN + 2];
     (void)error_code;
     if( reg_numm > MODBUS_MAX_WORD_NUM) {
         reg_numm = MODBUS_MAX_WORD_NUM;
@@ -1156,7 +1166,7 @@ static int modbus_master_write_output_words(u8  function,u8  slave,u16 start_add
         response_length = modbus_tcp_response_lenght(function,reg_numm);
     }else{
         query_length = modbus_make_packet(slave, function, start_addr, reg_numm, (u8*)data, packet);
-        response_length = modbus_tcp_response_lenght(function,reg_numm);
+        response_length = modbus_response_lenght(function,reg_numm);
     }
     if ((query_length <= 0) || (response_length<=2) ||
             (response_length>256)){

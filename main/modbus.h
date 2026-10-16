@@ -37,6 +37,8 @@ enum modbus_type{
 #define MDB_INPUT_REGS_RO 4
 #define MODBUS_MAX_WORD_NUM 112
 #define MODBUS_MAX_READ_BITS 240
+#define MODBUS_MAX_READ_COILS 2000
+#define MODBUS_MAX_WRITE_COILS 1968
 #define MODBUS_PACKET_LEN 255
 enum packet_socket_channels{
     PACKET_CHANNEL_UDP = 10 + 1,

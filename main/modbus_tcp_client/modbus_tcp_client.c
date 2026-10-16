@@ -684,10 +684,10 @@ static inline int connection_proccess(u8 dest_ip[4],int * socket_id,struct socka
         fcntl(*socket_id, F_SETFL, O_NONBLOCK);
         err = connect(*socket_id, (struct sockaddr *) server_address, sizeof(struct sockaddr_in));
         if (err < 0) {
-            if(err == EINPROGRESS){
+            if(errno == EINPROGRESS){
                 struct timeval tv;
-                tv.tv_sec = 0;
-                tv.tv_usec = 2000*1000;
+                tv.tv_sec = 2;
+                tv.tv_usec = 0;
                 /* select without waiting should fail */
                 u32 timer;
                 timer = task_get_tick_count();
@@ -701,7 +701,14 @@ static inline int connection_proccess(u8 dest_ip[4],int * socket_id,struct socka
                     main_error_message(TAG,"connection time out \n");
                     close_socket_connection(socket_id);
                 }else{
-                    main_printf(TAG,"connected to server");
+                    int sock_err = 0;
+                    socklen_t sock_err_len = sizeof(sock_err);
+                    if ((getsockopt(*socket_id, SOL_SOCKET, SO_ERROR, &sock_err, &sock_err_len) < 0) || (sock_err != 0)) {
+                        main_error_message(TAG,"connection failed %d", sock_err);
+                        close_socket_connection(socket_id);
+                    } else {
+                        main_printf(TAG,"connected to server");
+                    }
                 }
             }else{
                 main_printf(TAG,"connection error");

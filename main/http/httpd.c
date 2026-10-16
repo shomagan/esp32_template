@@ -2408,7 +2408,7 @@ http_find_file(struct http_state *hs, const char *uri, int is_09)
             err = fs_open(&hs->file_handle, uri);
             if (err == ERR_OK) {
                 file = &hs->file_handle;
-            } else if (strcmp(uri,json_cgi_request) == 0){
+            } else if ((uri != NULL) && (strcmp(uri,json_cgi_request) == 0)){
                 file = &dynamic_json_file.file;
             }else{
                 file = http_get_404_file(hs, &uri);

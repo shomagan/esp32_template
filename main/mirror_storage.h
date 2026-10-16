@@ -56,6 +56,8 @@ int mirror_access_init_buffer(u16 table_ind);
 esp_err_t mirror_storage_init(void);
 u32 mirror_access_get_size(void);
 int mirror_access_write(regs_template_t * regs_template);
+void mirror_request_flash_save(u16 table_ind);
+void mirror_save_all_to_flash(void);
 int mirror_space_is_changing(regs_template_t *regs_template);
 int mirror_access_read(regs_template_t *regs_template);
 int internal_flash_save_mirror_to_flash(u16 table_ind);

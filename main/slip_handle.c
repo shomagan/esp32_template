@@ -138,7 +138,7 @@ err_t slip_modem_transmit(struct netif *netif,struct pbuf *p,const ip4_addr_t *i
     uint8_t c;
     transmit_temp_buff[out_len++] = SLIP_END;
     for (q = p;q!=NULL;q=q->next){
-        for (uint16_t i = 0; (i < q->len)&&(out_len<(SLIP_MAX_RAW_PACKET-1)); i++) {
+        for (uint16_t i = 0; (i < q->len)&&(out_len<(SLIP_MAX_RAW_PACKET-3)); i++) {
             c = ((u8_t *)q->payload)[i];
             switch (c) {
             case SLIP_END:
@@ -184,6 +184,19 @@ static int slip_handle_request_parameters(void){
  * @param len
  * @return
  */
+#define SLIP_SETTINGS_PACKET_LEN (2u + 12u + WIFI_NAME_LEN + WIFI_PASSWORD_LEN + WIFI_ROUTER_NAME_LEN + WIFI_ROUTER_PASSWORD_LEN + 2u + 2u)
+
+static int slip_write_setting(void *reg_address, u8 *value, u16 len) {
+   int changed;
+   semaphore_take(regs_access_mutex, portMAX_DELAY);
+   changed = memcmp(reg_address, value, len) != 0;
+   semaphore_release(regs_access_mutex);
+   if (changed && (regs_set_buffer(reg_address, value, len) >= 0)) {
+      return 1;
+   }
+   return 0;
+}
+
 static bool rx_filter(uint8_t *data, uint32_t len){
     (void)(len);
     bool res = 0;
@@ -191,7 +204,7 @@ static bool rx_filter(uint8_t *data, uint32_t len){
     if ((strncmp("!S", (char*)data,2)==0)&&(len==2)){
         slip_handle_request_parameters();
         res = 1;
-    }else if((strncmp("!I", (char*)data,2)==0)){
+    }else if((strncmp("!I", (char*)data,2)==0) && (len >= SLIP_SETTINGS_PACKET_LEN)){
         u8 handle_len = 2;
         u8 ip_local[4];
         u8 ip_local_mask[4];
@@ -233,17 +246,17 @@ static bool rx_filter(uint8_t *data, uint32_t len){
         crc_sended |= (u16)data[handle_len++]<<8;
         if(check_crc16(data,handle_len)){
             int writed=0;
-            writed = regs_set_buffer(&regs_global->vars.wifi_setting,(u8*)&wifi_setting,sizeof(wifi_setting))==1?1:writed ;
+            writed |= slip_write_setting(&regs_global->vars.wifi_setting,(u8*)&wifi_setting,sizeof(wifi_setting));
             if (wifi_setting==WIFI_ACCESS_POINT || wifi_setting==WIFI_AP_STA){
-                writed = regs_set_buffer(regs_global->vars.wifi_name,wifi_name,WIFI_NAME_LEN)==1?1:writed ;
-                writed = regs_set_buffer(regs_global->vars.wifi_password,wifi_pass,WIFI_PASSWORD_LEN)==1?1:writed ;
+                writed |= slip_write_setting(regs_global->vars.wifi_name,wifi_name,WIFI_NAME_LEN);
+                writed |= slip_write_setting(regs_global->vars.wifi_password,wifi_pass,WIFI_PASSWORD_LEN);
             }
-            writed = regs_set_buffer(regs_global->vars.slip_ip,ip_local_gate,4)==1?1:writed ;
-            writed = regs_set_buffer(regs_global->vars.slip_netmask,ip_local_mask,4)==1?1:writed;
-            writed = regs_set_buffer(regs_global->vars.slip_gate,ip_local,4)==1?1:writed ;
+            writed |= slip_write_setting(regs_global->vars.slip_ip,ip_local_gate,4);
+            writed |= slip_write_setting(regs_global->vars.slip_netmask,ip_local_mask,4);
+            writed |= slip_write_setting(regs_global->vars.slip_gate,ip_local,4);
             if (wifi_setting==WIFI_CLIENT || wifi_setting==WIFI_AP_STA){
-                writed = regs_set_buffer(regs_global->vars.wifi_router_name,wifi_router_name,WIFI_ROUTER_NAME_LEN)==1?1:writed ;
-                writed = regs_set_buffer(regs_global->vars.wifi_router_password,wifi_router_pass,WIFI_ROUTER_PASSWORD_LEN)==1?1:writed ;
+                writed |= slip_write_setting(regs_global->vars.wifi_router_name,wifi_router_name,WIFI_ROUTER_NAME_LEN);
+                writed |= slip_write_setting(regs_global->vars.wifi_router_password,wifi_router_pass,WIFI_ROUTER_PASSWORD_LEN);
             }
             if (writed){
                 u32 prev_value = 0;
@@ -322,7 +335,7 @@ void slip_handle_uart_rx_task(void *arg){
     slip_handle_request_parameters();
     while (slip_handle->running == true){
         // Read data from the UART
-        int len = uart_read_bytes(slip_handle->uart_dev, temp_buff,SLIP_HANDLE_RX_BUFFER_LEN, pdMS_TO_TICKS((5)));
+        int len = uart_read_bytes(slip_handle->uart_dev, temp_buff,SLIP_HANDLE_RX_BUFFER_LEN - 1, pdMS_TO_TICKS((5)));
         if (len > 0) {
             // Ensure null termination
             temp_buff[len] = '\0';

@@ -25,6 +25,8 @@
 #include "httpd_ssi_cgi.h"
 #include "os_type.h"
 #include <math.h>
+#include <stdarg.h>
+#include <stdio.h>
 static const char *TAG = "json";
 /**
  * @}
@@ -70,6 +72,31 @@ static json_msg_t json_get_msg_type(char *data);
 static int json_get_array_elem_nmb(char *array);
 static int json_get_array_elements(char *json_array, u64 *buff, int num);
 static operand_t json_get_elements(char *str_value, regs_template_t *regs_template);
+static int json_out_overflow = 0;
+
+static void json_out_append(const char *format, ...) {
+   int free_space = MAX_DINAMIC_JSON_FILE_LEN - dynamic_json_file.file.len;
+   if (json_out_overflow || (free_space <= 1)) {
+      json_out_overflow = 1;
+      return;
+   }
+   va_list args;
+   va_start(args, format);
+   int written = vsnprintf(dynamical_file_databuf + dynamic_json_file.file.len, (size_t)free_space, format, args);
+   va_end(args);
+   if ((written < 0) || (written >= free_space)) {
+      json_out_overflow = 1;
+   } else {
+      dynamic_json_file.file.len += written;
+   }
+}
+
+static void json_out_replace_last(char symbol) {
+   if (dynamic_json_file.file.len > 0) {
+      dynamical_file_databuf[dynamic_json_file.file.len - 1] = symbol;
+   }
+}
+
 void json_init_base(void) {
    dynamic_json_file.file.data = dynamical_file_databuf;
    dynamic_json_file.file.flags |= FS_FILE_FLAGS_HEADER_INCLUDED;
@@ -110,8 +137,17 @@ char *extract_json_pack(char *headers) {
    }
 
    /* Find start of json_pack */
+   if (p == NULL) {
+      return NULL;
+   }
    json_pack = strchr(p, '{');
+   if (json_pack == NULL) {
+      return NULL;
+   }
    p = strchr(json_pack, '}');
+   if (p == NULL) {
+      return NULL;
+   }
    p++;
    *p = '\0';
    return json_pack;
@@ -187,13 +223,15 @@ static int json_parse(json_pairs_t *json, char *json_pack) {
  * This function recognize request type and create response message with requested data
  */
 const char *get_json_handle(char *json_pack) {
+   if (json_pack == NULL) {
+      return NULL;
+   }
    json_pairs_t json_pairs;
    int params = json_parse(&json_pairs, json_pack);
    request_t request = NONE_REQUEST;
    get_t get_type = GET_NONE;
    u8 reg_num = 0;
    u64 reg_index[MAX_REGS_REQUEST_NUM] = { 0 };
-   char temp[32] = { 0 };
    char *p_databuf;
    u64 val_u64 = 0;
    i8 temp_i8 = 0;
@@ -229,6 +267,9 @@ const char *get_json_handle(char *json_pack) {
                }
             } else if (strcmp(json_pairs.param[i], "reg_num") == 0) {
                reg_num = (u8)atoi(json_pairs.value[i]);
+               if (reg_num > MAX_REGS_REQUEST_NUM) {
+                  reg_num = MAX_REGS_REQUEST_NUM;
+               }
             } else if (strcmp(json_pairs.param[i], "get_type") == 0) {
                if (strcmp(json_pairs.value[i], "full") == 0) {
                   get_type = GET_FULL;
@@ -242,7 +283,7 @@ const char *get_json_handle(char *json_pack) {
                   reg_index[0] = (u16)atoi(json_pairs.value[i]);
                } else if (json_msg == ARRAY_JSON) {
                   if (reg_num == json_get_array_elem_nmb(json_pairs.value[i])) {
-                     if (reg_num < MAX_REGS_REQUEST_NUM) {
+                     if (reg_num <= MAX_REGS_REQUEST_NUM) {
                         json_get_array_elements(json_pairs.value[i], reg_index, reg_num);
                      }
                   } else {
@@ -297,7 +338,10 @@ const char *get_json_handle(char *json_pack) {
                         regs_set((void *)((u32)regs_template.p_value + regs_size_in_byte(regs_template.type) * j), reg);
                         element = strchr(element, ';');
                         if (element) {
-                           element += 2;
+                           element++;
+                           while (*element == ' ') {
+                              element++;
+                           }
                         } else {
                            break;
                         }
@@ -321,93 +365,31 @@ const char *get_json_handle(char *json_pack) {
 
          p_databuf = dynamical_file_databuf;
          dynamic_json_file.file.len = 0;
-         strcpy(p_databuf + dynamic_json_file.file.len, json_header); //add header in file
-         dynamic_json_file.file.len += strlen(json_header);
-         dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "{");
+         json_out_overflow = 0;
+         json_out_append("%s{", json_header);
          switch (request) {
          case OS_PARAM_REQUEST:
-            dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "\"current\":");
-            itoa((int)0, temp, 10);
-            strcpy(p_databuf + dynamic_json_file.file.len, temp);
-            dynamic_json_file.file.len += strlen(temp);
-            *(p_databuf + dynamic_json_file.file.len) = ',';
-            dynamic_json_file.file.len++;
-            dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "\"main\":");
-            itoa((int)0, temp, 10);
-            strcpy(p_databuf + dynamic_json_file.file.len, temp);
-            dynamic_json_file.file.len += strlen(temp);
-            *(p_databuf + dynamic_json_file.file.len) = ',';
-            dynamic_json_file.file.len++;
-            dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "\"os_ver\":");
-            *(p_databuf + dynamic_json_file.file.len) = '[';
-            dynamic_json_file.file.len++;
+            json_out_append("\"current\":%d,\"main\":%d,\"os_ver\":[", 0, 0);
             for (u8 i = 0; i < FW_VERSION_SIZE; i++) {
-               itoa(regs_global->vars.fw_version[i], temp, 10);
-               strcpy(p_databuf + dynamic_json_file.file.len, temp);
-               dynamic_json_file.file.len += strlen(temp);
-               *(p_databuf + dynamic_json_file.file.len) = ',';
-               dynamic_json_file.file.len++;
+               json_out_append("%d,", (int)regs_global->vars.fw_version[i]);
             }
-            *(p_databuf + dynamic_json_file.file.len - 1) = ']'; //replace last "," symbol to "]"
-            *(p_databuf + dynamic_json_file.file.len) = ',';
-            dynamic_json_file.file.len++;
+            json_out_replace_last(']');
+            json_out_append(",");
             break;
          case TASK_PARAM_REQUEST:
-            //add actions
             break;
          case REGS_REQUEST:
-            //index
             for (u8 i = 0; i < reg_num; i++) {
-               int res = 0;
-               dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, " \"index\" :");
-               res = regs_description_get_by_index(&regs_template, reg_index[i]);
-               itoa((int)reg_index[i], temp, 10);
-               strcpy(p_databuf + dynamic_json_file.file.len, temp);
-               dynamic_json_file.file.len += strlen(temp);
-               *(p_databuf + dynamic_json_file.file.len) = ',';
-               dynamic_json_file.file.len++;
-               if (get_type == GET_FULL) {
-                  if (res == 0) {
-                     //name
-                     dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, " \"name\" :\"");
-                     strcpy(p_databuf + dynamic_json_file.file.len, regs_template.name);
-                     dynamic_json_file.file.len += strlen(regs_template.name);
-                     //type
-                     dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "\", \"type\" :");
-                     itoa((int)regs_template.type, temp, 10);
-                     strcpy(p_databuf + dynamic_json_file.file.len, temp);
-                     dynamic_json_file.file.len += strlen(temp);
-                     *(p_databuf + dynamic_json_file.file.len) = ',';
-                     dynamic_json_file.file.len++;
-                     //byte_address
-                     dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, " \"byte_address\" :");
-                     itoa((int)regs_template.guid, temp, 10);
-                     strcpy(p_databuf + dynamic_json_file.file.len, temp);
-                     dynamic_json_file.file.len += strlen(temp);
-                     *(p_databuf + dynamic_json_file.file.len) = ',';
-                     dynamic_json_file.file.len++;
-                     //flags
-                     dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, " \"flags\" :");
-                     itoa((int)regs_template.property, temp, 10);
-                     strcpy(p_databuf + dynamic_json_file.file.len, temp);
-                     dynamic_json_file.file.len += strlen(temp);
-                     *(p_databuf + dynamic_json_file.file.len) = ',';
-                     dynamic_json_file.file.len++;
-                     //description
-                     dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, " \"description\" :\"");
-                     strcpy(p_databuf + dynamic_json_file.file.len, regs_template.description);
-                     dynamic_json_file.file.len += strlen(regs_template.description);
-                     dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "\",");
-                     //modbus_function
-                     dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, " \"modbus_function\" :%u,",
-                                                           (u8)RD_MDB_FUNCTION(regs_template.modbus_description));
-                     //modbus_function
-                     dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, " \"modbus_address\" :%u,",
-                                                           (u16)RD_MDB_ADDRESS(regs_template.modbus_description));
-                  }
+               int res = regs_description_get_by_index(&regs_template, reg_index[i]);
+               json_out_append(" \"index\" :%d,", (int)reg_index[i]);
+               if ((get_type == GET_FULL) && (res == 0)) {
+                  json_out_append(" \"name\" :\"%s\", \"type\" :%d, \"byte_address\" :%d, \"flags\" :%d,", regs_template.name,
+                                  (int)regs_template.type, (int)regs_template.guid, (int)regs_template.property);
+                  json_out_append(" \"description\" :\"%s\", \"modbus_function\" :%u, \"modbus_address\" :%u,",
+                                  regs_template.description, (u8)RD_MDB_FUNCTION(regs_template.modbus_description),
+                                  (u16)RD_MDB_ADDRESS(regs_template.modbus_description));
                }
-               //value
-               dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, " \"value\" :");
+               json_out_append(" \"value\" :");
                if (res == 0) {
                   u16 temp_len = 0;
                   if (add_lwip_stats(&regs_template, p_databuf + dynamic_json_file.file.len, &temp_len) > 0) {
@@ -425,8 +407,7 @@ const char *get_json_handle(char *json_pack) {
                      dynamic_json_file.file.len++;
                   } else {
                      if (regs_template.size > 1) {
-                        *(p_databuf + dynamic_json_file.file.len) = '[';
-                        dynamic_json_file.file.len++;
+                        json_out_append("[");
                      }
                      semaphore_take(regs_access_mutex, portMAX_DELAY);
                      {
@@ -440,43 +421,41 @@ const char *get_json_handle(char *json_pack) {
                               val_u64 = 0;
                               memcpy(&val_u64, (regs_template.p_value + i * regs_size_in_byte(regs_template.type)),
                                      regs_size_in_byte(regs_template.type));
-                              dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "%llu,", val_u64);
+                              json_out_append("%llu,", val_u64);
                               break;
                            case I8_REGS_FLAG:
                               temp_i8 = 0;
                               memcpy(&temp_i8, (regs_template.p_value + i * regs_size_in_byte(regs_template.type)),
                                      regs_size_in_byte(regs_template.type));
-                              dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "%i,", temp_i8);
+                              json_out_append("%i,", temp_i8);
                               break;
                            case S16_REGS_FLAG:
                               temp_i16 = 0;
                               memcpy(&temp_i16, (regs_template.p_value + i * regs_size_in_byte(regs_template.type)),
                                      regs_size_in_byte(regs_template.type));
-                              dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "%i,", temp_i16);
+                              json_out_append("%i,", temp_i16);
                               break;
                            case S32_REGS_FLAG:
                            case INT_REGS_FLAG:
                               temp_i32 = 0;
                               memcpy(&temp_i32, (regs_template.p_value + i * regs_size_in_byte(regs_template.type)),
                                      regs_size_in_byte(regs_template.type));
-                              dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "%li,", temp_i32);
+                              json_out_append("%li,", temp_i32);
                               break;
                            case S64_REGS_FLAG:
                               temp_i64 = 0;
                               memcpy(&temp_i64, (regs_template.p_value + i * regs_size_in_byte(regs_template.type)),
                                      regs_size_in_byte(regs_template.type));
-                              dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "%lli,", temp_i64);
+                              json_out_append("%lli,", temp_i64);
                               break;
                            case FLOAT_REGS_FLAG:
                               val_float = 0.0f;
                               memcpy(&val_float, (regs_template.p_value + i * regs_size_in_byte(regs_template.type)),
                                      regs_size_in_byte(regs_template.type));
                               if (isnanf(val_float) || isinff(val_float)) {
-                                 dynamic_json_file.file.len +=
-                                    sprintf(p_databuf + dynamic_json_file.file.len, "\"%f\",", (double)val_float);
+                                 json_out_append("\"%f\",", (double)val_float);
                               } else {
-                                 dynamic_json_file.file.len +=
-                                    sprintf(p_databuf + dynamic_json_file.file.len, "%f,", (double)val_float);
+                                 json_out_append("%f,", (double)val_float);
                               }
                               break;
                            case DOUBLE_REGS_FLAG:
@@ -484,10 +463,9 @@ const char *get_json_handle(char *json_pack) {
                               memcpy(&val_double, (regs_template.p_value + i * regs_size_in_byte(regs_template.type)),
                                      regs_size_in_byte(regs_template.type));
                               if (isnanf((float)val_double) || isinff((float)val_double)) {
-                                 dynamic_json_file.file.len +=
-                                    sprintf(p_databuf + dynamic_json_file.file.len, "\"%f\",", val_double);
+                                 json_out_append("\"%f\",", val_double);
                               } else {
-                                 dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "%f,", val_double);
+                                 json_out_append("%f,", val_double);
                               }
                               break;
                            }
@@ -495,41 +473,35 @@ const char *get_json_handle(char *json_pack) {
                      }
                      semaphore_release(regs_access_mutex);
                      if (regs_template.size > 1) {
-                        *(p_databuf + dynamic_json_file.file.len - 1) = ']'; //replace last "," symbol to "]"
-                        *(p_databuf + dynamic_json_file.file.len) = ',';
-                        dynamic_json_file.file.len++;
+                        json_out_replace_last(']');
+                        json_out_append(",");
                      }
                   }
                }
             }
             break;
          case REGS_NUM_REQUEST:
-            dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "\"regs_num\":");
-            itoa((int)regs_global->vars.num_of_vars, temp, 10);
-            strcpy(p_databuf + dynamic_json_file.file.len, temp);
-            dynamic_json_file.file.len += strlen(temp);
-            *(p_databuf + dynamic_json_file.file.len) = ',';
-            dynamic_json_file.file.len++;
+            json_out_append("\"regs_num\":%d,", (int)regs_global->vars.num_of_vars);
             break;
          case USER_TASK_REGS_NUM_REQUEST:
-            dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "\"user_task_regs_num\":");
-            itoa((int)regs_global->vars.user_task_num_of_vars, temp, 10);
-            strcpy(p_databuf + dynamic_json_file.file.len, temp);
-            dynamic_json_file.file.len += strlen(temp);
-            *(p_databuf + dynamic_json_file.file.len) = ',';
-            dynamic_json_file.file.len++;
+            json_out_append("\"user_task_regs_num\":%d,", (int)regs_global->vars.user_task_num_of_vars);
             break;
          case REGS_SET_REQUEST:
          case SET_STRING:
-            dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "\"status\":\"ok\",");
+            json_out_append("\"status\":\"ok\",");
             break;
          default:
-            dynamic_json_file.file.len += sprintf(p_databuf + dynamic_json_file.file.len, "\"error\":\"invalid request value\",");
+            json_out_append("\"error\":\"invalid request value\",");
             break;
          }
 
-         *(p_databuf + dynamic_json_file.file.len - 1) = '}'; //replace last "," symbol to "}"
-         *(p_databuf + dynamic_json_file.file.len) = '\0';
+         json_out_replace_last('}');
+         if (json_out_overflow) {
+            dynamic_json_file.file.len = 0;
+            json_out_overflow = 0;
+            json_out_append("%s{\"error\":\"response too large\"}", json_header);
+         }
+         dynamical_file_databuf[dynamic_json_file.file.len] = '\0';
 
          dynamic_json_file.file.index = dynamic_json_file.file.len;
          dynamic_json_file.busy = JSON_OUT_SENDING;
@@ -653,7 +625,7 @@ static operand_t json_get_elements(char *str_value, regs_template_t *regs_templa
    case (S32_REGS_FLAG):
    case (S64_REGS_FLAG):
    case (INT_REGS_FLAG):
-      value.op_s64 = strtol(str_value, 0, 10);
+      value.op_s64 = strtoll(str_value, 0, 10);
       break;
    case (U8_REGS_FLAG):
    case (U16_REGS_FLAG):
@@ -662,7 +634,7 @@ static operand_t json_get_elements(char *str_value, regs_template_t *regs_templa
       value.op_u32 = strtoul(str_value, 0, 10);
       break;
    case (U64_REGS_FLAG):
-      value.op_u64 = strtoul(str_value, 0, 10);
+      value.op_u64 = strtoull(str_value, 0, 10);
       break;
    case (FLOAT_REGS_FLAG):
       value.op_f = (float)strtod(str_value, NULL);

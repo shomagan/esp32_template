@@ -161,14 +161,16 @@ void common_duty_task(void *pvParameters) {
       }
       udp_broabcast_update(task_tick);
 
-      u32 async_flags;
       u32 table_to_save = 0u;
-      regs_copy_safe(&async_flags, &regs_global->vars.async_flags, sizeof(async_flags));
-      regs_copy_safe(&table_to_save, &regs_global->vars.table_to_save, sizeof(table_to_save));
+      semaphore_take(regs_access_mutex, portMAX_DELAY);
+      if (regs_global->vars.async_flags & ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH) {
+         regs_global->vars.async_flags &= ~((u32)ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH);
+         table_to_save = regs_global->vars.table_to_save;
+         regs_global->vars.table_to_save = 0u;
+      }
+      semaphore_release(regs_access_mutex);
 
-      if (async_flags & ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH) {
-         async_flags &= ~ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
-         regs_copy_safe(&regs_global->vars.async_flags, &async_flags, sizeof(async_flags));
+      if (table_to_save) {
          main_printf(TAG, "mirror is saving to flash table_to_save %d", table_to_save);
          int table_ind = 0;
          /*table to save is a bitfield, need to check all bits and convert to indexes*/
@@ -178,7 +180,6 @@ void common_duty_task(void *pvParameters) {
             internal_flash_save_mirror_to_flash(table_ind);
             table_to_save = table_to_save & (table_to_save - 1);/*like a hamming weight calculation */
          }
-         regs_copy_safe(&regs_global->vars.table_to_save, &table_to_save, sizeof(table_to_save));
       }
       if (prepare_time) {
          if ((task_get_time_ms() - prepare_time) > TIME_FOR_PREPARE_RESET_MS) {
@@ -202,7 +203,7 @@ static int common_duty_init(void){
         res = -1;
     }else{
         /*init timers*/
-        timer_init_state = common_timer_init(true);
+        timer_init_state = common_timer_init(false);
         if (timer_init_state <=0){
             res = -1;
         }else{
@@ -526,6 +527,10 @@ static void common_timer_deinit(void){
 static bool IRAM_ATTR timer_group_isr_callback(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx){
     (void)timer; (void)user_ctx;
     /* edata->count_value holds the counter value at alarm time */
+   gptimer_alarm_config_t next_alarm = {
+      .alarm_count = edata->alarm_value + TIMER_SCALE,
+   };
+   gptimer_set_alarm_action(timer, &next_alarm);
     if (common_timer_task_handle!=NULL){
         u32 prev_signal=0;
         int  higher_priority_task_woken;

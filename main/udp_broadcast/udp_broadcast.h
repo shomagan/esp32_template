@@ -16,8 +16,8 @@ typedef enum{
  */
 int udp_broadcast_init(void);
 /**
- * @brief udp_broadcast_advertisement send broadcast message to wire
- * @return
+ * @brief udp_broadcast_advertisement queue a broadcast message to be sent from the lwip thread
+ * @return ERR_OK if queued
  */
 int udp_broadcast_advertisement(udp_broadcast_option_t option);
 

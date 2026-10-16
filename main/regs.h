@@ -185,9 +185,9 @@ typedef struct {
 } regs_access_t;
 
 #define FW_VERSION_SIZE 4
-#define FW_VERSION { 0, 11, 0, 0 }
-#define FW_VERSION_STR "0.11.0-beta.0"
-#define FW_FIRMWARE_HASH "92-b98c38460f174c60439de662b07b75"
+#define FW_VERSION {0,12,0,0}
+#define FW_VERSION_STR "0.12.0-beta.0"
+#define FW_FIRMWARE_HASH "93-9775050f9a60bc5620f6195055a14a"
 #define FW_HASH 0x00000000
 #define REGS_MAX_NAME_SIZE 32
 #define DEVICE_NAME_SIZE 40
@@ -217,7 +217,6 @@ typedef struct {
  *
  * @ingroup regs
  */
-// clang-format off
 /** #generator_use_description {"space_name" :"main_vars_t", "modbus_type" :"server", "address_space" :0, "modbus_function" :"holding_registers", "register_start_address" :0}*/
 typedef union{
     struct MCU_PACK{
@@ -287,7 +286,6 @@ typedef union{
     }vars;
     u8 bytes[GLOBAL_UNION_SIZE]; //for full bksram copy
 }main_vars_t;// #generator_use_description {"message":"end_struct"}
-// clang-format on
 extern main_vars_t * const regs_global;
 
 /**

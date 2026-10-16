@@ -19,6 +19,8 @@
 #define ESP_WIFI_CHANNEL   1u
 #define MAX_STA_CONN       4u
 #define TEMPORAL_DISACTIVATION_TIME 120/*sec*/
+#define STA_FAST_RETRY_MAX 5u
+#define STA_FAILURE_RETRY_CNT 3u
 typedef enum {
     WIFI_STATE_NOT_ACTIVATED = 0,/*not yet initialIzed or not disabled by default*/
     WIFI_STATE_ACTIVATED = 1,/*activated STA ot AP*/
@@ -30,6 +32,7 @@ task_handle_t wireless_control_handle_id = NULL;
 static const char *TAG = "wireless_control";
 esp_netif_t *ap_netif = NULL;
 esp_netif_t *sta_netif = NULL;
+static u8 sta_fast_retries = 0u;
 
 static int wireless_control_init(void);
 static int wireless_control_deinit();
@@ -42,6 +45,7 @@ static bool wifi_init_sta(void);
 static void wifi_init_soft_ap_sta(void);
 static int wifi_full_stop(void);
 static int wifi_state_handle(u64 task_counter,u32 start_reset_time,wireless_state_t * wifi_state);
+static void wifi_set_sta_connect_policy(wifi_config_t *sta_config);
 
 /**
  * @brief wifi_event_handler
@@ -67,9 +71,17 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
             }
             break;
         case WIFI_EVENT_STA_DISCONNECTED:
-            ESP_LOGI(TAG, "Wi-Fi sta got a station disconnected");
+        {
+           wifi_event_sta_disconnected_t *disconnected = (wifi_event_sta_disconnected_t *)event_data;
+           ESP_LOGI(TAG, "Wi-Fi sta disconnected, reason %u, rssi %d, fast retry %u", disconnected->reason,
+                    disconnected->rssi, sta_fast_retries);
             regs_global->vars.sta_connect=0;
+           if ((disconnected->reason != WIFI_REASON_ASSOC_LEAVE) && (sta_fast_retries < STA_FAST_RETRY_MAX)) {
+              sta_fast_retries++;
+              esp_wifi_connect();
+           }
             break;
+        }
         default:
             break;
         }
@@ -77,6 +89,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         if (event_id==IP_EVENT_STA_GOT_IP){
             ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
             regs_global->vars.sta_connect = 1;
+           sta_fast_retries = 0u;
             memcpy(&regs_global->vars.sta_ip, &event->ip_info.ip.addr, sizeof(uint32_t));
             ESP_LOGI(TAG, "IP_EVENT_STA_GOT_IP");
         }
@@ -105,7 +118,8 @@ void wireless_control_task(void *arg){
    while(1){
       wifi_state_handle(task_counter, start_reset_time, &wifi_state);
       signal_value = 0;
-      if(task_notify_wait(STOP_CHILD_PROCCES|WIRELESS_TASK_STOP_WIFI, &signal_value, wireless_control_TASK_PERIOD)==pdTRUE){
+      if(task_notify_wait(STOP_CHILD_PROCCES|WIRELESS_TASK_STOP_WIFI|WIRELESS_TASK_START_WIFI|WIRELESS_TASK_RESET_WIFI_FOR_120_SEC,
+                          &signal_value, wireless_control_TASK_PERIOD)==pdTRUE){
          /*by signal*/
          if (signal_value & WIRELESS_TASK_STOP_WIFI){
             if (WIFI_STATE_ACTIVATED == wifi_state){
@@ -136,9 +150,13 @@ void wireless_control_task(void *arg){
             task_delete(task_get_id());
          }
       }
-      esp_wifi_sta_get_ap_info(&ap_info);
-      regs_global->vars.rssi_ap[0] = ap_info.rssi;/*atomic*/
-      regs_global->vars.primary_channel_ap[0] = ap_info.primary;//atomic
+      if (regs_global->vars.sta_connect && (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK)) {
+         regs_global->vars.rssi_ap[0] = ap_info.rssi;
+         regs_global->vars.primary_channel_ap[0] = ap_info.primary;
+      } else {
+         regs_global->vars.rssi_ap[0] = 0;
+         regs_global->vars.primary_channel_ap[0] = 0;
+      }
       task_counter++;
    }
 }
@@ -155,7 +173,7 @@ static int wifi_state_handle(u64 task_counter,u32 start_reset_time,wireless_stat
                (regs_global->vars.wifi_setting == WIFI_AP_STA)||
                (regs_global->vars.wifi_setting == WIFI_ESP32_CHANGED_ONLY_AP_STA)){
                semaphore_take(regs_access_mutex, portMAX_DELAY);{
-               if(regs_global->vars.sta_connect==0){
+               if ((regs_global->vars.sta_connect == 0) && (sta_fast_retries >= STA_FAST_RETRY_MAX)) {
                   main_printf(TAG, "try connect to sta");
                   if (ESP_OK != esp_wifi_connect()){
                      main_error_message(TAG, "connection to sta failed");
@@ -242,6 +260,26 @@ static void wifi_common_setup(void){
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM));
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_NULL));
 }
+static void wifi_set_config_checked(wifi_interface_t interface, wifi_config_t *config) {
+   esp_err_t err = esp_wifi_set_config(interface, config);
+   if (err != ESP_OK) {
+      main_error_message(TAG, "wifi config for interface %d rejected: %s", (int)interface, esp_err_to_name(err));
+   }
+}
+
+static void wifi_copy_router_credentials(wifi_config_t *sta_config) {
+   memcpy(sta_config->sta.ssid, regs_global->vars.wifi_router_name,
+          strnlen((char *)regs_global->vars.wifi_router_name, sizeof(sta_config->sta.ssid)));
+   memcpy(sta_config->sta.password, regs_global->vars.wifi_router_password,
+          strnlen((char *)regs_global->vars.wifi_router_password, WIFI_ROUTER_PASSWORD_LEN));
+}
+
+static void wifi_set_sta_connect_policy(wifi_config_t *sta_config) {
+   sta_config->sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
+   sta_config->sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
+   sta_config->sta.failure_retry_cnt = STA_FAILURE_RETRY_CNT;
+}
+
 /**
  * @brief wifi_init_softap - init softap
  */
@@ -253,17 +291,17 @@ static void wifi_init_soft_ap_sta(void){
     memcpy(ap_config.ap.ssid,regs_global->vars.wifi_name,WIFI_NAME_LEN);
     memcpy(ap_config.ap.password,regs_global->vars.wifi_password,WIFI_PASSWORD_LEN);
     ap_config.ap.authmode = WIFI_AUTH_WPA2_PSK;
-    ap_config.ap.ssid_len = WIFI_NAME_LEN;
+    ap_config.ap.ssid_len = (u8)strnlen((char *)regs_global->vars.wifi_name, WIFI_NAME_LEN);
     ap_config.ap.max_connection = MAX_STA_CONN;
     ap_config.ap.channel = ESP_WIFI_CHANNEL;
     wifi_config_t sta_config;
     memset(&sta_config,0,sizeof(wifi_config_t));
-    memcpy(sta_config.sta.ssid,regs_global->vars.wifi_router_name,strlen((char*)&regs_global->vars.wifi_router_name));
-    memcpy(sta_config.sta.password,regs_global->vars.wifi_router_password,strlen((char*)&regs_global->vars.wifi_router_password));
+    wifi_copy_router_credentials(&sta_config);
+   wifi_set_sta_connect_policy(&sta_config);
 
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_APSTA) );
-    ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_AP, &ap_config) );
-    ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &sta_config) );
+    wifi_set_config_checked(WIFI_IF_AP, &ap_config);
+    wifi_set_config_checked(WIFI_IF_STA, &sta_config);
     ESP_ERROR_CHECK( esp_wifi_start() );
     ESP_ERROR_CHECK( esp_wifi_connect() );
     return;
@@ -276,7 +314,7 @@ void wifi_init_softap(void){
     memcpy(temp_ssid,regs_global->vars.wifi_name,WIFI_NAME_LEN);
     wifi_config_t wifi_config = {
         .ap = {
-            .ssid_len = WIFI_NAME_LEN,
+            .ssid_len = (u8)strnlen((char *)regs_global->vars.wifi_name, WIFI_NAME_LEN),
             .channel = ESP_WIFI_CHANNEL,
             .max_connection = MAX_STA_CONN,
             .authmode = WIFI_AUTH_WPA2_PSK
@@ -287,7 +325,7 @@ void wifi_init_softap(void){
     memcpy(wifi_config.ap.ssid,regs_global->vars.wifi_name,WIFI_NAME_LEN);
     memcpy(wifi_config.ap.password,regs_global->vars.wifi_password,WIFI_PASSWORD_LEN);
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
+    wifi_set_config_checked(WIFI_IF_AP, &wifi_config);
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_LOGI(TAG, "wifi_init_softap finished. SSID:%s password:%s channel:%d",
              regs_global->vars.wifi_name, regs_global->vars.wifi_password, ESP_WIFI_CHANNEL);
@@ -295,12 +333,12 @@ void wifi_init_softap(void){
 static bool wifi_init_sta(void){
     wifi_config_t sta_config;
     memset(&sta_config, 0,sizeof(wifi_config_t));
-    strcpy((char *)sta_config.sta.ssid, (char*)regs_global->vars.wifi_router_name);
-    strcpy((char *)sta_config.sta.password, (char*)regs_global->vars.wifi_router_password);
+    wifi_copy_router_credentials(&sta_config);
+   wifi_set_sta_connect_policy(&sta_config);
     main_printf(TAG, "ap_name:%s ap_password:%s ",
              sta_config.sta.ssid, sta_config.sta.password);
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));
+    wifi_set_config_checked(WIFI_IF_STA, &sta_config);
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK( esp_wifi_connect() );
     return 0;

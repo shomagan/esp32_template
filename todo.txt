@@ -29,3 +29,22 @@ what do we have
 
     we can save table by table if it is littlefs based , then table should have a name and size
     saved address should show address for own table only(starts from 0 for each table)
+
+security: register access has no authentication
+    wifi passwords readable over http json, ssi and modbus; no register uses &credential
+    command register writable by anyone, ENABLE_SPECIAL_HTTP_COMM turns on credential writes
+    wifi passwords printed to log in wireless_control.c, telegram logs its request with the bot token
+
+main/ review leftovers
+    extract_json_pack (json.c) scans headers past the end of the request, needs the payload length
+    json response "busy" flag (json.c) is not atomic, two http connections can race
+    modbus_tcp_recv (modbus_tcp.c) handles one request per tcp segment, no reassembly or pipelining
+    modbus coil writes (FC5, FC15 in modbus.c) bypass the read only check, matters once a coil table exists
+    connect_to_address (modbus_tcp_client.c) is dead code, duplicate of connection_proccess
+    unused variable warnings: pos (regs_description.c), regs_description_temp (modbus_tcp_client.c), flash_address (httpd.c)
+
+blocking work runs on the lwip thread and stalls all networking
+    modbus/http writes to the command register run execute_main_command inside lwip callbacks
+    ENTER_UPDATER_COMM verifies the whole updater image there (esp_image_verify)
+    json handler (get_json_handle) busy waits up to 1 s for the response buffer with task_delay_ms
+    move command execution to common_duty_task via task notification

@@ -25,6 +25,8 @@
 #if UDP_BROADCAST_ENABLE
 #include "lwip/udp.h"
 #include "lwip/timeouts.h"
+#include "lwip/tcpip.h"
+#include <stdint.h>
 #if SOC_HMAC_SUPPORTED
     #include "esp_efuse.h"
     #include "esp_efuse_table.h"
@@ -58,12 +60,28 @@ static u32 add_string_from_regs(u8 * dest, u8 * from,u32 max_size);
 static int get_di_info(char * temp_buff);
 
 
+#if SOC_HMAC_SUPPORTED
+static void udp_broadcast_provision_hmac_key(void) {
+   if (esp_efuse_get_key_purpose(EFUSE_BLK_KEY4) == ESP_EFUSE_KEY_PURPOSE_HMAC_UP) {
+      return;
+   }
+   if (!esp_efuse_key_block_unused(EFUSE_BLK_KEY4)) {
+      main_error_message(TAG, "efuse KEY4 is already used for another purpose, hmac key not written");
+      return;
+   }
+   const uint8_t key_data[32] = hmac_key_32;
+   esp_err_t err = esp_efuse_write_key(EFUSE_BLK_KEY4, ESP_EFUSE_KEY_PURPOSE_HMAC_UP, key_data, sizeof(key_data));
+   if (err != ESP_OK) {
+      main_error_message(TAG, "hmac key provisioning failed: %s", esp_err_to_name(err));
+   }
+}
+#endif
+
 int udp_broadcast_init(){
     int res = 0;
     /* LWIP_ASSERT_CORE_LOCKED(); is checked by udp_new() */
 #if SOC_HMAC_SUPPORTED
-    const uint8_t key_data[32] = hmac_key_32;
-    esp_efuse_write_key(EFUSE_BLK_KEY4, ESP_EFUSE_KEY_PURPOSE_HMAC_UP, key_data, sizeof(key_data));
+    udp_broadcast_provision_hmac_key();
 #endif
     udp_broadcast_pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
     if (udp_broadcast_pcb == NULL) {
@@ -119,13 +137,13 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
         len += sprintf(&answer_buff[len],"\"port\": 502}");
     }else {
         int position = -1;
-        for (u16 i=0;i<receive_len-MODBUS_FIELD_SIZE;i++){
+        for (int i = 0; i + (int)MODBUS_FIELD_SIZE <= receive_len; i++) {
             if (strncmp(MODBUS_FIELD,&receive_buff[i],MODBUS_FIELD_SIZE) == 0){
                 position = i;
                 break;
             }
         }
-        if (position>=0){
+        if ((position >= 0) && (position + (int)MODBUS_FIELD_SIZE + 3 < receive_len)) {
 #if MODBUS_MASTER_ENABLE
             u8 modbus_id = (u8)atoi(&receive_buff[position + MODBUS_FIELD_SIZE  +3]);
             if(add_ip_to_slave_table((uc8*)addr,modbus_id)){
@@ -194,9 +212,9 @@ static void udp_broadcast_server_recv(void *arg, struct udp_pcb *upcb,struct pbu
     }
     pbuf_free(p);
 }
-int udp_broadcast_advertisement(udp_broadcast_option_t option){
+static void udp_broadcast_advertisement_send(void *arg){
+    udp_broadcast_option_t option = (udp_broadcast_option_t)(uintptr_t)arg;
     static char temp_buff[UDP_BROADCAST_MAX_PACKET_SIZE];
-    int res = 0;
 #define     DI_COUNT 16
     if(udp_broadcast_pcb!=NULL){
         int len = 0;
@@ -233,12 +251,13 @@ int udp_broadcast_advertisement(udp_broadcast_option_t option){
             udp_sendto(udp_broadcast_pcb, udp_broadcast_send_pbuff, IP_ADDR_BROADCAST, UDP_BROADCAST_SELF_PORT);
             pbuf_free(udp_broadcast_send_pbuff);
         }else{
-            res = ERR_BUF;
+            main_error_message(TAG, "advertisement pbuf allocation failed");
         }
-    }else{
-        res = ERR_CONN;
     }
-    return res;
+}
+
+int udp_broadcast_advertisement(udp_broadcast_option_t option){
+    return tcpip_try_callback(udp_broadcast_advertisement_send, (void *)(uintptr_t)option);
 }
 static int get_di_info(char * temp_buff){
     int len = 0;

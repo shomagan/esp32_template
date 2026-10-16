@@ -137,12 +137,16 @@ void telegram_task(void *arg){
                            task_delay_ms(10000u);
                            main_printf(TAG, "Failed to send request");
                         }
-                        esp_tls_conn_destroy(tls);
                         main_printf(TAG,"TELEGRAM_SEND_REG_BY_ID %u", reg_id);
                      } else {
                         main_error_message(TAG, "critical!!! HTTP request size exceeded, truncating message");
+                        attempts = 0;
                      }
+                  } else {
+                     main_printf(TAG, "Could not connect to %s", web_url);
+                     task_delay_ms(10000u);
                   }
+                  esp_tls_conn_destroy(tls);
                } else {
                   task_delay_ms(10000u);
                   main_printf(TAG, "Could not connect to %s", web_url);

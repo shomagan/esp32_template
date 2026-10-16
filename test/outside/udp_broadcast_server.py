@@ -63,7 +63,7 @@ def main():
         q = get_ch()
         if len(q):
             print(q)
-            if q == 'q':
+            if q == b'q':
                 sock.close()
                 time.sleep(0.3)
                 sys.exit(1)

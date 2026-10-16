@@ -20,6 +20,7 @@
 #include "esp_netif.h"
 #include "esp_sleep.h"
 #include "lwip/sockets.h"
+#include "lwip/tcpip.h"
 #include "slip_handle.h"
 #include "regs.h"
 #include "pin_map.h"
@@ -61,6 +62,15 @@ slip_handle_config_t wifi_slip_config;
 int main_init_tasks(esp_sleep_wakeup_cause_t * esp_sleep_wakeup_cause);
 static int common_init_gpio(void);
 static esp_sleep_wakeup_cause_t esp_sleep_wakeup_causes;
+
+static void main_init_lwip_apps(void *arg) {
+   (void)arg;
+#if (LWIP_HTTPD_USE_SOCKS == 0)
+   httpd_init_sofi();
+#endif
+   modbus_tcp_init();
+   udp_broadcast_init();
+}
 /**
  * @brief app_main
  */
@@ -97,11 +107,9 @@ void app_main(void){
 #if DISPLAY
     init_display();
 #endif
-#if (LWIP_HTTPD_USE_SOCKS == 0)
-    httpd_init_sofi();
-#endif
-    modbus_tcp_init();
-    udp_broadcast_init();
+    if (tcpip_callback(main_init_lwip_apps, NULL) != ERR_OK) {
+        main_error_message(TAG, "lwip apps init could not be queued");
+    }
     main_init_tasks(&esp_sleep_wakeup_causes);/*init all necessary tasks */
 }
 

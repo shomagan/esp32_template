@@ -365,6 +365,7 @@ int regs_get(void *reg_address, regs_access_t *reg) {
       semaphore_take(regs_access_mutex, portMAX_DELAY);
       memcpy(&reg->value.op_u64, reg_address, regs_size_in_byte(reg->flag));
       semaphore_release(regs_access_mutex);
+      result = 0;
    }
    return result;
 }
@@ -420,20 +421,19 @@ u8 regs_size_in_byte(regs_flag_t type){
  * @ingroup regs
  * @todo add asserts for byte_numm,buffer_to
  */
-int regs_set_buffer(void * reg_address,u8* buffer_from,u16 byte_numm){
-    int result;
-    regs_access_t reg;
-    reg.flag = U8_REGS_FLAG;
-    result =0;
-    for(u16 i=0; i<byte_numm; i++){
-        reg.value.op_u64 = 0;
-        reg.value.op_u8 = *(u8*)(buffer_from+i);
-        result = regs_set((void*)((u32)reg_address+i), reg);
-        if(result!=0){
-            break;
-        }
-    }
-    return result;
+int regs_set_buffer(void *reg_address, u8 *buffer_from, u16 byte_numm) {
+   int result = 0;
+   regs_access_t reg;
+   reg.flag = U8_REGS_FLAG;
+   for (u16 i = 0; i < byte_numm; i++) {
+      reg.value.op_u64 = 0;
+      reg.value.op_u8 = buffer_from[i];
+      result = regs_set((void *)((u32)reg_address + i), reg);
+      if (result < 0) {
+         break;
+      }
+   }
+   return result;
 }
 /**
  * @brief perform an action or send a message to the regs_event_handler queue
@@ -447,7 +447,7 @@ static int regs_hadle_sets(regs_access_t reg, regs_template_t * regs_template){
    int result;
    result = 0;
    if(regs_template != NULL && regs_template->p_value != NULL){
-      void * end_addr = (void*)((u32)regs_template->p_value + regs_size_in_byte(reg.flag));
+      void * end_addr = (void*)((u32)regs_template->p_value + regs_template->size_in_bytes);
       if (regs_description_flag_check(regs_template, SAVING)){/*regs saved in mirror*/
          main_printf(TAG,"\n register is saved, saved_address %lu", regs_template->saved_address);
          mirror_access_write(regs_template);
@@ -540,6 +540,8 @@ static void execute_main_command(u16 command){
         ESP_LOGI(TAG, "SET_DEFAULT_VALUES_COMM");
         res = set_regs_def_values(regs_global->vars.table_id);
         if (res == 1){
+            mirror_access_init_buffer(regs_global->vars.table_id);
+            mirror_request_flash_save(regs_global->vars.table_id);
             main_printf(TAG,"task notify to prepare reset");
             task_notify_send(common_duty_task_handle,PREPARE_TO_RESET,&prev_value);
         }

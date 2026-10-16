@@ -85,6 +85,9 @@ os_pool_cb_t * os_pool_create (const os_pool_def_t *pool_def){
 */
 int os_pool_delete (os_pool_cb_t * pool_id){
     int res = 0;
+    if (pool_id == NULL){
+        return -3;
+    }
     if (pool_id->pool){
         vPortFree(pool_id->pool);
     }else{
@@ -95,11 +98,7 @@ int os_pool_delete (os_pool_cb_t * pool_id){
     }else{
         res -= 1;
     }
-    if (pool_id){
-        vPortFree(pool_id);
-    }else{
-        res -= 1;
-    }
+    vPortFree(pool_id);
     return res;
 }
 /**
@@ -158,8 +157,8 @@ int os_pool_get_index_by_pointer(os_pool_cb_t * pool_id,void * pointer){
     if (pool_id == NULL) {
         return index;
     }
-    if((pointer < (void*)pool_id) ||
-            (pointer > (void*)((u32)pool_id + pool_id->item_sz * pool_id->pool_sz))){
+    if((pointer < pool_id->pool) ||
+            (pointer >= (void*)((u32)pool_id->pool + pool_id->item_sz * pool_id->pool_sz))){
         return index;
     }
     index = (int)(((u32)pointer - (u32)(pool_id->pool))/pool_id->item_sz);
@@ -175,7 +174,7 @@ int os_pool_get_index_by_pointer(os_pool_cb_t * pool_id,void * pointer){
 void * os_pool_calloc (os_pool_cb_t * pool_id){
     void *p = os_pool_alloc(pool_id);
     if (p != NULL) {
-        memset(p, 0, sizeof(pool_id->pool_sz));
+        memset(p, 0, pool_id->item_sz);
     }
     return p;
 }

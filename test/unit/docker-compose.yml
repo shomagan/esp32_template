@@ -1,0 +1,9 @@
+services:
+  ut:
+    build: .
+    image: esp32_template_ut
+    volumes:
+      - ../..:/repo:ro
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+    command: bash /repo/test/unit/run.sh

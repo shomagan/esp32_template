@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.22)
+set(COMPONENTS main)
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+idf_build_set_property(COMPILE_OPTIONS "-m32" APPEND)
+idf_build_set_property(LINK_OPTIONS "-m32" APPEND)
+project(regs_unit_test)
+target_compile_options(${CMAKE_PROJECT_NAME}.elf PRIVATE -m32)

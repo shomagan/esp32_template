@@ -270,7 +270,7 @@ def change_version(git_base_path):
     version_array = re.findall(r'\d+', version)
     version = version.replace("v", "")
     version = version.replace(".", ",")
-    str_before = r"\#define\s+FW_VERSION\s+\{[\d\,]+\}"
+    str_before = r"\#define\s+FW_VERSION\s+\{[\d\,\s]+\}"
     str_to = "#define FW_VERSION {"+version+"}"
     print(str_before, str_to)
     substitute_reg_exp(REGS_H_PATH, str_before, str_to)

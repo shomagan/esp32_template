@@ -52,6 +52,7 @@ static const char *mirror_key = "mirror_key";
 semaphore_handle_t global_vars_mirror_mutex = NULL;
 
 static int mirror_recalc_crc(u8 *data, u32 size);
+static void mirror_recalc_crc_unlocked(u8 *data, u32 size);
 static u8 mirror_check_crc(u8 *data, u32 size);
 esp_err_t mirror_storage_init(void) {
    if (global_vars_mirror_mutex == NULL) {
@@ -100,16 +101,11 @@ int mirror_access_write(regs_template_t *regs_template)
       if (data && (regs_template->saved_address + regs_template->size_in_bytes <= size)) {
          semaphore_take(global_vars_mirror_mutex, portMAX_DELAY);
          if(memcmp(&data[regs_template->saved_address], regs_template->p_value, regs_template->size_in_bytes) != 0){
+            memcpy(&data[regs_template->saved_address], regs_template->p_value, regs_template->size_in_bytes);
+            mirror_recalc_crc_unlocked(data, size);
             semaphore_release(global_vars_mirror_mutex);
             main_printf(TAG, "mirror_access_write: mirror_space_is_changing %i", regs_template->guid );
-            memcpy(&data[regs_template->saved_address], regs_template->p_value, regs_template->size_in_bytes);
-            mirror_recalc_crc(data, size);
-            u32 table_to_save;
-            regs_copy_safe(&table_to_save, &regs_global->vars.table_to_save, sizeof(table_to_save));
-            table_to_save |= BIT(regs_template->table_ind);
-            regs_copy_safe(&regs_global->vars.table_to_save, &table_to_save, sizeof(table_to_save));
-            main_printf(TAG, "set ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH");
-            regs_global->vars.async_flags |= ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
+            mirror_request_flash_save(regs_template->table_ind);
             res = 1;
          }else{
             semaphore_release(global_vars_mirror_mutex);
@@ -149,15 +145,32 @@ int mirror_access_read(regs_template_t *regs_template) {
    }
 }
 
+static void mirror_recalc_crc_unlocked(u8 *data, u32 size) {
+   u32 crc = calc_crc_for_u32((void *)data, (size - 4) / 4);
+   memcpy(&data[size - sizeof(u32)], &crc, sizeof(u32));
+}
+
 static int mirror_recalc_crc(u8 * data, u32 size){
    if(data){
       semaphore_take(global_vars_mirror_mutex, portMAX_DELAY );
-      u32 crc = calc_crc_for_u32((void*)data, (size-4)/4);
-      memcpy(&data[size-sizeof(u32)], &crc, sizeof(u32));
+      mirror_recalc_crc_unlocked(data, size);
       semaphore_release(global_vars_mirror_mutex);
       return 0;
    }else{
       return -1;
+   }
+}
+
+void mirror_request_flash_save(u16 table_ind) {
+   semaphore_take(regs_access_mutex, portMAX_DELAY);
+   regs_global->vars.table_to_save |= BIT(table_ind);
+   regs_global->vars.async_flags |= ASYNC_INIT_SET_VALUE_FROM_BKRAM_TO_FLASH;
+   semaphore_release(regs_access_mutex);
+}
+
+void mirror_save_all_to_flash(void) {
+   for (u16 table_ind = 0; table_ind < 32u; table_ind++) {
+      internal_flash_save_mirror_to_flash(table_ind);
    }
 }
 static u8 mirror_check_crc(u8 * data, u32 size){
