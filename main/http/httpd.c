@@ -120,6 +120,8 @@
 #include "mirror_storage.h"
 #include "os_type.h"
 #include "common.h"
+#include "esp_system.h"
+#include "esp_heap_caps.h"
 #if LWIP_TCP
 
 
@@ -305,15 +307,22 @@ struct http_state {
 task_handle_t http_sock_handle_id = NULL;
 #define HTTP_SOCK_TASK_PERIOD (5u)
 #define HTTP_SOCK_MAX_CONNECTIONS 5
+#define HTTP_SOCK_ACCEPT_TIMEOUT_MS 100u
+#define HTTP_SOCK_SEND_TIMEOUT_MS 5000u
+#define HTTP_SOCK_STOP_TIMEOUT_MS 10000u
+#define HTTP_SOCK_CLIENT_STACK_SIZE 6144u
+#define HTTP_SOCK_WORKER_STOP_FD (-1)
 
 static int http_sock_init();
 static int http_sock_deinit();
 static int close_socket_connection(int * socket);
 static u8_t http_sock_send(int socket, struct http_state *hs);
+static err_t http_sock_send_all(int socket_id, struct http_state *hs);
 static err_t http_sock_recv(void *arg, int socket_id, struct pbuf *p);
 static err_t http_sock_write(int socket_id, const void *ptr, u16_t *length, u8_t apiflags);
 static u8_t http_sock_check_eof(struct http_state *hs);
 static void http_sock_client_task(void *arg);
+static void http_sock_handle_client(int clientfd);
 static int setting_for_recv(unsigned int timeout_ms, int socket, fd_set * read_set, fd_set * error_set);
 
 #endif /* LWIP_HTTPD_USE_SOCKS */
@@ -341,8 +350,10 @@ static err_t http_close_conn(struct altcp_pcb *pcb, struct http_state *hs);
 static err_t http_close_or_abort_conn(struct altcp_pcb *pcb, struct http_state *hs, u8_t abort_conn);
 static err_t http_find_file(struct http_state *hs, const char *uri, int is_09);
 static err_t http_init_file(struct http_state *hs, struct fs_file *file, int is_09, const char *uri, u8_t tag_check, char *params);
+#if (LWIP_HTTPD_USE_SOCKS == 0)
 static err_t http_poll(void *arg, struct altcp_pcb *pcb);
 static u8_t http_check_eof(struct altcp_pcb *pcb, struct http_state *hs);
+#endif
 static int add_regs_value_to_str(char * str,regs_access_t temp_reg,u8 hex_print);
 
 #if LWIP_HTTPD_FS_ASYNC_READ
@@ -670,8 +681,10 @@ http_close_or_abort_conn(struct altcp_pcb *pcb, struct http_state *hs, u8_t abor
    err = altcp_close(pcb);
    if (err != ERR_OK) {
       LWIP_DEBUGF(HTTPD_DEBUG, ("Error %d closing %p\n", err, (void *)pcb));
+#if (LWIP_HTTPD_USE_SOCKS == 0)
       /* error closing, try again later in poll */
       altcp_poll(pcb, http_poll, HTTPD_POLL_INTERVAL);
+#endif
    }
    return err;
 }
@@ -3188,6 +3201,7 @@ err_t httpd_post_receive_data(struct pbuf *p){
                     download_task_state &= ~POST_STARTED;
                     main_error_message(TAG,"incorrect os file");
                     result = FALSE;
+                    pbuf_free(p);
                     return ERR_ARG;
                 /*}*/
                 file_len_come = *(u32*)(void*)start_post_data;
@@ -3436,8 +3450,12 @@ static const char* command_handle(int iIndex, int iNumParams, char *pcParam[],
 #if LWIP_HTTPD_USE_SOCKS
 
 static semaphore_handle_t http_tasks_mutex;
+static mutex_handle_t http_request_mutex;
+static queue_handle_t http_client_queue;
 static int client_number = 0;
 static int max_client_number = 0;
+static int http_workers = 0;
+static u8 http_sock_write_failed = 0u;
 
 static int http_sock_init(){
    regs_global->vars.current_state[0] |= CS0_TASK_ACTIVE_HTTP_SOCK;
@@ -3455,11 +3473,47 @@ static int http_sock_init(){
 #endif
    http_tasks_mutex = semaphore_create_binary();
    semaphore_release(http_tasks_mutex);
+   http_request_mutex = mutex_create();
+   http_client_queue = queue_create(HTTP_SOCK_MAX_CONNECTIONS, sizeof(int));
+   for (u8 i = 0u; i < HTTP_SOCK_MAX_CONNECTIONS; i++) {
+      char client_task_name[20];
+      snprintf(client_task_name, sizeof(client_task_name), "http_client_%u", (unsigned)i);
+      if (task_create(http_sock_client_task, client_task_name, HTTP_SOCK_CLIENT_STACK_SIZE, NULL, (tskIDLE_PRIORITY + 2),
+                      NULL) == pdTRUE) {
+         semaphore_take(http_tasks_mutex, portMAX_DELAY);
+         http_workers++;
+         semaphore_release(http_tasks_mutex);
+      } else {
+         main_error_message(TAG, "http worker %u create failed, free heap %lu largest block %u", (unsigned)i,
+                            (unsigned long)esp_get_free_heap_size(), (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+      }
+   }
    return 0;
 }
 static int http_sock_deinit(){
+   int workers = 1;
+   int stop_fd = HTTP_SOCK_WORKER_STOP_FD;
+   u32 waited_ms = 0u;
    regs_global->vars.current_state[0] &= ~((u32)CS0_TASK_ACTIVE_HTTP_SOCK);
-   semaphore_delete(http_tasks_mutex);
+   for (u8 i = 0u; i < HTTP_SOCK_MAX_CONNECTIONS; i++) {
+      queue_send(http_client_queue, &stop_fd, HTTP_SOCK_STOP_TIMEOUT_MS);
+   }
+   while ((workers > 0) && (waited_ms < HTTP_SOCK_STOP_TIMEOUT_MS)) {
+      semaphore_take(http_tasks_mutex, portMAX_DELAY);
+      workers = http_workers;
+      semaphore_release(http_tasks_mutex);
+      if (workers > 0) {
+         task_delay_ms(HTTP_SOCK_ACCEPT_TIMEOUT_MS);
+         waited_ms += HTTP_SOCK_ACCEPT_TIMEOUT_MS;
+      }
+   }
+   if (workers > 0) {
+      main_error_message(TAG, "%d http workers still active, mutexes kept", workers);
+   } else {
+      os_message_delete(http_client_queue);
+      semaphore_delete(http_tasks_mutex);
+      semaphore_delete(http_request_mutex);
+   }
    return 0;
 }
 
@@ -3470,35 +3524,38 @@ void http_sock_task(void *arg){
    int socket_id  = -1;
    int rv;
    int client_number_copy = 0;
-   char client_task_name[20] = "http_client_000";
+   int workers_copy = 0;
    http_sock_init();
    while(1){
       if(socket_id >= 0){
-         semaphore_take(http_tasks_mutex, portMAX_DELAY );{
-            client_number_copy = client_number;
-         }semaphore_release(http_tasks_mutex);
-         if(client_number_copy < HTTP_SOCK_MAX_CONNECTIONS){
+         semaphore_take(http_tasks_mutex, portMAX_DELAY);
+         client_number_copy = client_number;
+         workers_copy = http_workers;
+         semaphore_release(http_tasks_mutex);
+         if (client_number_copy < workers_copy) {
             if(client_number_copy > max_client_number){
                max_client_number = client_number_copy;
                main_printf(TAG,"max client number %d",max_client_number);
             }
-            int clientfd;
+            int clientfd = -1;
             struct sockaddr_in client_addr;
             int addrlen = sizeof(client_addr);
-            clientfd = accept(socket_id, (struct sockaddr*)&client_addr, (socklen_t*)&addrlen);
+            fd_set accept_set;
+            fd_set accept_error_set;
+            if ((setting_for_recv(HTTP_SOCK_ACCEPT_TIMEOUT_MS, socket_id, &accept_set, &accept_error_set) > 0) &&
+                FD_ISSET(socket_id, &accept_set)) {
+               clientfd = accept(socket_id, (struct sockaddr *)&client_addr, (socklen_t *)&addrlen);
+            }
             if(clientfd >= 0){
-               client_task_name[12] = '0';client_task_name[13] = '0';client_task_name[14] = '0';
-               sprintf(client_task_name,"http_client_%i", client_number_copy);
-               int res = task_create(http_sock_client_task, client_task_name, 6144,
-                                 &clientfd,
-                                 (tskIDLE_PRIORITY + 2), NULL);
-               if(res != pdTRUE){
-                     main_error_message(TAG,"Failed %s:%d\n",__FILE__,__LINE__);
-               }else {
-                  client_number_copy++;
-                  semaphore_take(http_tasks_mutex, portMAX_DELAY );{
-                     client_number = client_number_copy;
-                  }semaphore_release(http_tasks_mutex);
+               semaphore_take(http_tasks_mutex, portMAX_DELAY);
+               client_number++;
+               semaphore_release(http_tasks_mutex);
+               if (queue_send(http_client_queue, &clientfd, 0u) != pdTRUE) {
+                  main_error_message(TAG, "Failed %s:%d\n", __FILE__, __LINE__);
+                  close_socket_connection(&clientfd);
+                  semaphore_take(http_tasks_mutex, portMAX_DELAY);
+                  client_number--;
+                  semaphore_release(http_tasks_mutex);
                }
             }
          }
@@ -3539,12 +3596,27 @@ void http_sock_task(void *arg){
       task_counter++;
    }
 }
-/* for each new http connection, http_sock_task creates new task
-   arg should be a socket id*/
-void http_sock_client_task(void *arg){
-   int clientfd = *(int*)arg;
-   int rv;
-   int client_number_copy = 0;
+static void http_sock_client_task(void *arg) {
+   (void)arg;
+   int clientfd = -1;
+   while (1) {
+      if (queue_receive(http_client_queue, &clientfd, HTTP_SOCK_STOP_TIMEOUT_MS) == pdTRUE) {
+         if (clientfd == HTTP_SOCK_WORKER_STOP_FD) {
+            break;
+         }
+         http_sock_handle_client(clientfd);
+         semaphore_take(http_tasks_mutex, portMAX_DELAY);
+         client_number--;
+         semaphore_release(http_tasks_mutex);
+      }
+   }
+   semaphore_take(http_tasks_mutex, portMAX_DELAY);
+   http_workers--;
+   semaphore_release(http_tasks_mutex);
+   task_delete(task_get_id());
+}
+
+static void http_sock_handle_client(int clientfd) {
    struct http_state http_state_main;
 
    char sock_buffer_recv[LWIP_HTTPD_SOCK_BUFSIZE];
@@ -3569,7 +3641,9 @@ void http_sock_client_task(void *arg){
                   struct pbuf * http_received_pbuff = pbuf_alloc(PBUF_TRANSPORT, (u16)nbytes, PBUF_RAM);
                   if (http_received_pbuff != NULL) {
                      pbuf_take(http_received_pbuff,sock_buffer_recv,(u16)nbytes);
+                     semaphore_take(http_request_mutex, portMAX_DELAY);
                      err_t res = http_sock_recv((struct http_state*)&http_state_main, clientfd, http_received_pbuff);
+                     semaphore_release(http_request_mutex);
                      pbuf_free(http_received_pbuff);
                      if (res != ERR_INPROGRESS) {
                         i = 75;
@@ -3596,12 +3670,12 @@ void http_sock_client_task(void *arg){
       main_debug(TAG,"http_sock_client_task close: clientfd=%i i=%d", clientfd, i);
       close_socket_connection(&clientfd);
    }
+   semaphore_take(http_request_mutex, portMAX_DELAY);
+   if ((http_state_main.handle == &dynamic_json_file.file) && (dynamic_json_file.busy == JSON_OUT_SENDING)) {
+      dynamic_json_file.busy = JSON_OUT_FREE;
+   }
    http_state_eof((struct http_state*)&http_state_main);
-   client_number_copy--;
-   semaphore_take(http_tasks_mutex, portMAX_DELAY );{
-      client_number = client_number_copy;
-   }semaphore_release(http_tasks_mutex);
-   task_delete(task_get_id());
+   semaphore_release(http_request_mutex);
 }
 
 /**
@@ -3687,7 +3761,7 @@ static u8_t http_sock_send(int socket, struct http_state *hs){
 static err_t http_sock_recv(void *arg, int socket_id, struct pbuf *p)
 {
    struct http_state *hs = (struct http_state *)arg;
-   static err_t result = ERR_OK;
+   err_t result = ERR_OK;
    main_debug(TAG,"http_sock_recv: socket_id=%i pbuf=%p\n", socket_id,
                                              (void *)p);
 
@@ -3706,17 +3780,13 @@ static err_t http_sock_recv(void *arg, int socket_id, struct pbuf *p)
 #endif /* LWIP_HTTPD_SUPPORT_POST && LWIP_HTTPD_POST_MANUAL_WND */
 #if LWIP_HTTPD_SUPPORT_POST
       if (hs->post_content_len_left > 0) {
-         /* this is data for a POST, pass the complete pbuf to the application */
+         pbuf_ref(p);
          http_post_rxpbuf(hs, p);
-         /* pbuf is passed to the application, don't free it! */
          if (hs->post_content_len_left == 0) {
-            /* all data received, send response or close connection */
-            int res;
-            do{
-               res = http_sock_send(socket_id, hs);
-            }while(res);
+            result = http_sock_send_all(socket_id, hs);
+         } else {
+            result = ERR_INPROGRESS;
          }
-         result = ERR_OK;
       } else
 #endif /* LWIP_HTTPD_SUPPORT_POST */
       {
@@ -3734,14 +3804,13 @@ static err_t http_sock_recv(void *arg, int socket_id, struct pbuf *p)
             }
    #endif /* LWIP_HTTPD_SUPPORT_REQUESTLIST */
             if (result == ERR_OK) {
-   #if LWIP_HTTPD_SUPPORT_POST
-               if (hs->post_content_len_left == 0)
+#if LWIP_HTTPD_SUPPORT_POST
+               if (hs->post_content_len_left > 0) {
+                  result = ERR_INPROGRESS;
+               } else
 #endif /* LWIP_HTTPD_SUPPORT_POST */
                {
-                  int res;
-                  do{
-                     res = http_sock_send(socket_id, hs);
-                  }while(res);
+                  result = http_sock_send_all(socket_id, hs);
                }
             }
          } else {
@@ -3753,6 +3822,19 @@ static err_t http_sock_recv(void *arg, int socket_id, struct pbuf *p)
 
    }
    return result;
+}
+
+static err_t http_sock_send_all(int socket_id, struct http_state *hs) {
+   http_sock_write_failed = 0u;
+   while (http_sock_send(socket_id, hs) && !http_sock_write_failed) {
+   }
+   if (http_sock_write_failed) {
+      if ((hs->handle == &dynamic_json_file.file) && (dynamic_json_file.busy == JSON_OUT_SENDING)) {
+         dynamic_json_file.busy = JSON_OUT_FREE;
+      }
+      return ERR_ABRT;
+   }
+   return ERR_OK;
 }
 
 static int close_socket_connection(int * socket){
@@ -3842,6 +3924,7 @@ static err_t
 http_sock_write(int socket_id, const void *ptr, u16_t *length, u8_t apiflags)
 {
    u16_t len, max_len;
+   int sent = -1;
    err_t err = ERR_OK;
    fd_set write_set;
    struct timeval tv;
@@ -3859,21 +3942,25 @@ http_sock_write(int socket_id, const void *ptr, u16_t *length, u8_t apiflags)
    main_debug(TAG, "Trying to send %d bytes\n", len);
    FD_ZERO(&write_set);
    FD_SET(socket_id, &write_set);
-   tv.tv_sec =0;
-   tv.tv_usec=(long)5000;
-   if(select(socket_id+1, NULL, &write_set, NULL, &tv)>0){
-      len = send(socket_id, ptr, len, 0);
-   }else {
-      len = 0;
+   tv.tv_sec = HTTP_SOCK_SEND_TIMEOUT_MS / 1000u;
+   tv.tv_usec = (HTTP_SOCK_SEND_TIMEOUT_MS % 1000u) * 1000u;
+   int ready = select(socket_id + 1, NULL, &write_set, NULL, &tv);
+   if (ready > 0) {
+      sent = send(socket_id, ptr, len, 0);
    }
-   if (len>0) {
-      main_debug(TAG,"Sent %d bytes\n", len);
-      *length = len;
+   if (sent > 0) {
+      main_debug(TAG, "Sent %d bytes\n", sent);
+      *length = (u16_t)sent;
       err = ERR_OK;
    } else {
-      main_error_message(TAG, "Send failed with err %d \n", len);
+      if (ready > 0) {
+         main_error_message(TAG, "Send failed with err %d errno %d\n", sent, errno);
+      } else {
+         main_error_message(TAG, "Send select failed with %d\n", ready);
+      }
       *length = 0;
-      err = ERR_MEM;
+      http_sock_write_failed = 1u;
+      err = ERR_CONN;
    }
    return err;
 }

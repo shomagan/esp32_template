@@ -57,6 +57,7 @@
 #include "mirror_storage.h"
 #include "esp_wifi.h"
 #include "esp_sleep.h"
+#include "esp_system.h"
 #include "main_config.h"
 #if MORSE
 #include "morse.h"
@@ -145,6 +146,8 @@ void common_duty_task(void *pvParameters) {
          semaphore_take(regs_access_mutex, portMAX_DELAY);
          {
             regs_global->vars.live_time++;
+            regs_global->vars.cur_free_heap = esp_get_free_heap_size();
+            regs_global->vars.min_free_heap = esp_get_minimum_free_heap_size();
          }
          semaphore_release(regs_access_mutex);
          led_blink_on(250u);
