@@ -72,6 +72,7 @@ FLAG_TYPE_STRING = {
 }
 
 GENERATOR_MARKER = "#generator_use_description"
+REGS_H_PATH = "../main/regs.h"
 
 def short_name(name):
     return REGS_SHORT_NAME[name]
@@ -113,6 +114,18 @@ class RegsHand(base_object.Base):
         self.user_task_entries = {}
         self.user_task_saved_sizes = {}
         self.pending_declaration = ""
+        self.max_name_size = self.read_max_name_size(REGS_H_PATH)
+
+    def read_max_name_size(self, regs_h_path):
+        with open(regs_h_path, 'r', errors='ignore') as regs_h:
+            match = re.search(r'^#define\s+REGS_MAX_NAME_SIZE\s+(\d+)', regs_h.read(), re.MULTILINE)
+        if match is None:
+            self.print_error(f"REGS_MAX_NAME_SIZE not found in {regs_h_path}")
+        return int(match.group(1))
+
+    def check_name_size(self, name):
+        if len(name) > self.max_name_size:
+            self.print_error(f"reg name {name} has {len(name)} chars, REGS_MAX_NAME_SIZE is {self.max_name_size}")
 
     def regs_file_handling_user_task(self, path_to_file):
         regs_file = open(path_to_file, 'r', errors='ignore')
@@ -432,6 +445,7 @@ class RegsHand(base_object.Base):
             name = self.additional_name
         else:
             name = self.internal_name
+        self.check_name_size(name)
         if self.size_array > 1 and self.is_reduced == 0:
             p_value = f"(u8*)&regs_main.{mdb_regs_global_name}.vars.{self.internal_name}[{number}]"
         else:
@@ -499,6 +513,7 @@ class RegsHand(base_object.Base):
             name = self.additional_name
         else:
             name = self.internal_name
+        self.check_name_size(name)
         if self.size_array > 1 and self.is_reduced == 0:
             p_value = f"(u8*)&{mdb_regs_global_name}->vars.{self.internal_name}[{number}]"
         else:

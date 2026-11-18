@@ -1,4 +1,5 @@
 credentials.h
+!test/unit/regs_app/stubs/credentials.h
 build/
 generator/.idea/
 generator/__pycache__/

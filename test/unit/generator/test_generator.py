@@ -1,5 +1,7 @@
 import re
 
+import pytest
+
 from conftest import REPO, read_lf
 
 FIXTURE_H = """\
@@ -91,3 +93,17 @@ def test_flags_types_and_addresses_in_user_task_table(tree):
 
     guids = [int(entry["guid"], 16) for entry in entries.values()]
     assert guids == sorted(guids) and len(set(guids)) == len(guids)
+
+
+def test_register_name_over_max_size_is_rejected(tree):
+    root, generator = tree
+    for path in (root / "user_tasks").iterdir():
+        path.unlink()
+    max_name_size = int(re.search(r"#define REGS_MAX_NAME_SIZE (\d+)", read_lf(root / "main" / "regs.h")).group(1))
+    fits, too_long = "a" * max_name_size, "b" * (max_name_size + 1)
+    header = FIXTURE_H.replace("u16 plain;", f"u16 {fits};").replace("u16 limited;", f"u16 {too_long};")
+    (root / "user_tasks" / "fixture.h").write_text(header, encoding="utf-8")
+    (root / "user_tasks" / "fixture.c").write_text(FIXTURE_C, encoding="utf-8")
+
+    with pytest.raises(Exception, match=f"{too_long} has {max_name_size + 1} chars"):
+        generator.generate_user_tasks(["fixture.h"])
